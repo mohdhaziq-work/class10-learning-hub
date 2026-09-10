@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+# next
+.next/
+out/
+# production
+build/
+dist/
+# misc
+.DS_Store
+Thumbs.db
+*.log
+# env (NEVER commit real keys)
+.env
+.env*.local
+# ide
+.vscode/
+.idea/

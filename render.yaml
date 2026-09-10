@@ -1,0 +1,26 @@
+# Render deploy — Node runtime, FREE plan (Blueprint deploy).
+# GitHub push ke baad: Render Dashboard → New + → Blueprint → repo select → Apply.
+# render.yaml sab kuch auto-configure kar dega. Free SSL + auto-deploy included.
+services:
+  - type: web
+    name: class10-learning-hub
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # PORT Render khud inject karta hai (next start use padh leta hai) — hardcode mat karo.
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://class10-learning-hub.onrender.com
+      # --- Firebase (OPTIONAL — bina iske bhi site 100% chalegi, local-first) ---
+      # Dashboard → Environment me add karo (Firebase Console se free Spark keys):
+      # NEXT_PUBLIC_FIREBASE_API_KEY
+      # NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+      # NEXT_PUBLIC_FIREBASE_PROJECT_ID
+      # NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      # NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+      # NEXT_PUBLIC_FIREBASE_APP_ID

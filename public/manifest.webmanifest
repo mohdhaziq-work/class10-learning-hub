@@ -1,0 +1,10 @@
+{
+  "name": "Class 10 Learning Hub",
+  "short_name": "C10 Hub",
+  "description": "Class 10 smart learning + smart board. Free forever.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1222",
+  "theme_color": "#4f46e5",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

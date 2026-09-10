@@ -1,0 +1,21 @@
+rules_version = '2';
+/* Free Spark plan par kaafi. Firebase Console → Firestore → Rules me paste karo.
+   Classroom setup: chapterContent public-read; progress sirf apne anon UID ka. */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Teacher content overrides — sab padhein, teacher device likhe
+    match /chapterContent/{key} {
+      allow read: if true;
+      allow write: if true;
+    }
+    // Student progress — sirf apna (anonymous auth UID)
+    match /progress/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    // Bug reports — koi bhi bhej sakta hai, koi padh nahi sakta (console se dekho)
+    match /bugReports/{id} {
+      allow create: if true;
+      allow read, update, delete: if false;
+    }
+  }
+}
