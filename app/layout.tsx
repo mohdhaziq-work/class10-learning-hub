@@ -1,6 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+export const viewport: Viewport = { themeColor: "#111111" };
 
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-mono" });
@@ -16,7 +18,6 @@ export const metadata: Metadata = {
   keywords: ["class 10", "NCERT", "CBSE", "smart board", "maths", "science", "free study", "AI CBSE 417"],
   icons: { icon: "/favicon.svg" },
   manifest: "/manifest.webmanifest",
-  themeColor: "#111111",
   openGraph: {
     title: "Class 10 Learning Hub",
     description: "Smart slides, quizzes and a classroom Smart Board. Free forever.",

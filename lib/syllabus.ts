@@ -114,11 +114,10 @@ export const SUBJECTS: Subject[] = [
         { n: 4, title: "How to Tell Wild Animals", hi: "Carolyn Wells" },
         { n: 5, title: "The Ball Poem", hi: "John Berryman" },
         { n: 6, title: "Amanda!", hi: "Robin Klein" },
-        { n: 7, title: "Animals", hi: "Walt Whitman" },
-        { n: 8, title: "The Trees", hi: "Adrienne Rich" },
-        { n: 9, title: "Fog", hi: "Carl Sandburg" },
-        { n: 10, title: "The Tale of Custard the Dragon", hi: "Ogden Nash" },
-        { n: 11, title: "For Anne Gregory", hi: "W.B. Yeats" },
+        { n: 7, title: "The Trees", hi: "Adrienne Rich" },
+        { n: 8, title: "Fog", hi: "Carl Sandburg" },
+        { n: 9, title: "The Tale of Custard the Dragon", hi: "Ogden Nash" },
+        { n: 10, title: "For Anne Gregory", hi: "W.B. Yeats" },
       ]},
       { label: "Footprints Without Feet — Supplementary", chapters: [
         { n: 1, title: "A Triumph of Surgery", hi: "James Herriot" },
@@ -137,33 +136,27 @@ export const SUBJECTS: Subject[] = [
     id: "hindi", name: "Hindi", hindi: "हिन्दी", icon: "languages", color: "#b3261e",
     tagline: "Summaries, difficult words, and question practice — Kshitij + Kritika.",
     features: ["slides", "mindmap", "notes", "words", "quiz", "pyq"],
-    groups: [
+        groups: [
+      { label: "Kshitij — Poetry", chapters: [
+        { n: 1, title: "सूर के पद", hi: "Surdas — Krishna bhakti padas" },
+        { n: 2, title: "राम-लक्ष्मण-परशुराम संवाद", hi: "Tulsidas — Ramcharitmanas" },
+        { n: 3, title: "आत्मकथ्य", hi: "Jaishankar Prasad" },
+        { n: 4, title: "उत्साह", hi: "Suryakant Tripathi 'Nirala'" },
+        { n: 5, title: "यह दंतुरित मुस्कान", hi: "Nagarjuna" },
+        { n: 6, title: "संगतकार", hi: "Manglesh Dabral" },
+      ]},
       { label: "Kshitij — Prose", chapters: [
         { n: 1, title: "नेताजी का चश्मा", hi: "Swayam Prakash" },
         { n: 2, title: "बालगोबिन भगत", hi: "Ramvriksha Benipuri" },
         { n: 3, title: "लखनवी अंदाज़", hi: "Yashpal" },
-        { n: 4, title: "मानवीय करुणा की दिव्या चमक", hi: "Sarveshwar Dayal Saxena" },
-        { n: 5, title: "तोप", hi: "Viren Dangwal" },
-        { n: 6, title: "कर चले हम फ़िदा", hi: "Kaifi Azmi" },
-      ]},
-      { label: "Kshitij — Poetry", chapters: [
-        { n: 1, title: "सूर के पद", hi: "Surdas" },
-        { n: 2, title: "राम-लक्ष्मण-परशुराम संवाद", hi: "Tulsidas" },
-        { n: 3, title: "आत्मकथ्य", hi: "Jaishankar Prasad" },
-        { n: 4, title: "उत्साह", hi: "Suryakant Tripathi 'Nirala'" },
-        { n: 5, title: "यह दंतुरित मुसकान", hi: "Nagarjuna" },
-        { n: 6, title: "छाया मत छूना", hi: "Girija Kumar Mathur" },
-        { n: 7, title: "कन्यादान", hi: "Rituraj" },
-        { n: 8, title: "मधुर-मधुर मेरे दीपक जल", hi: "Mahadevi Verma" },
-        { n: 9, title: "पर्वत प्रदेश में पावस", hi: "Sumitranandan Pant" },
-        { n: 10, title: "मनुष्यता", hi: "Maithilisharan Gupt" },
+        { n: 4, title: "एक कहानी यह भी", hi: "Mannu Bhandari" },
+        { n: 5, title: "नौबतखाने में इबादत", hi: "Yatindra Mishra — on Ustad Bismillah Khan" },
+        { n: 6, title: "संस्कृति", hi: "Bhadant Anand Kausalyayan" },
       ]},
       { label: "Kritika — Supplementary Reader", chapters: [
         { n: 1, title: "माता का अंचल", hi: "Shivpujan Sahay" },
-        { n: 2, title: "जॉर्ज पंचम की नाक", hi: "Kamleshwar" },
-        { n: 3, title: "साना-साना हाथ जोड़ि", hi: "Mridula Garg" },
-        { n: 4, title: "मैं क्यों लिखता हूँ", hi: "Agyeya" },
-        { n: 5, title: "स्त्री-शिक्षा के विरोधी कुतर्कों का खंडन", hi: "Mahavir Prasad Dwivedi" },
+        { n: 2, title: "साना-साना हाथ जोड़ि", hi: "Mridula Garg" },
+        { n: 3, title: "मैं क्यों लिखता हूँ", hi: "Agyeya" },
       ]},
     ]
   },
@@ -171,7 +164,7 @@ export const SUBJECTS: Subject[] = [
     id: "ai", name: "Artificial Intelligence", hindi: "कृत्रिम बुद्धिमत्ता", icon: "bot", color: "#00696b",
     tagline: "AI Project Cycle, Modelling, Computer Vision, NLP, and Python — future-ready with the KIPS book (CBSE 417).",
     features: ["slides", "mindmap", "flow", "notes", "quiz", "pyq"],
-    groups: [
+        groups: [
       { label: "Part A — Employability Skills", chapters: [
         { n: 1, title: "Communication Skills-II", hi: "Methods, feedback, barriers, writing" },
         { n: 2, title: "Self-Management Skills-II", hi: "Stress management, working independently" },
@@ -179,22 +172,22 @@ export const SUBJECTS: Subject[] = [
         { n: 4, title: "Entrepreneurial Skills-II", hi: "Entrepreneurship as a career" },
         { n: 5, title: "Green Skills-II", hi: "Sustainable development" },
       ]},
-      { label: "Part B — AI Project Cycle & Modelling", chapters: [
-        { n: 1, title: "AI Project Cycle: Data Acquisition", hi: "Data, sources, features, datasets" },
-        { n: 2, title: "AI Project Cycle: Data Exploration", hi: "Data visualisation & charts" },
-        { n: 3, title: "AI Project Cycle: Modelling", hi: "Rule-based, supervised, unsupervised, clustering" },
-        { n: 4, title: "Neural Networks", hi: "ANN, how AI makes decisions" },
-        { n: 5, title: "AI Project Cycle: Evaluation", hi: "Train-test split, accuracy & error" },
+      { label: "Unit 1 — AI Project Cycle & Ethical Frameworks", chapters: [
+        { n: 1, title: "Revisiting the AI Project Cycle", hi: "Problem scoping to deployment" },
+        { n: 2, title: "Problem Scoping & Data Acquisition", hi: "4Ws canvas, features, datasets, sources" },
+        { n: 3, title: "Data Exploration & Visualization", hi: "Charts, trends, correlations" },
+        { n: 4, title: "AI Ethics & Bias", hi: "Ethical frameworks, AI access, SDG impact" },
       ]},
-      { label: "Part B — Data, Vision & Language", chapters: [
-        { n: 1, title: "Statistical Data", hi: "Data handling foundations" },
-        { n: 2, title: "Computer Vision", hi: "Pixels, OpenCV, convolution, CNN" },
-        { n: 3, title: "Natural Language Processing", hi: "Chatbots, tokenisation, NLTK, LLMs" },
+      { label: "Unit 2 — Advanced Concepts of Modelling", chapters: [
+        { n: 1, title: "Rule-based & Learning-based Models", hi: "Decision trees, types of learning" },
+        { n: 2, title: "Neural Networks & Deep Learning", hi: "ANN, layers, weights, activations" },
       ]},
-      { label: "Part B — Advanced Python", chapters: [
-        { n: 1, title: "Python Basics Recap", hi: "Syntax, lists, tuples" },
-        { n: 2, title: "Tools for AI: Jupyter & Anaconda", hi: "Notebook, virtual environments" },
-        { n: 3, title: "Working with Notebook Documents", hi: "Hands-on AI with Python" },
+      { label: "Units 3–7 — Evaluate, Data, Vision, NLP, Python", chapters: [
+        { n: 1, title: "Evaluating Models", hi: "Confusion matrix, accuracy, precision, recall" },
+        { n: 2, title: "Statistical Data", hi: "Mean, median, mode, spread, spreadsheets" },
+        { n: 3, title: "Computer Vision", hi: "Pixels, OpenCV, convolution, CNN applications" },
+        { n: 4, title: "Natural Language Processing", hi: "Tokenisation, chatbots, NLTK, LLMs" },
+        { n: 5, title: "Advance Python for AI", hi: "Jupyter, NumPy, pandas, AI programs" },
       ]},
     ]
   },

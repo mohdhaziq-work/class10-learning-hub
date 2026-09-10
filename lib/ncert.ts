@@ -23,28 +23,24 @@ seq((i) => `english-0-${i}`, "jeff1", 9); // First Flight prose → unit N
 seq((i) => `english-2-${i}`, "jefp1", 9); // Footprints Without Feet
 
 /* First Flight poetry → unit PDF that contains the poem.
-   (Animals was removed from the book — no entry for english-1-6.) */
+   (Animals is not in the current book — poem list has 10 entries.) */
 const POEMS: Record<number, string> = {
   0: "jeff101.pdf", 1: "jeff101.pdf", 2: "jeff102.pdf", 3: "jeff103.pdf",
-  4: "jeff103.pdf", 5: "jeff104.pdf", 7: "jeff105.pdf", 8: "jeff106.pdf",
-  9: "jeff107.pdf", 10: "jeff108.pdf",
+  4: "jeff103.pdf", 5: "jeff104.pdf", 6: "jeff105.pdf", 7: "jeff106.pdf",
+  8: "jeff107.pdf", 9: "jeff108.pdf",
 };
 for (const [c, f] of Object.entries(POEMS)) MAP[`english-1-${c}`] = f;
 
-/* Kshitij (current book: poetry 101–106, prose 107–112) */
-MAP["hindi-0-0"] = "jhks107.pdf";
-MAP["hindi-0-1"] = "jhks108.pdf";
-MAP["hindi-0-2"] = "jhks109.pdf";
-MAP["hindi-1-0"] = "jhks101.pdf";
-MAP["hindi-1-1"] = "jhks102.pdf";
-MAP["hindi-1-2"] = "jhks103.pdf";
-MAP["hindi-1-3"] = "jhks104.pdf";
-MAP["hindi-1-4"] = "jhks105.pdf";
+/* Kshitij Bhag-2 (current Reprint 2026-27, verified on ncert.nic.in):
+   poetry = jhks101–106, prose = jhks107–112 */
+seq((i) => `hindi-0-${i}`, "jhks1", 6);            // poetry: Sur ke Pad … Sangatakara
+const seqFrom = (key: (i: number) => string, prefix: string, start: number, count: number) => {
+  for (let i = 0; i < count; i++) MAP[key(i)] = `${prefix}${pad(start + i)}.pdf`;
+};
+seqFrom((i) => `hindi-1-${i}`, "jhks1", 7, 6);     // prose: Netaji ka Chashma … Samskriti (107–112)
 
-/* Kritika (current book: 3 chapters) */
-MAP["hindi-2-0"] = "jhkr101.pdf";
-MAP["hindi-2-2"] = "jhkr102.pdf";
-MAP["hindi-2-3"] = "jhkr103.pdf";
+/* Kritika Bhag-2 (current book: 3 chapters) */
+seq((i) => `hindi-2-${i}`, "jhkr1", 3);
 
 export interface NcertPdf {
   file: string;
