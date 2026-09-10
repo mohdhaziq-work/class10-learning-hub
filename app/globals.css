@@ -54,6 +54,11 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 *::-webkit-scrollbar-thumb { background: #c9ced6; border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-track { background: transparent; }
 
+/* ---------- route progress ---------- */
+.route-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 100; overflow: hidden; pointer-events: none; }
+.route-progress span { display: block; height: 100%; width: 40%; background: #1a73e8; border-radius: 0 3px 3px 0; animation: routeSlide 1s ease-in-out infinite; }
+@keyframes routeSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(280%); } }
+
 /* ---------- print ---------- */
 @media print {
   header, footer, .no-print { display: none !important; }

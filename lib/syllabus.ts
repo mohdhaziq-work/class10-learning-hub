@@ -63,7 +63,8 @@ export const SUBJECTS: Subject[] = [
         { n: 1, title: "The Rise of Nationalism in Europe", hi: "French Revolution to unification" },
         { n: 2, title: "Nationalism in India", hi: "Non-cooperation to Quit India" },
         { n: 3, title: "The Making of a Global World", hi: "Trade, industrialisation & depression" },
-        { n: 4, title: "Print Culture and the Modern World", hi: "Press, reform & nationalism" },
+        { n: 4, title: "The Age of Industrialisation", hi: "Factories, workers & colonial India" },
+        { n: 5, title: "Print Culture and the Modern World", hi: "Press, reform & nationalism" },
       ]},
       { label: "Geography — Contemporary India II", chapters: [
         { n: 1, title: "Resources and Development", hi: "Types, planning & conservation" },
@@ -86,6 +87,7 @@ export const SUBJECTS: Subject[] = [
         { n: 2, title: "Sectors of the Indian Economy", hi: "Primary, secondary & tertiary" },
         { n: 3, title: "Money and Credit", hi: "Banks, SHGs & loans" },
         { n: 4, title: "Globalisation and the Indian Economy", hi: "MNCs, WTO & impact on India" },
+        { n: 5, title: "Consumer Rights", hi: "COPRA, redressal & consumer duties" },
       ]},
     ]
   },

@@ -5,6 +5,7 @@ import { getSubject, getChapter, allChapterKeys } from "@/lib/syllabus";
 import { chapterDetail } from "@/lib/content";
 import ChapterView from "@/components/chapter/ChapterView";
 import { Icon } from "@/components/ui/Icon";
+import { ncertPdf, boardHref } from "@/lib/ncert";
 
 export function generateStaticParams() {
  return allChapterKeys().map((k) => ({
@@ -35,6 +36,8 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  p ? `/chapter/${sub.id}/${p.gi}/${p.ci}` : null;
 
  const isAuto = !chapterDetail(f.key);
+ const pdf = ncertPdf(f.key, f.ch.title);
+ const bHref = boardHref(f.key, f.ch.title);
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6">
  <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute mt-5 mb-4 flex-wrap">
@@ -60,6 +63,16 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  </span>
  )}
  </div>
+ {pdf && bHref && (
+ <div className="flex gap-2 mt-4 flex-wrap">
+ <a href={pdf.direct} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-blue text-[13.5px]">
+ <Icon name="fileText" size={17} /> NCERT PDF
+ </a>
+ <Link href={bHref} className="btn-g btn-g-white text-[13.5px]">
+ <Icon name="squarePen" size={17} /> Open in Board
+ </Link>
+ </div>
+ )}
  <div className="mt-4"><ChapterView found={f} prevHref={href(prev)} nextHref={href(next)} /></div>
  </div>
  );

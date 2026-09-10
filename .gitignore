@@ -16,3 +16,4 @@ Thumbs.db
 # ide
 .vscode/
 .idea/
+tsconfig.tsbuildinfo

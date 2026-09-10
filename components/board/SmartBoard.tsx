@@ -11,9 +11,12 @@ export default function SmartBoard() {
 
  useEffect(() => {
  if (!rootRef.current) return;
+ const pdf = params.get("pdf");
  const engine = new BoardEngine(rootRef.current, {
  layout: params.get("layout") || undefined,
  bg: params.get("bg") || undefined,
+ pdfUrl: pdf ? `/api/pdf?u=${encodeURIComponent(pdf)}` : undefined,
+ pdfName: params.get("name") || undefined,
  });
  return () => engine.destroy();
  // eslint-disable-next-line react-hooks/exhaustive-deps

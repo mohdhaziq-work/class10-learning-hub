@@ -6,6 +6,7 @@ import { useProgress } from "@/lib/progress";
 import { chapterDetail } from "@/lib/content";
 import { getLocalOverride } from "@/lib/overrides";
 import { Icon } from "@/components/ui/Icon";
+import { ncertPdf } from "@/lib/ncert";
 
 function Card({ s, gi, ci, ch }: { s: Subject; gi: number; ci: number; ch: ChapterRef }) {
  const { toggle, isDone } = useProgress();
@@ -13,6 +14,7 @@ function Card({ s, gi, ci, ch }: { s: Subject; gi: number; ci: number; ch: Chapt
  const done = isDone(key);
  const full = !!chapterDetail(key);
  const over = !!getLocalOverride(key);
+ const pdf = ncertPdf(key, ch.title);
  return (
  <div className={`reveal card-g p-4 flex gap-3.5 items-start hover:shadow-lift hover:-translate-y-0.5 transition ${done ? "ring-2 ring-slate-900 " : ""}`}>
  <Link href={`/chapter/${s.id}/${gi}/${ci}`} aria-label={ch.title}
@@ -29,6 +31,7 @@ function Card({ s, gi, ci, ch }: { s: Subject; gi: number; ci: number; ch: Chapt
  ? <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-slate-900 text-white "><Icon name="star" size={12} /> Full content</span>
  : <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-200 "><Icon name="info" size={12} /> Auto guide</span>}
  {over && <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 "><Icon name="penLine" size={12} /> Teacher</span>}
+ {pdf && <a href={pdf.direct} target="_blank" rel="noopener noreferrer" title="Open official NCERT PDF" className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 "><Icon name="fileText" size={12} /> NCERT PDF</a>}
  </div>
  </div>
  <button

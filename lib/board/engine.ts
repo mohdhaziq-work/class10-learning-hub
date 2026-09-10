@@ -5,7 +5,7 @@
    ========================================================================== */
 import * as pdfjsLib from "pdfjs-dist";
 
-export interface EngineOpts { layout?: string; bg?: string }
+export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
 
 function uid(): string { return "o" + Math.random().toString(36).slice(2, 9); }
@@ -298,6 +298,7 @@ export class BoardEngine {
     this.setTool("pen");
     this.sizeBoard();
     this.setActive("board", null);
+    if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
     this.sizeTrail();
     this.laserLoop();
     const ro = new ResizeObserver(() => this.sizeBoard());
@@ -625,22 +626,73 @@ export class BoardEngine {
   }
 
   private async openPdf(file: File) {
-    this.setDocEmpty(true, `<h2>Opening PDF…</h2><p>${file.name}</p>`);
+    this.setDocEmpty(true, `<h2>Opening PDF…</h2><p>${this.esc(file.name)}</p>`);
     try {
       const buf = await file.arrayBuffer();
-      this.pdfDoc = await (pdfjsLib as any).getDocument({ data: buf }).promise;
-      this.totalPages = this.pdfDoc.numPages;
-      if (this.doc) this.doc.kind = "pdf";
-      this.setDocEmpty(false);
-      this.computeFit();
-      for (let n = 1; n <= this.totalPages; n++) this.buildPageShell(n);
-      this.buildThumbs();
-      this.currentPage = 1; this.updatePgLabel();
-      this.toast(`${this.totalPages} pages loaded — start writing!`);
+      await this.loadPdfBuffer(buf);
     } catch (err) {
       console.error(err);
       this.setDocEmpty(true, `<h2>Could not open PDF</h2><p>The file may be corrupt. Try another file.</p>`);
     }
+  }
+
+  /* Load a PDF from a URL with a live download-progress bar (NCERT chapters) */
+  async openPdfFromUrl(url: string, name: string) {
+    if (this.layout === "board") this.setLayout("split");
+    this.doc = { kind: "pdf", key: url, name };
+    (this.$("#fileName") as HTMLElement).textContent = " " + name;
+    this.pages = [];
+    (this.$("#thumbs") as HTMLElement).innerHTML = "";
+    (this.$("#thumbs") as HTMLElement).classList.remove("show");
+    this.$all("#docScroll .page-wrap, #docScroll .doc-html").forEach((n: HTMLElement) => n.remove());
+    this.htmlAnnot = null;
+    const safe = this.esc(name);
+    const bar = (pct: number | null, kb: number) => {
+      const label = pct === null ? `${kb} KB downloaded…` : `${pct}% downloaded`;
+      const w = pct === null ? 100 : pct;
+      this.setDocEmpty(true, `<h2>Loading NCERT PDF…</h2><p>${safe}</p>` +
+        `<div style="height:6px;border-radius:99px;background:#e2e8f0;max-width:300px;margin:12px auto 6px;overflow:hidden">` +
+        `<div style="height:100%;width:${w}%;background:#1a73e8;border-radius:99px;transition:width .2s"></div></div>` +
+        `<p style="font-size:13px">${label}</p>`);
+    };
+    try {
+      bar(0, 0);
+      const res = await fetch(url);
+      if (!res.ok || !res.body) throw new Error("download failed");
+      const total = +(res.headers.get("content-length") || 0);
+      const reader = res.body.getReader();
+      const chunks: Uint8Array[] = [];
+      let got = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value); got += value.length;
+        bar(total ? Math.min(99, Math.round((got / total) * 100)) : null, Math.round(got / 1024));
+      }
+      const buf = new Uint8Array(got);
+      let off = 0;
+      for (const c of chunks) { buf.set(c, off); off += c.length; }
+      await this.loadPdfBuffer(buf.buffer);
+    } catch (err) {
+      console.error(err);
+      this.setDocEmpty(true, `<h2>Could not load PDF</h2><p>Check your internet connection and try again.</p>`);
+    }
+  }
+
+  private esc(s: string) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  private async loadPdfBuffer(buf: ArrayBuffer) {
+    this.pdfDoc = await (pdfjsLib as any).getDocument({ data: buf }).promise;
+    this.totalPages = this.pdfDoc.numPages;
+    if (this.doc) this.doc.kind = "pdf";
+    this.setDocEmpty(false);
+    this.computeFit();
+    for (let n = 1; n <= this.totalPages; n++) this.buildPageShell(n);
+    this.buildThumbs();
+    this.currentPage = 1; this.updatePgLabel();
+    this.toast(`${this.totalPages} pages loaded — start writing!`);
   }
 
   private computeFit() {

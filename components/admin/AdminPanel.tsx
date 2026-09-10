@@ -33,6 +33,7 @@ export default function AdminPanel() {
  const [msg, setMsg] = useState("");
  const [mmJson, setMmJson] = useState("");
  const [flowJson, setFlowJson] = useState("");
+ const [saving, setSaving] = useState(false);
 
  useEffect(() => {
  const d = getLocalOverride(key) || chapterDetail(key) || {};
@@ -50,6 +51,7 @@ export default function AdminPanel() {
  const del = <T,>(arr: T[] | undefined, i: number): T[] => (arr || []).filter((_, k) => k !== i);
 
  async function save() {
+ setSaving(true);
  let d: ChapterDetail = { ...detail };
  try {
  if (mmJson.trim()) d.mindmap = JSON.parse(mmJson);
@@ -58,6 +60,7 @@ export default function AdminPanel() {
  else delete d.flowchart;
  } catch {
  setMsg("Error in Mindmap/Flow JSON — fix it first");
+ setSaving(false);
  return;
  }
  /* remove empty entries */
@@ -70,6 +73,7 @@ export default function AdminPanel() {
  setDetail(d);
  const where = await saveOverride(key, d);
  setMsg(where === "cloud" ? "Saved to cloud (Firebase) — visible on all devices!" : "Saved on this device (connect Firebase for cloud sync)");
+ setSaving(false);
  }
 
  if (!found) return <p>Chapter not found.</p>;
@@ -120,7 +124,7 @@ export default function AdminPanel() {
  <Icon name="pencil" size={19} className="text-ink-mute" /> Edit: Ch {found.ch.n} — {found.ch.title}
  </h3>
  <span className="ml-auto flex gap-2 flex-wrap">
- <button onClick={save} className="btn-g btn-g-blue text-sm"><Icon name="save" size={16} /> Save</button>
+ <button onClick={save} disabled={saving} className="btn-g btn-g-blue text-sm disabled:opacity-60"><Icon name={saving ? "loader" : "save"} size={16} className={saving ? "animate-spin" : ""} /> {saving ? "Saving…" : "Save"}</button>
  <button onClick={() => { if (confirm("Delete the teacher override? (Built-in content will return)")) { deleteOverride(key); setDetail(chapterDetail(key) || {}); setMsg("Override deleted — built-in content active"); } }} className="btn-g btn-g-white text-sm">
  <Icon name="trash2" size={16} /> Reset
  </button>
@@ -264,7 +268,7 @@ export default function AdminPanel() {
  )}
 
  <div className="flex gap-2 mt-4 flex-wrap">
- <button onClick={save} className="btn-g btn-g-blue text-sm"><Icon name="save" size={16} /> Save chapter</button>
+ <button onClick={save} disabled={saving} className="btn-g btn-g-blue text-sm disabled:opacity-60"><Icon name={saving ? "loader" : "save"} size={16} className={saving ? "animate-spin" : ""} /> {saving ? "Saving…" : "Save chapter"}</button>
  <button onClick={() => {
  const blob = new Blob([JSON.stringify({ key, detail }, null, 2)], { type: "application/json" });
  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `${key}.json`; a.click();

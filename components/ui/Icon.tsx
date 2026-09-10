@@ -34,6 +34,7 @@ const ICONS: Record<string, React.ReactNode> = {
  bookOpen: (<><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2V4Z" /><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7V4Z" /></>),
  layers: (<><path d="M12 2 2 8l10 6 10-6-10-6Z" /><path d="M2 14.5 12 20l10-5.5" /></>),
  fileText: (<><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z" /><path d="M14 2v5h5" /><path d="M9 13h6" /><path d="M9 17h6" /></>),
+ loader: (<path d="M21 12a9 9 0 1 1-6.219-8.56" />),
  file: (<><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7l-5-5Z" /><path d="M14 2v5h5" /></>),
  penLine: (<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" /></>),
  pencil: (<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z" /></>),
