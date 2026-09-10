@@ -113,7 +113,7 @@ function drawSticky(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.restore();
   ctx.save();
   ctx.fillStyle = "#713f12"; ctx.font = "800 11px ui-sans-serif,system-ui,Arial";
-  ctx.fillText("📌 NOTE", (o.x || 0) + 10, (o.y || 0) + 18);
+  ctx.fillText("NOTE", (o.x || 0) + 10, (o.y || 0) + 18);
   ctx.fillStyle = "#422006"; ctx.font = "600 14px ui-sans-serif,system-ui,Arial";
   lines.forEach((ln, i) => ctx.fillText(ln, (o.x || 0) + 12, (o.y || 0) + 40 + i * 20));
   ctx.restore();
@@ -349,7 +349,7 @@ export class BoardEngine {
   }
   private setActive(kind: "board" | "doc", page: number | null) {
     this.active = { kind, page };
-    this.$("#targetLbl").textContent = kind === "doc" ? `🎯 Page ${page}` : "🎯 Board";
+    (this.$("#targetLbl") as HTMLElement).innerHTML = kind === "doc" ? `<span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:#22c55e;margin-right:6px"></span>Page ${page}` : `<span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:#a855f7;margin-right:6px"></span>Board`;
     this.$all(".pane-head").forEach((h: HTMLElement) => (h.style.boxShadow = ""));
     const head = this.$(kind === "doc" ? "#paneDoc .pane-head" : "#paneBoard .pane-head");
     if (head) head.style.boxShadow = "inset 0 -3px 0 var(--sb-accent)";
@@ -608,9 +608,9 @@ export class BoardEngine {
 
   private openFile(file: File) {
     const ext = (file.name.split(".").pop() || "").toLowerCase();
-    const key = file.name + "::" + file.size;
+    const key = file.name +"::"+ file.size;
     this.doc = { kind: "pdf", key, name: file.name };
-    (this.$("#fileName") as HTMLElement).textContent = "📄 " + file.name;
+    (this.$("#fileName") as HTMLElement).textContent = " " + file.name;
     this.pages = [];
     (this.$("#thumbs") as HTMLElement).innerHTML = "";
     (this.$("#thumbs") as HTMLElement).classList.remove("show");
@@ -625,7 +625,7 @@ export class BoardEngine {
   }
 
   private async openPdf(file: File) {
-    this.setDocEmpty(true, `<div class="big">⏳</div><h2>PDF khul rahi hai…</h2><p>${file.name}</p>`);
+    this.setDocEmpty(true, `<h2>PDF khul rahi hai…</h2><p>${file.name}</p>`);
     try {
       const buf = await file.arrayBuffer();
       this.pdfDoc = await (pdfjsLib as any).getDocument({ data: buf }).promise;
@@ -636,10 +636,10 @@ export class BoardEngine {
       for (let n = 1; n <= this.totalPages; n++) this.buildPageShell(n);
       this.buildThumbs();
       this.currentPage = 1; this.updatePgLabel();
-      this.toast(`📄 ${this.totalPages} pages loaded — likhna shuru karo!`);
+      this.toast(`${this.totalPages} pages loaded — likhna shuru karo!`);
     } catch (err) {
       console.error(err);
-      this.setDocEmpty(true, `<div class="big">⚠️</div><h2>PDF nahi khuli</h2><p>File corrupt ho sakti hai. Doosri file try karo.</p>`);
+      this.setDocEmpty(true, `<h2>PDF nahi khuli</h2><p>File corrupt ho sakti hai. Doosri file try karo.</p>`);
     }
   }
 
@@ -854,7 +854,7 @@ export class BoardEngine {
   }
 
   private async openDocx(file: File) {
-    this.setDocEmpty(true, `<div class="big">⏳</div><h2>DOCX khul rahi hai…</h2>`);
+    this.setDocEmpty(true, `<h2>DOCX khul rahi hai…</h2>`);
     try {
       const mammoth = ((await import("mammoth/mammoth.browser")) as any).default || ((await import("mammoth/mammoth.browser")) as any);
       const buf = await file.arrayBuffer();
@@ -863,10 +863,10 @@ export class BoardEngine {
       this.totalPages = 1; this.currentPage = 1;
       this.setDocEmpty(false);
       this.mountHtmlDoc(res.value || "<p><i>Khaali document</i></p>");
-      this.updatePgLabel(); this.toast("📝 DOCX ready — highlight aur likho!");
+      this.updatePgLabel(); this.toast("DOCX ready — highlight aur likho!");
     } catch (err) {
       console.error(err);
-      this.setDocEmpty(true, `<div class="big">⚠️</div><h2>DOCX nahi khuli</h2><p>.doc (purana format) ko pehle .docx me save karo.</p>`);
+      this.setDocEmpty(true, `<h2>DOCX nahi khuli</h2><p>.doc (purana format) ko pehle .docx me save karo.</p>`);
     }
   }
 
@@ -877,7 +877,7 @@ export class BoardEngine {
     this.totalPages = 1; this.currentPage = 1;
     this.setDocEmpty(false);
     this.mountHtmlDoc(`<pre style="white-space:pre-wrap;font-family:inherit;font-size:16px">${esc}</pre>`);
-    this.updatePgLabel(); this.toast("📝 Text ready!");
+    this.updatePgLabel(); this.toast("Text ready!");
   }
 
   private openImage(file: File) {
@@ -888,7 +888,7 @@ export class BoardEngine {
       this.totalPages = 1; this.currentPage = 1;
       this.setDocEmpty(false);
       this.mountHtmlDoc(`<img src="${url}" style="width:100%;display:block;border-radius:4px">`);
-      this.updatePgLabel(); this.toast("🖼️ Image ready — us par draw karo!");
+      this.updatePgLabel(); this.toast("Image ready — us par draw karo!");
     };
     img.onerror = () => this.toast("Image nahi khuli");
     img.src = url;
@@ -948,7 +948,7 @@ export class BoardEngine {
   }
 
   private updatePgLabel() {
-    this.$("#pgLbl").textContent = this.totalPages ? `${this.currentPage} / ${this.totalPages}` : "– / –";
+    this.$("#pgLbl").textContent = this.totalPages ? `${this.currentPage} / ${this.totalPages}`: "– / –";
   }
 
   private setZoom(z: number) {
@@ -1073,7 +1073,7 @@ export class BoardEngine {
       st.pushHistory(); st.objects = [];
       this.editingObj = null; this.selected = null;
       if (isBoard) this.renderBoard(); else this.refreshAnnot(this.active.page || 1);
-      this.scheduleSave(); this.toast("🗑️ Saaf ho gaya");
+      this.scheduleSave(); this.toast("Saaf ho gaya");
     };
 
     this.$("#btnUndo").onclick = () => this.doUndo();
@@ -1112,7 +1112,7 @@ export class BoardEngine {
       else document.documentElement.requestFullscreen().catch(() => this.toast("Fullscreen allow nahi hua"));
     };
     this.$("#btnSave").onclick = () => {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("💾 Save ho gaya ✓"); }
+      try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Save ho gaya"); }
       catch { this.toast("Save fail — board me badi images hain"); }
     };
     this.$("#btnWidgets").onclick = () => { this.openModal("mClass"); this.renderAttendance(); };
@@ -1257,7 +1257,7 @@ export class BoardEngine {
         this.closeModal(this.$("#mGraph"));
         if (this.layout === "doc") this.setLayout("split");
         this.setActive("board", null);
-        this.toast("📌 Graph board par aa gaya!");
+        this.toast("Graph board par aa gaya!");
       };
       img.src = url;
     };
@@ -1342,7 +1342,7 @@ export class BoardEngine {
   }
   private paintAttCount() {
     const names = this.attNames(), p = names.filter((n) => this.attendance[n] !== false).length;
-    (this.$("#attCount") as HTMLElement).textContent = names.length ? `Present: ${p}/${names.length} • Absent: ${names.length - p}` : "";
+    (this.$("#attCount") as HTMLElement).textContent = names.length ? `Present: ${p}/${names.length} • Absent: ${names.length - p}`: "";
   }
 
   private wireWidgets() {
@@ -1366,7 +1366,7 @@ export class BoardEngine {
           if (this.timerInt) clearInterval(this.timerInt);
           this.timerInt = null;
           (this.$("#timerStart") as HTMLElement).textContent = "Start";
-          this.beep(); this.toast("⏰ Time khatm!");
+          this.beep(); this.toast("Time khatm!");
         }
       }, 1000);
     };
@@ -1382,7 +1382,7 @@ export class BoardEngine {
       if (!names.length) { this.toast("Pehle naam likho!"); return; }
       let n = 0;
       const iv = setInterval(() => {
-        (this.$("#pickerName") as HTMLElement).textContent = "🎲 " + names[Math.floor(Math.random() * names.length)];
+        (this.$("#pickerName") as HTMLElement).textContent = " " + names[Math.floor(Math.random() * names.length)];
         if (++n > 12) { clearInterval(iv); this.beep(); }
       }, 90);
       this.scheduleSave();
@@ -1410,7 +1410,7 @@ export class BoardEngine {
       this.boardStore.objects.forEach((o) => drawObject(ctx, o));
       ctx.restore();
       this.download(cv.toDataURL("image/png"), "smart-board.png");
-      this.toast("📝 Board PNG download ho gaya");
+      this.toast("Board PNG download ho gaya");
     };
     this.$("#exPagePng").onclick = () => {
       if (!this.doc || this.doc.kind !== "pdf") { this.toast("Pehle PDF kholo"); return; }
@@ -1421,12 +1421,12 @@ export class BoardEngine {
       const ctx = cv.getContext("2d")!;
       ctx.drawImage(pg.base, 0, 0); ctx.drawImage(pg.annot, 0, 0);
       this.download(cv.toDataURL("image/png"), `page-${this.currentPage}.png`);
-      this.toast(`📄 Page ${this.currentPage} PNG download ho gaya`);
+      this.toast(`Page ${this.currentPage} PNG download ho gaya`);
     };
     this.$("#exJson").onclick = () => {
       const data = this.collectSession();
-      this.download("data:application/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data)), "smart-board-session.json");
-      this.toast("💾 Session download ho gaya");
+      this.download("data:application/json;charset=utf-8,"+ encodeURIComponent(JSON.stringify(data)), "smart-board-session.json");
+      this.toast("Session download ho gaya");
     };
     this.$("#exImportBtn").onclick = () => (this.$("#exImport") as HTMLInputElement).click();
     this.$("#exImport").onchange = (e: Event) => {
@@ -1434,7 +1434,7 @@ export class BoardEngine {
       const f = inp.files?.[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = () => {
-        try { this.applySession(JSON.parse(String(rd.result))); this.toast("📥 Session load ho gaya!"); }
+        try { this.applySession(JSON.parse(String(rd.result))); this.toast("Session load ho gaya!"); }
         catch { this.toast("File samajh nahi aayi"); }
       };
       rd.readAsText(f); inp.value = "";
@@ -1450,7 +1450,7 @@ export class BoardEngine {
       this.pages.forEach((p) => { if (p.rendered) this.redrawAnnot(p); });
       this.redrawHtmlAnnot();
       this.closeModal(this.$("#mExport"));
-      this.toast("🗑️ Sab delete ho gaya");
+      this.toast("Sab delete ho gaya");
     };
   }
 
@@ -1496,7 +1496,7 @@ export class BoardEngine {
       if (!prev) return;
       this.applySession(prev);
       if ((prev.board && prev.board.length) || prev.names) {
-        setTimeout(() => { if (!this.destroyed) this.toast("👋 Pichhla kaam wapas mil gaya!"); }, 600);
+        setTimeout(() => { if (!this.destroyed) this.toast("Pichhla kaam wapas mil gaya!"); }, 600);
       }
     } catch { /* noop */ }
   }

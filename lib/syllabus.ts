@@ -10,7 +10,7 @@ export interface Subject {
 
 export const SUBJECTS: Subject[] = [
   {
-    id: "maths", name: "Mathematics", hindi: "गणित", icon: "📐", color: "#2563eb",
+    id: "maths", name: "Mathematics", hindi: "गणित", icon: "calculator", color: "#0b57d0",
     tagline: "Formulas, solved examples aur practice — sabse strong Maths taiyaari.",
     features: ["slides", "formulas", "examples", "notes", "quiz", "pyq"],
     groups: [{
@@ -33,7 +33,7 @@ export const SUBJECTS: Subject[] = [
     }]
   },
   {
-    id: "science", name: "Science", hindi: "विज्ञान", icon: "🔬", color: "#16a34a",
+    id: "science", name: "Science", hindi: "विज्ञान", icon: "flaskConical", color: "#188038",
     tagline: "Diagrams, flow charts, activities aur mind maps ke saath Science easy.",
     features: ["slides", "mindmap", "flow", "notes", "formulas", "diagrams", "quiz", "pyq"],
     groups: [{
@@ -55,17 +55,17 @@ export const SUBJECTS: Subject[] = [
     }]
   },
   {
-    id: "sst", name: "Social Science", hindi: "सामाजिक विज्ञान", icon: "🌍", color: "#ea580c",
+    id: "sst", name: "Social Science", hindi: "सामाजिक विज्ञान", icon: "globe", color: "#e37400",
     tagline: "History timelines, Geo maps, Civics charts, Economics concepts.",
     features: ["slides", "mindmap", "flow", "timeline", "notes", "quiz", "pyq"],
     groups: [
-      { label: "📜 History — India and the Contemporary World II", chapters: [
+      { label: " History — India and the Contemporary World II", chapters: [
         { n: 1, title: "The Rise of Nationalism in Europe", hi: "यूरोप में राष्ट्रवाद का उदय" },
         { n: 2, title: "Nationalism in India", hi: "भारत में राष्ट्रवाद" },
         { n: 3, title: "The Making of a Global World", hi: "भूमंडलीकृत विश्व का बनना" },
         { n: 4, title: "Print Culture and the Modern World", hi: "मुद्रण संस्कृति और आधुनिक विश्व" },
       ]},
-      { label: "🗺️ Geography — Contemporary India II", chapters: [
+      { label: " Geography — Contemporary India II", chapters: [
         { n: 1, title: "Resources and Development", hi: "संसाधन एवं विकास" },
         { n: 2, title: "Forest and Wildlife Resources", hi: "वन एवं वन्यजीव संसाधन" },
         { n: 3, title: "Water Resources", hi: "जल संसाधन" },
@@ -74,14 +74,14 @@ export const SUBJECTS: Subject[] = [
         { n: 6, title: "Manufacturing Industries", hi: "विनिर्माण उद्योग" },
         { n: 7, title: "Lifelines of National Economy", hi: "राष्ट्रीय अर्थव्यवस्था की जीवनरेखाएँ" },
       ]},
-      { label: "🏛️ Political Science — Democratic Politics II", chapters: [
+      { label: " Political Science — Democratic Politics II", chapters: [
         { n: 1, title: "Power Sharing", hi: "सत्ता की साझेदारी" },
         { n: 2, title: "Federalism", hi: "संघवाद" },
         { n: 3, title: "Gender, Religion and Caste", hi: "जाति, धर्म और लैंगिक मसले" },
         { n: 4, title: "Political Parties", hi: "राजनीतिक दल" },
         { n: 5, title: "Outcomes of Democracy", hi: "लोकतंत्र के परिणाम" },
       ]},
-      { label: "💰 Economics — Understanding Economic Development", chapters: [
+      { label: " Economics — Understanding Economic Development", chapters: [
         { n: 1, title: "Development", hi: "विकास" },
         { n: 2, title: "Sectors of the Indian Economy", hi: "भारतीय अर्थव्यवस्था के क्षेत्रक" },
         { n: 3, title: "Money and Credit", hi: "मुद्रा और साख" },
@@ -90,11 +90,11 @@ export const SUBJECTS: Subject[] = [
     ]
   },
   {
-    id: "english", name: "English", hindi: "अंग्रेज़ी", icon: "📖", color: "#7c3aed",
+    id: "english", name: "English", hindi: "अंग्रेज़ी", icon: "bookOpen", color: "#9334e6",
     tagline: "Summaries, theme charts, word banks aur Q&A — First Flight + Footprints.",
     features: ["slides", "mindmap", "flow", "notes", "words", "quiz", "pyq"],
     groups: [
-      { label: "📕 First Flight — Prose", chapters: [
+      { label: " First Flight — Prose", chapters: [
         { n: 1, title: "A Letter to God", hi: "G.L. Fuentes" },
         { n: 2, title: "Nelson Mandela: Long Walk to Freedom", hi: "Nelson Mandela" },
         { n: 3, title: "Two Stories About Flying", hi: "Liam O'Flaherty / Frederick Forsyth" },
@@ -105,7 +105,7 @@ export const SUBJECTS: Subject[] = [
         { n: 8, title: "The Sermon at Benares", hi: "Betty Renshaw" },
         { n: 9, title: "The Proposal", hi: "Anton Chekhov (Play)" },
       ]},
-      { label: "🎵 First Flight — Poetry", chapters: [
+      { label: " First Flight — Poetry", chapters: [
         { n: 1, title: "Dust of Snow", hi: "Robert Frost" },
         { n: 2, title: "Fire and Ice", hi: "Robert Frost" },
         { n: 3, title: "A Tiger in the Zoo", hi: "Leslie Norris" },
@@ -118,7 +118,7 @@ export const SUBJECTS: Subject[] = [
         { n: 10, title: "The Tale of Custard the Dragon", hi: "Ogden Nash" },
         { n: 11, title: "For Anne Gregory", hi: "W.B. Yeats" },
       ]},
-      { label: "👣 Footprints Without Feet — Supplementary", chapters: [
+      { label: " Footprints Without Feet — Supplementary", chapters: [
         { n: 1, title: "A Triumph of Surgery", hi: "James Herriot" },
         { n: 2, title: "The Thief's Story", hi: "Ruskin Bond" },
         { n: 3, title: "The Midnight Visitor", hi: "Robert Arthur" },
@@ -132,11 +132,11 @@ export const SUBJECTS: Subject[] = [
     ]
   },
   {
-    id: "hindi", name: "Hindi", hindi: "हिन्दी", icon: "✍️", color: "#e11d48",
+    id: "hindi", name: "Hindi", hindi: "हिन्दी", icon: "languages", color: "#b3261e",
     tagline: "सारांश, कठिन शब्द, प्रश्न-अभ्यास — क्षितिज + कृतिका।",
     features: ["slides", "mindmap", "notes", "words", "quiz", "pyq"],
     groups: [
-      { label: "📗 क्षितिज — गद्य खंड", chapters: [
+      { label: " क्षितिज — गद्य खंड", chapters: [
         { n: 1, title: "नेताजी का चश्मा", hi: "स्वयं प्रकाश" },
         { n: 2, title: "बालगोबिन भगत", hi: "रामवृक्ष बेनीपुरी" },
         { n: 3, title: "लखनवी अंदाज़", hi: "यशपाल" },
@@ -144,7 +144,7 @@ export const SUBJECTS: Subject[] = [
         { n: 5, title: "तोप", hi: "वीरेन डंगवाल" },
         { n: 6, title: "कर चले हम फ़िदा", hi: "कैफ़ी आज़मी" },
       ]},
-      { label: "🎵 क्षितिज — काव्य खंड", chapters: [
+      { label: " क्षितिज — काव्य खंड", chapters: [
         { n: 1, title: "सूर के पद", hi: "सूरदास" },
         { n: 2, title: "राम-लक्ष्मण-परशुराम संवाद", hi: "तुलसीदास" },
         { n: 3, title: "आत्मकथ्य", hi: "जयशंकर प्रसाद" },
@@ -156,12 +156,43 @@ export const SUBJECTS: Subject[] = [
         { n: 9, title: "पर्वत प्रदेश में पावस", hi: "सुमित्रानंदन पंत" },
         { n: 10, title: "मनुष्यता", hi: "मैथिलीशरण गुप्त" },
       ]},
-      { label: "📘 कृतिका — पूरक पाठ", chapters: [
+      { label: " कृतिका — पूरक पाठ", chapters: [
         { n: 1, title: "माता का अंचल", hi: "शिवपूजन सहाय" },
         { n: 2, title: "जॉर्ज पंचम की नाक", hi: "कमलेश्वर" },
         { n: 3, title: "साना-साना हाथ जोड़ि", hi: "मृदुला गर्ग" },
         { n: 4, title: "मैं क्यों लिखता हूँ", hi: "अज्ञेय" },
         { n: 5, title: "स्त्री-शिक्षा के विरोधी कुतर्कों का खंडन", hi: "महावीर प्रसाद द्विवेदी" },
+      ]},
+    ]
+  },
+  {
+    id: "ai", name: "Artificial Intelligence", hindi: "कृत्रिम बुद्धिमत्ता", icon: "bot", color: "#00696b",
+    tagline: "AI Project Cycle, Modelling, Computer Vision, NLP aur Python — KIPS book (CBSE 417) ke saath future-ready bano.",
+    features: ["slides", "mindmap", "flow", "notes", "quiz", "pyq"],
+    groups: [
+      { label: "Part A — Employability Skills", chapters: [
+        { n: 1, title: "Communication Skills-II", hi: "Methods, feedback, barriers, writing" },
+        { n: 2, title: "Self-Management Skills-II", hi: "Stress management, working independently" },
+        { n: 3, title: "ICT Skills-II", hi: "OS, file operations, computer security" },
+        { n: 4, title: "Entrepreneurial Skills-II", hi: "Entrepreneurship as a career" },
+        { n: 5, title: "Green Skills-II", hi: "Sustainable development" },
+      ]},
+      { label: "Part B — AI Project Cycle & Modelling", chapters: [
+        { n: 1, title: "AI Project Cycle: Data Acquisition", hi: "Data, sources, features, datasets" },
+        { n: 2, title: "AI Project Cycle: Data Exploration", hi: "Data visualisation & charts" },
+        { n: 3, title: "AI Project Cycle: Modelling", hi: "Rule-based, supervised, unsupervised, clustering" },
+        { n: 4, title: "Neural Networks", hi: "ANN, how AI makes decisions" },
+        { n: 5, title: "AI Project Cycle: Evaluation", hi: "Train-test split, accuracy & error" },
+      ]},
+      { label: "Part B — Data, Vision & Language", chapters: [
+        { n: 1, title: "Statistical Data", hi: "Data handling foundations" },
+        { n: 2, title: "Computer Vision", hi: "Pixels, OpenCV, convolution, CNN" },
+        { n: 3, title: "Natural Language Processing", hi: "Chatbots, tokenisation, NLTK, LLMs" },
+      ]},
+      { label: "Part B — Advanced Python", chapters: [
+        { n: 1, title: "Python Basics Recap", hi: "Syntax, lists, tuples" },
+        { n: 2, title: "Tools for AI: Jupyter & Anaconda", hi: "Notebook, virtual environments" },
+        { n: 3, title: "Working with Notebook Documents", hi: "Hands-on AI with Python" },
       ]},
     ]
   },
