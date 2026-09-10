@@ -4,6 +4,7 @@
    Maths tools • Laser • Class widgets • Auto-save • Touch ready
    ========================================================================== */
 import * as pdfjsLib from "pdfjs-dist";
+import QRCode from "qrcode";
 
 export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
@@ -228,9 +229,11 @@ export class BoardEngine {
   private active: { kind: "board" | "doc"; page: number | null } = { kind: "board", page: null };
 
   /* stores */
-  private boardStore = new Store();
+  private boardPages: Store[] = [new Store()];
+  private boardPage = 0;
+  private get boardStore(): Store { return this.boardPages[this.boardPage] || this.boardPages[0]; }
   private docStores: Record<string, Record<number, Store>> = {};
-  private doc: { kind: "pdf" | "html" | "image"; key: string; name: string } | null = null;
+  private doc: { kind: "pdf" | "html" | "image" | "video" | "audio" | "file"; key: string; name: string } | null = null;
 
   /* pdf */
   private pdfDoc: any = null; private pages: PdfPage[] = [];
@@ -279,6 +282,7 @@ export class BoardEngine {
     document.body.appendChild(this.trailCv);
     this.trailCtx = this.trailCv.getContext("2d")!;
     this.cleanups.push(() => this.trailCv.remove());
+    this.cleanups.push(() => this.stopUpPoll());
 
     this.buildSwatches();
     this.buildMathSyms();
@@ -290,6 +294,10 @@ export class BoardEngine {
     this.wireModals();
     this.wireWidgets();
     this.wireExport();
+    this.wirePages();
+    this.wireUpload();
+    this.wireShade();
+    this.wireMeasure();
     this.wireKeys();
     this.restore();
 
@@ -621,7 +629,9 @@ export class BoardEngine {
     else if (ext === "docx") this.openDocx(file);
     else if (["txt", "md"].includes(ext)) this.openText(file);
     else if (["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) this.openImage(file);
-    else this.toast("File type not supported: " + ext);
+    else if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) this.openVideo(URL.createObjectURL(file), file.name);
+    else if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac"].includes(ext)) this.openAudio(URL.createObjectURL(file), file.name);
+    else this.openGeneric(URL.createObjectURL(file), file.name, file.size);
     if (this.layout === "board") this.setLayout("split");
   }
 
@@ -638,40 +648,9 @@ export class BoardEngine {
 
   /* Load a PDF from a URL with a live download-progress bar (NCERT chapters) */
   async openPdfFromUrl(url: string, name: string) {
-    if (this.layout === "board") this.setLayout("split");
-    this.doc = { kind: "pdf", key: url, name };
-    (this.$("#fileName") as HTMLElement).textContent = " " + name;
-    this.pages = [];
-    (this.$("#thumbs") as HTMLElement).innerHTML = "";
-    (this.$("#thumbs") as HTMLElement).classList.remove("show");
-    this.$all("#docScroll .page-wrap, #docScroll .doc-html").forEach((n: HTMLElement) => n.remove());
-    this.htmlAnnot = null;
-    const safe = this.esc(name);
-    const bar = (pct: number | null, kb: number) => {
-      const label = pct === null ? `${kb} KB downloaded…` : `${pct}% downloaded`;
-      const w = pct === null ? 100 : pct;
-      this.setDocEmpty(true, `<h2>Loading NCERT PDF…</h2><p>${safe}</p>` +
-        `<div style="height:6px;border-radius:99px;background:#e2e8f0;max-width:300px;margin:12px auto 6px;overflow:hidden">` +
-        `<div style="height:100%;width:${w}%;background:#1a73e8;border-radius:99px;transition:width .2s"></div></div>` +
-        `<p style="font-size:13px">${label}</p>`);
-    };
+    this.resetDocViewer(name, url, "pdf");
     try {
-      bar(0, 0);
-      const res = await fetch(url);
-      if (!res.ok || !res.body) throw new Error("download failed");
-      const total = +(res.headers.get("content-length") || 0);
-      const reader = res.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let got = 0;
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        chunks.push(value); got += value.length;
-        bar(total ? Math.min(99, Math.round((got / total) * 100)) : null, Math.round(got / 1024));
-      }
-      const buf = new Uint8Array(got);
-      let off = 0;
-      for (const c of chunks) { buf.set(c, off); off += c.length; }
+      const buf = await this.fetchBytes(url, "Loading NCERT PDF…", name);
       await this.loadPdfBuffer(buf.buffer);
     } catch (err) {
       console.error(err);
@@ -940,13 +919,116 @@ export class BoardEngine {
       this.totalPages = 1; this.currentPage = 1;
       this.setDocEmpty(false);
       this.mountHtmlDoc(`<img src="${url}" style="width:100%;display:block;border-radius:4px">`);
+      this.addSendToBoard(url);
       this.updatePgLabel(); this.toast("Image ready — draw on it!");
     };
     img.onerror = () => this.toast("Could not open the image");
     img.src = url;
   }
 
-  private mountHtmlDoc(inner: string) {
+  private openVideo(src: string, name: string) {
+    if (this.doc) this.doc.kind = "video";
+    this.totalPages = 1; this.currentPage = 1;
+    this.setDocEmpty(false);
+    this.mountHtmlDoc(
+      `<div style="background:#000;border-radius:6px;overflow:hidden">` +
+      `<video controls playsinline preload="metadata" src="${src}" style="width:100%;max-height:62vh;display:block;background:#000"></video></div>` +
+      `<p style="font-size:13.5px;color:#475569;margin:10px 2px 0"><b>${this.esc(name)}</b> — use the whiteboard beside it for notes.</p>`,
+      false);
+    this.updatePgLabel(); this.toast("Video ready!");
+  }
+
+  private openAudio(src: string, name: string) {
+    if (this.doc) this.doc.kind = "audio";
+    this.totalPages = 1; this.currentPage = 1;
+    this.setDocEmpty(false);
+    this.mountHtmlDoc(
+      `<div style="text-align:center;padding:26px 10px 8px">` +
+      `<div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#6366f1;margin-bottom:12px">AUDIO</div>` +
+      `<div style="font-weight:800;font-size:17px;margin-bottom:14px">${this.esc(name)}</div>` +
+      `<audio controls preload="metadata" src="${src}" style="width:100%"></audio></div>`,
+      false);
+    this.updatePgLabel(); this.toast("Audio ready!");
+  }
+
+  private openGeneric(url: string, name: string, size?: number) {
+    if (this.doc) this.doc.kind = "file";
+    this.totalPages = 1; this.currentPage = 1;
+    this.setDocEmpty(false);
+    const kb = size ? ` • ${Math.max(1, Math.round(size / 1024))} KB` : "";
+    this.mountHtmlDoc(
+      `<div style="text-align:center;padding:30px 12px">` +
+      `<div style="font-size:13px;font-weight:800;letter-spacing:.08em;color:#6366f1;margin-bottom:12px">FILE</div>` +
+      `<div style="font-weight:800;font-size:17px;margin-bottom:6px">${this.esc(name)}</div>` +
+      `<div style="font-size:13px;color:#64748b;margin-bottom:16px">Preview is not available for this type${kb}</div>` +
+      `<a href="${url}" download="${this.esc(name)}" style="display:inline-block;background:#1a73e8;color:#fff;font-weight:800;font-size:14.5px;padding:12px 26px;border-radius:11px;text-decoration:none">Download file</a></div>`,
+      false);
+    this.updatePgLabel();
+  }
+
+  private resetDocViewer(name: string, key: string, kind: "pdf" | "html" | "image" | "video" | "audio" | "file") {
+    if (this.layout === "board") this.setLayout("split");
+    this.doc = { kind, key, name };
+    (this.$("#fileName") as HTMLElement).textContent = " " + name;
+    this.pages = [];
+    (this.$("#thumbs") as HTMLElement).innerHTML = "";
+    (this.$("#thumbs") as HTMLElement).classList.remove("show");
+    this.$all("#docScroll .page-wrap, #docScroll .doc-html").forEach((n: HTMLElement) => n.remove());
+    this.htmlAnnot = null;
+  }
+
+  /* Download bytes with a live progress bar in the doc pane */
+  private async fetchBytes(url: string, title: string, name: string): Promise<Uint8Array<ArrayBuffer>> {
+    const safe = this.esc(name);
+    const bar = (pct: number | null, kb: number) => {
+      const label = pct === null ? `${kb} KB downloaded…` : `${pct}% downloaded`;
+      const w = pct === null ? 100 : pct;
+      this.setDocEmpty(true, `<h2>${title}</h2><p>${safe}</p>` +
+        `<div style="height:6px;border-radius:99px;background:#e2e8f0;max-width:300px;margin:12px auto 6px;overflow:hidden">` +
+        `<div style="height:100%;width:${w}%;background:#1a73e8;border-radius:99px;transition:width .2s"></div></div>` +
+        `<p style="font-size:13px">${label}</p>`);
+    };
+    bar(0, 0);
+    const res = await fetch(url);
+    if (!res.ok || !res.body) throw new Error("download failed");
+    const total = +(res.headers.get("content-length") || 0);
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); got += value.length;
+      bar(total ? Math.min(99, Math.round((got / total) * 100)) : null, Math.round(got / 1024));
+    }
+    const buf: Uint8Array<ArrayBuffer> = new Uint8Array(new ArrayBuffer(got));
+    let off = 0;
+    for (const c of chunks) { buf.set(c, off); off += c.length; }
+    return buf;
+  }
+
+  /* Open a phone-uploaded file by URL — any type, automatic */
+  async openRemoteFile(url: string, name: string) {
+    const ext = (name.split(".").pop() || "").toLowerCase();
+    if (ext === "pdf") { await this.openPdfFromUrl(url, name); return; }
+    if (["mp4", "webm", "ogv", "mov", "m4v"].includes(ext)) { this.resetDocViewer(name, url, "video"); this.openVideo(url, name); return; }
+    if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac"].includes(ext)) { this.resetDocViewer(name, url, "audio"); this.openAudio(url, name); return; }
+    if (["docx", "txt", "md", "png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) {
+      this.resetDocViewer(name, url, "html");
+      try {
+        const buf = await this.fetchBytes(url, "Receiving file…", name);
+        this.openFile(new File([buf], name));
+      } catch (err) {
+        console.error(err);
+        this.setDocEmpty(true, `<h2>Could not open file</h2><p>Check your internet connection and try again.</p>`);
+      }
+      return;
+    }
+    this.resetDocViewer(name, url, "file");
+    this.openGeneric(url, name);
+  }
+
+  private mountHtmlDoc(inner: string, annot = true) {
     this.$all("#docScroll .doc-html").forEach((n: HTMLElement) => n.remove());
     if (!document.getElementById("docHtmlStyle")) {
       const st = document.createElement("style");
@@ -958,8 +1040,10 @@ export class BoardEngine {
     box.className = "doc-html"; box.id = "docHtmlBox";
     box.innerHTML = `<div class="doc-html-inner">${inner}</div>`;
     const cv = document.createElement("canvas");
-    cv.className = "annot"; box.appendChild(cv);
+    cv.className = "annot";
     (this.$("#docScroll") as HTMLElement).appendChild(box);
+    if (!annot) { this.htmlAnnot = null; requestAnimationFrame(() => this.applyHtmlZoom()); return; }
+    box.appendChild(cv);
     this.htmlAnnot = { box, cv, ctx: cv.getContext("2d")! };
     requestAnimationFrame(() => { this.sizeHtmlAnnot(); this.applyHtmlZoom(); });
     const ro = new ResizeObserver(() => this.sizeHtmlAnnot());
@@ -1169,6 +1253,32 @@ export class BoardEngine {
     };
     this.$("#btnWidgets").onclick = () => { this.openModal("mClass"); this.renderAttendance(); };
     this.$("#btnExport").onclick = () => this.openModal("mExport");
+  }
+
+  /* ---------- whiteboard pages ---------- */
+  private updateBoardPgLabel() {
+    const el = this.$("#boardPgLbl") as HTMLElement | null;
+    if (el) el.textContent = `Board ${this.boardPage + 1}/${this.boardPages.length}`;
+  }
+  private gotoBoardPage(i: number) {
+    const n = Math.min(this.boardPages.length - 1, Math.max(0, i));
+    if (n === this.boardPage) { this.updateBoardPgLabel(); return; }
+    this.boardPage = n;
+    this.selected = null; this.boardDraft = null;
+    this.setActive("board", null);
+    this.renderBoard(); this.updateBoardPgLabel(); this.scheduleSave();
+  }
+  private addBoardPage() {
+    if (this.boardPages.length >= 50) { this.toast("Too many pages (max 50)"); return; }
+    this.boardPages.push(new Store());
+    this.gotoBoardPage(this.boardPages.length - 1);
+    this.toast(`Board page ${this.boardPage + 1}`);
+  }
+  private wirePages() {
+    this.$("#btnBoardPrev").onclick = () => this.gotoBoardPage(this.boardPage - 1);
+    this.$("#btnBoardNext").onclick = () => this.gotoBoardPage(this.boardPage + 1);
+    this.$("#btnBoardAdd").onclick = () => this.addBoardPage();
+    this.updateBoardPgLabel();
   }
 
   private setLayout(l: "doc" | "split" | "board") {
@@ -1494,7 +1604,7 @@ export class BoardEngine {
     this.$("#exPrint").onclick = () => window.print();
     this.$("#exWipe").onclick = () => {
       if (!confirm("EVERYTHING (board + PDF drawings + lists) will be deleted. Sure?")) return;
-      this.boardStore.objects = []; this.boardStore.undo = []; this.boardStore.redo = [];
+      this.boardPages = [new Store()]; this.boardPage = 0; this.updateBoardPgLabel();
       Object.keys(this.docStores).forEach((k) => delete this.docStores[k]);
       this.attendance = {}; (this.$("#pickerList") as HTMLTextAreaElement).value = "";
       localStorage.removeItem(LS_KEY);
@@ -1514,7 +1624,7 @@ export class BoardEngine {
       Object.keys(this.docStores[k]).forEach((p) => { docs[k][p] = this.docStores[k][Number(p)].objects.map(strip); });
     });
     return {
-      v: 2, bg: this.bg, board: this.boardStore.objects.map(strip), docs,
+      v: 3, bg: this.bg, boards: this.boardPages.map((s) => s.objects.map(strip)), boardPage: this.boardPage, docs,
       names: (this.$("#pickerList") as HTMLTextAreaElement).value,
       attendance: this.attendance, timerMin: (this.$("#timerMin") as HTMLInputElement).value,
     };
@@ -1528,7 +1638,15 @@ export class BoardEngine {
   private applySession(d: any) {
     if (!d) return;
     if (d.bg) { this.bg = d.bg; (this.$("#bgSelect") as HTMLSelectElement).value = d.bg; }
-    this.boardStore.objects = rehydrate(d.board || []);
+    if (Array.isArray(d.boards) && d.boards.length) {
+      this.boardPages = d.boards.map((arr: BoardObject[]) => { const st = new Store(); st.objects = rehydrate(arr || []); return st; });
+      this.boardPage = Math.min(Math.max(0, d.boardPage || 0), this.boardPages.length - 1);
+    } else {
+      this.boardPages = [new Store()];
+      this.boardPages[0].objects = rehydrate(d.board || []);
+      this.boardPage = 0;
+    }
+    this.updateBoardPgLabel();
     Object.keys(d.docs || {}).forEach((k) => {
       this.docStores[k] = {};
       Object.keys(d.docs[k]).forEach((p) => {
@@ -1547,7 +1665,7 @@ export class BoardEngine {
       const prev = JSON.parse(localStorage.getItem(LS_KEY) || "null");
       if (!prev) return;
       this.applySession(prev);
-      if ((prev.board && prev.board.length) || prev.names) {
+      if (((prev.boards && prev.boards.some((a: unknown[]) => a && a.length)) || (prev.board && prev.board.length)) || prev.names) {
         setTimeout(() => { if (!this.destroyed) this.toast("Previous work restored!"); }, 600);
       }
     } catch { /* noop */ }
@@ -1556,6 +1674,209 @@ export class BoardEngine {
   /* ==========================================================================
      KEYBOARD
      ========================================================================== */
+  /* ---------- phone upload via QR ---------- */
+  private upSid = "";
+  private upTimer: ReturnType<typeof setInterval> | null = null;
+  private upSince = 0;
+  private upAutoOpened = false;
+  private upSeen = new Set<string>();
+
+  private wireUpload() {
+    this.$("#btnUpload").onclick = () => this.openUpload();
+    this.$("#upDone").onclick = () => { this.stopUpPoll(); this.closeModal(this.$("#mUpload")); };
+  }
+
+  private stopUpPoll() {
+    if (this.upTimer) { clearInterval(this.upTimer); this.upTimer = null; }
+  }
+
+  private async openUpload() {
+    this.stopUpPoll();
+    this.upSid = (window.crypto && "randomUUID" in window.crypto)
+      ? window.crypto.randomUUID()
+      : "s" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+    this.upSince = 0; this.upAutoOpened = false; this.upSeen = new Set();
+    const url = window.location.origin + "/upload/" + this.upSid;
+    (this.$("#upUrl") as HTMLElement).textContent = url;
+    (this.$("#upCode") as HTMLElement).textContent = "Code " + this.upSid.slice(0, 8).toUpperCase();
+    (this.$("#upList") as HTMLElement).innerHTML = `<div class="up-empty">No files yet — upload from your phone.</div>`;
+    (this.$("#upStatus") as HTMLElement).textContent = "Waiting for your phone…";
+    try { await QRCode.toCanvas(this.$("#qrCanvas") as HTMLCanvasElement, url, { width: 220, margin: 1 }); }
+    catch { /* URL text is still shown */ }
+    this.openModal("mUpload");
+    this.pollUpload();
+    this.upTimer = setInterval(() => this.pollUpload(), 2000);
+  }
+
+  private fileUrl(id: string) { return `/api/board-file/${id}?session=${this.upSid}`; }
+
+  private async pollUpload() {
+    if (!this.upSid || this.destroyed) return;
+    let files: { id: string; name: string; size: number; mime: string; time: number }[] = [];
+    try {
+      const r = await fetch(`/api/board-upload?session=${this.upSid}&since=${this.upSince}`);
+      if (!r.ok) return;
+      files = (await r.json()).files || [];
+    } catch { return; }
+    if (!files.length) return;
+    this.upSince = Math.max(this.upSince, ...files.map((f) => f.time));
+    const fresh = files.filter((f) => !this.upSeen.has(f.id));
+    fresh.forEach((f) => this.upSeen.add(f.id));
+    if (!fresh.length) return;
+    const list = this.$("#upList") as HTMLElement;
+    const empty = list.querySelector(".up-empty");
+    if (empty) empty.remove();
+    (this.$("#upStatus") as HTMLElement).textContent = `${this.upSeen.size} file(s) received`;
+    fresh.forEach((f) => {
+      const row = document.createElement("button");
+      row.className = "up-file";
+      row.innerHTML = `<b>${this.esc(f.name)}</b><span>${Math.max(1, Math.round(f.size / 1024))} KB — tap to open</span>`;
+      row.onclick = () => this.openRemoteFile(this.fileUrl(f.id), f.name);
+      list.prepend(row);
+    });
+    if (!this.upAutoOpened) {
+      this.upAutoOpened = true;
+      const f = fresh[fresh.length - 1];
+      this.toast(`Received ${f.name} — opening!`);
+      this.openRemoteFile(this.fileUrl(f.id), f.name);
+    } else {
+      this.toast(`${fresh.length} more file(s) received — tap to open`);
+    }
+  }
+
+  /* ---------- screen shade (quiz mode) ---------- */
+  private wireShade() {
+    const shade = this.$("#shade") as HTMLElement;
+    const handle = this.$("#shadeHandle") as HTMLElement;
+    const work = this.$(".sb-work") as HTMLElement;
+    const btn = this.$("#toolShade") as HTMLElement;
+    btn.onclick = () => {
+      const hidden = shade.style.display === "none" || !shade.style.display;
+      if (hidden) { shade.style.display = "block"; shade.style.height = "100%"; btn.classList.add("on"); }
+      else { shade.style.display = "none"; btn.classList.remove("on"); }
+    };
+    let drag = false;
+    this.on(handle, "pointerdown", (e: PointerEvent) => { drag = true; try { handle.setPointerCapture(e.pointerId); } catch { /* noop */ } e.preventDefault(); });
+    this.on(handle, "pointermove", (e: PointerEvent) => {
+      if (!drag) return;
+      const r = work.getBoundingClientRect();
+      shade.style.height = Math.min(r.height, Math.max(70, e.clientY - r.top)) + "px";
+    });
+    this.on(handle, "pointerup", () => { drag = false; });
+    this.on(shade, "dblclick", (e: Event) => {
+      if ((e.target as HTMLElement).closest("#shadeHandle")) return;
+      shade.style.display = "none"; btn.classList.remove("on");
+    });
+  }
+
+  /* ---------- ruler + protractor overlays ---------- */
+  private proAngle = 0;
+  private wireMeasure() {
+    this.buildRuler();
+    this.buildProtractor();
+    this.wireWidget("toolRuler", "ruler");
+    this.wireWidget("toolProtractor", "protractor");
+    const pro = this.$("#protractor") as HTMLElement;
+    this.on(pro, "dblclick", () => {
+      this.proAngle = (this.proAngle + 15) % 360;
+      pro.style.transform = `rotate(${this.proAngle}deg)`;
+    });
+  }
+  private wireWidget(btnId: string, wId: string) {
+    const btn = this.$("#" + btnId) as HTMLElement;
+    const w = this.$("#" + wId) as HTMLElement;
+    btn.onclick = () => {
+      const on = !w.classList.contains("show");
+      w.classList.toggle("show", on);
+      btn.classList.toggle("on", on);
+    };
+    let drag = false, sx = 0, sy = 0, ox = 0, oy = 0;
+    this.on(w, "pointerdown", (e: PointerEvent) => {
+      drag = true; sx = e.clientX; sy = e.clientY; ox = w.offsetLeft; oy = w.offsetTop;
+      try { w.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      e.preventDefault();
+    });
+    this.on(w, "pointermove", (e: PointerEvent) => {
+      if (!drag) return;
+      w.style.left = ox + e.clientX - sx + "px";
+      w.style.top = oy + e.clientY - sy + "px";
+    });
+    this.on(w, "pointerup", () => { drag = false; });
+  }
+  private buildRuler() {
+    const ticks = this.$("#rulerTicks") as HTMLElement;
+    const nums = this.$("#rulerNums") as HTMLElement;
+    const px = 37.8;
+    let t = "", n = "";
+    for (let cm = 0; cm <= 15; cm++) {
+      for (let mm = 0; mm < 10 && cm * 10 + mm <= 150; mm++) {
+        const x = (cm * 10 + mm) * (px / 10);
+        const tall = mm === 0;
+        t += `<i style="left:${x.toFixed(1)}px;height:${tall ? 16 : mm === 5 ? 11 : 7}px"></i>`;
+      }
+      n += `<span style="left:${(cm * px).toFixed(1)}px">${cm}</span>`;
+    }
+    ticks.innerHTML = t; nums.innerHTML = n;
+  }
+  private buildProtractor() {
+    const svg = this.$("#protractorSvg") as unknown as SVGSVGElement;
+    const cx = 130, cy = 140, r = 118;
+    const P = (deg: number, rr: number): [string, string] => {
+      const a = (180 - deg) * (Math.PI / 180);
+      return [(cx + rr * Math.cos(a)).toFixed(1), (cy - rr * Math.sin(a)).toFixed(1)];
+    };
+    let s = `<path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}" fill="rgba(99,102,241,.12)" stroke="#eef1ff" stroke-width="2"/>`;
+    s += `<line x1="${cx - r}" y1="${cy}" x2="${cx + r}" y2="${cy}" stroke="#eef1ff" stroke-width="2"/>`;
+    for (let d = 0; d <= 180; d += 5) {
+      const big = d % 15 === 0;
+      const [x1, y1] = P(d, r), [x2, y2] = P(d, big ? r - 16 : r - 9);
+      s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${big ? "#facc15" : "#9aa6c7"}" stroke-width="${big ? 2.5 : 1}"/>`;
+      if (big) {
+        const [lx, ly] = P(d, r - 28);
+        s += `<text x="${lx}" y="${ly}" fill="#eef1ff" font-size="11" font-weight="800" text-anchor="middle" dominant-baseline="middle">${d}</text>`;
+      }
+    }
+    s += `<line x1="${cx}" y1="${cy}" x2="${cx}" y2="${cy - 14}" stroke="#f87171" stroke-width="3"/>`;
+    s += `<circle cx="${cx}" cy="${cy}" r="3.5" fill="#f87171"/>`;
+    svg.innerHTML = s;
+  }
+
+  /* ---------- image -> whiteboard ---------- */
+  private addSendToBoard(src: string) {
+    const box = this.$("#docHtmlBox") as HTMLElement | null;
+    if (!box) return;
+    box.querySelectorAll(".send-board").forEach((n) => n.remove());
+    const b = document.createElement("button");
+    b.className = "send-board";
+    b.textContent = "Send to Board";
+    b.onclick = (e: MouseEvent) => { e.stopPropagation(); this.placeImageOnBoard(src); };
+    box.appendChild(b);
+  }
+  private placeImageOnBoard(src: string) {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const max = 900, sc = Math.min(1, max / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
+      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+      cv.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      let dataUrl = "";
+      try { dataUrl = cv.toDataURL("image/jpeg", 0.85); }
+      catch { this.toast("This image cannot be placed"); return; }
+      const o: BoardObject = { id: uid(), type: "image", src: dataUrl, x: 60, y: 60, w, h };
+      const im = new Image(); im.src = dataUrl; o.img = im;
+      im.onload = () => this.renderBoard();
+      this.boardStore.pushHistory();
+      this.boardStore.objects.push(o);
+      if (this.layout === "doc") this.setLayout("split");
+      this.setActive("board", null);
+      this.renderBoard(); this.scheduleSave();
+      this.toast("Image placed — use MOVE to drag it");
+    };
+    img.onerror = () => this.toast("Could not place the image");
+    img.src = src;
+  }
+
   private wireKeys() {
     this.on(window, "keydown", (e: KeyboardEvent) => {
       const tag = ((e.target as HTMLElement)?.tagName || "").toLowerCase();
@@ -1589,7 +1910,9 @@ export class BoardEngine {
         if (this.active.kind === "doc") this.refreshAnnot(this.active.page || 1); else this.renderBoard();
         this.scheduleSave();
       }
-      else if (e.key === "Escape") { this.$all(".modal.show").forEach((m: HTMLElement) => this.closeModal(m)); this.hidePops(); }
+      else if (e.key === "[") this.gotoBoardPage(this.boardPage - 1);
+      else if (e.key === "]") this.gotoBoardPage(this.boardPage + 1);
+      else if (e.key === "Escape") { this.$all(".modal.show").forEach((m: HTMLElement) => this.closeModal(m)); this.hidePops(); this.stopUpPoll(); }
     });
   }
 }

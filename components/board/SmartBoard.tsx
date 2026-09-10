@@ -37,6 +37,9 @@ export default function SmartBoard() {
  <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
  <span className="sb-file" id="fileName">No file — press Open or drag &amp; drop</span>
  </div>
+ <div className="sb-group">
+ <button className="sb-btn" id="btnUpload" title="Upload from your phone — scan the QR code"><Icon name="scan" size={17} /> Phone Upload</button>
+ </div>
  <div className="sb-group" id="layoutGroup" title="Layout">
  <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={17} /> Doc</button>
  <button className="sb-btn on" data-layout="split" title="Doc + Board side by side (2)"><Icon name="columns2" size={17} /> Split</button>
@@ -76,11 +79,18 @@ export default function SmartBoard() {
  {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
  <div className="rail-sep" />
  {tool("laser", "circleDot", "LASER", "Laser pointer")}
+ <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={21} /><small>SHADE</small></button>
+ <button className="tool" id="toolRuler" title="Ruler — drag to measure"><Icon name="ruler" size={21} /><small>RULER</small></button>
+ <button className="tool" id="toolProtractor" title="Protractor — drag to measure angles, double-tap to rotate"><Icon name="protractor" size={21} /><small>ANGLE</small></button>
  <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={21} /><small>MATHS</small></button>
  <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={21} /><small>CLEAR</small></button>
  </aside>
 
  <div className="sb-work">
+ <div id="shade" style={{ display: "none" }}>
+ <div id="shadeHint">Screen hidden — drag the bar to reveal, double-tap to close</div>
+ <div id="shadeHandle" title="Drag to reveal"><span /></div>
+ </div>
  <section className="pane" id="paneDoc">
  <div className="pane-head"><span className="dot" style={{ background: "#22c55e" }} /> Document — teach PDFs / notes here</div>
  <div className="pane-body">
@@ -101,6 +111,8 @@ export default function SmartBoard() {
  <div className="pane-head"><span className="dot" style={{ background: "#a855f7" }} /> Whiteboard — write / solve here</div>
  <div className="pane-body">
  <div id="boardScroll"><canvas id="boardCanvas" /></div>
+ <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
+ <div id="protractor" className="measure"><svg id="protractorSvg" width="260" height="150" /></div>
  </div>
  </section>
  </div>
@@ -149,6 +161,10 @@ export default function SmartBoard() {
  </select>
  </div>
  <div className="page-ctl">
+ <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={17} /></button>
+ <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
+ <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={17} /></button>
+ <button className="sb-btn" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={17} /></button>
  <span className="pg" id="targetLbl" style={{ minWidth: "auto" }}>Board</span>
  <button className="sb-btn" id="pgPrev" title="Previous page (←)"><Icon name="chevronLeft" size={17} /></button>
  <span className="pg" id="pgLbl">– / –</span>
@@ -221,6 +237,23 @@ export default function SmartBoard() {
  <div className="mrow"><button className="mbtn" id="exJson"><Icon name="save" size={17} /> Download session (JSON)</button><button className="mbtn" id="exImportBtn"><Icon name="upload" size={17} /> Open session (JSON)</button><input type="file" id="exImport" accept=".json" hidden /></div>
  <div className="mrow"><button className="mbtn" id="exPrint"><Icon name="printer" size={17} /> Print</button><button className="mbtn danger" id="exWipe"><Icon name="trash2" size={17} /> Delete everything</button></div>
  <div className="mrow"><button className="mbtn" data-close="1">Close</button></div>
+ </div></div>
+
+ <div className="modal" id="mUpload"><div className="modal-card" style={{ maxWidth: 620 }}>
+ <h2><Icon name="scan" size={22} /> Upload from Phone</h2>
+ <p>Scan the code with your phone camera, pick any file — PDF, image, video, audio, document — and it opens here automatically.</p>
+ <div className="up-flex">
+ <canvas id="qrCanvas" width={220} height={220} />
+ <div className="up-side">
+ <label>Link (same as the code)</label>
+ <div className="up-url" id="upUrl">…</div>
+ <div className="up-code" id="upCode">…</div>
+ <div className="up-status" id="upStatus">Waiting…</div>
+ </div>
+ </div>
+ <label>Received files (tap to open)</label>
+ <div className="up-list" id="upList"><div className="up-empty">No files yet — upload from your phone.</div></div>
+ <div className="mrow"><button className="mbtn primary" id="upDone">Done</button></div>
  </div></div>
 
  <div className="modal" id="mHelp"><div className="modal-card">
