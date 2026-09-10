@@ -1,5 +1,5 @@
 "use client";
-/* Lazy Firebase init — sirf jab env configured ho. Kabhi crash nahi. */
+/* Lazy Firebase init — only when env is configured. Never crashes. */
 import { initializeApp, getApps, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, signInAnonymously, Auth } from "firebase/auth";
@@ -23,7 +23,7 @@ export function getDb(): Firestore | null {
   }
 }
 
-/* Anonymous login — har device/student ko stable UID (progress sync ke liye) */
+/* Anonymous login — a stable UID per device/student (for progress sync) */
 let uidPromise: Promise<string | null> | null = null;
 export function ensureUid(): Promise<string | null> {
   if (!uidPromise) {

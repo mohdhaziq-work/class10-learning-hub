@@ -21,10 +21,10 @@ const TABMETA: Record<string, { label: string; icon: string }> = {
   pyq: { label: "PYQ", icon: "trophy" },
 };
 
-function PHead({ icon, children, color }: { icon: string; children: React.ReactNode; color: string }) {
+function PHead({ icon, children }: { icon: string; children: React.ReactNode }) {
   return (
-    <h3 className="font-display text-[18px] font-extrabold tracking-tight flex items-center gap-2.5 mb-3.5">
-      <span className="w-9 h-9 rounded-xl grid place-items-center text-white flex-none" style={{ background: color }}>
+    <h3 className="text-[18px] font-extrabold tracking-tight flex items-center gap-2.5 mb-3.5">
+      <span className="w-9 h-9 rounded-xl grid place-items-center text-white bg-slate-900 dark:bg-white dark:text-slate-900 flex-none">
         <Icon name={icon} size={18} />
       </span>
       {children}
@@ -33,7 +33,7 @@ function PHead({ icon, children, color }: { icon: string; children: React.ReactN
 }
 
 /* ---------------- Slides ---------------- */
-function Slides({ slides, color }: { slides: NonNullable<ChapterDetail["slides"]>; color: string }) {
+function Slides({ slides }: { slides: NonNullable<ChapterDetail["slides"]> }) {
   const [i, setI] = useState(0);
   const [auto, setAuto] = useState(false);
   const n = slides.length || 1;
@@ -78,23 +78,23 @@ function Slides({ slides, color }: { slides: NonNullable<ChapterDetail["slides"]
         <div className="flex gap-1.5 ml-auto">
           {slides.map((_, k) => (
             <button key={k} onClick={() => setI(k)} aria-label={`Slide ${k + 1}`}
-              className="rounded-full transition-all"
-              style={{ width: k === i ? 26 : 9, height: 9, background: k === i ? color : "#c9ced6" }} />
+              className={`rounded-full transition-all ${k === i ? "bg-slate-900 dark:bg-white" : "bg-slate-300 dark:bg-slate-600"}`}
+              style={{ width: k === i ? 26 : 9, height: 9 }} />
           ))}
         </div>
       </div>
       <p className="text-[12.5px] text-ink-mute dark:text-slate-500 mt-3 flex items-center gap-1.5">
-        <Icon name="keyboard" size={15} /> Tip: ← → keys se slides badlo, F11 se poori screen
+        <Icon name="keyboard" size={15} /> Tip: use the ← → keys to change slides, F11 for full screen
       </p>
     </div>
   );
 }
 
 /* ---------------- Quiz ---------------- */
-function Quiz({ quiz, color }: { quiz: QuizQ[]; color: string }) {
+function Quiz({ quiz }: { quiz: QuizQ[] }) {
   const [ans, setAns] = useState<Record<number, number>>({});
   const [done, setDone] = useState(false);
-  if (!quiz.length) return <p className="text-ink-mute text-sm">Quiz abhi taiyaar ho raha hai.</p>;
+  if (!quiz.length) return <p className="text-ink-mute text-sm">The quiz is being prepared.</p>;
   const score = quiz.filter((q, i) => ans[i] === q.answer).length;
   return (
     <div>
@@ -103,16 +103,16 @@ function Quiz({ quiz, color }: { quiz: QuizQ[]; color: string }) {
         const ok = done && picked === q.answer;
         const bad = done && picked !== undefined && picked !== q.answer;
         return (
-          <div key={i} className={`rounded-2xl border-2 p-4 sm:p-5 mb-3.5 transition ${ok ? "border-g-green bg-g-green/[.06]" : bad ? "border-g-red bg-g-red/[.05]" : "border-[#e1e3e6] dark:border-[#444746]"}`}>
+          <div key={i} className={`rounded-2xl border-2 p-4 sm:p-5 mb-3.5 transition ${ok ? "border-g-green bg-g-green/[.06]" : bad ? "border-g-red bg-g-red/[.05]" : "border-slate-200 dark:border-[#30363d]"}`}>
             <p className="font-bold text-[15.5px] leading-snug">Q{i + 1}. {q.q}</p>
             <div className="grid gap-2 mt-3 sm:grid-cols-2">
               {q.options.map((o, k) => (
                 <button key={k} disabled={done}
                   onClick={() => setAns({ ...ans, [i]: k })}
                   className={`flex items-center gap-2.5 text-left text-[14px] font-medium px-4 py-2.5 rounded-xl border-2 transition ${picked === k
-                    ? "border-brand-600 bg-brand-50 dark:bg-brand-600/20 text-brand-700 dark:text-brand-100"
-                    : "border-[#e1e3e6] dark:border-[#444746] hover:border-brand-300"}`}>
-                  <span className="w-6 h-6 rounded-full grid place-items-center text-[12px] font-bold bg-slate-100 dark:bg-white/10 flex-none">
+                    ? "border-slate-900 dark:border-white bg-slate-100 dark:bg-white/10"
+                    : "border-slate-200 dark:border-[#30363d] hover:border-slate-400"}`}>
+                  <span className="w-6 h-6 rounded-full grid place-items-center text-[12px] font-bold bg-slate-200 dark:bg-white/10 flex-none">
                     {String.fromCharCode(65 + k)}
                   </span>
                   {o}
@@ -122,12 +122,12 @@ function Quiz({ quiz, color }: { quiz: QuizQ[]; color: string }) {
             {done && (
               <p className={`flex items-center gap-2 text-[13.5px] font-bold mt-3 ${ok ? "text-g-green" : "text-g-red"}`}>
                 <Icon name={ok ? "checkCircle" : "xCircle"} size={17} />
-                {ok ? "Sahi jawab!" : picked === undefined ? `Jawab nahi diya — sahi: ${q.options[q.answer]}` : `Sahi jawab: ${q.options[q.answer]}`}
+                {ok ? "Correct!" : picked === undefined ? `Not answered — correct: ${q.options[q.answer]}` : `Correct answer: ${q.options[q.answer]}`}
               </p>
             )}
             {done && q.why && (
               <p className="flex gap-2 text-[13.5px] text-ink-soft dark:text-slate-300 mt-2 bg-slate-50 dark:bg-black/30 rounded-xl px-3.5 py-2.5">
-                <Icon name="lightbulb" size={16} className="flex-none mt-0.5 text-g-amber" /> {q.why}
+                <Icon name="lightbulb" size={16} className="flex-none mt-0.5 text-gold" /> {q.why}
               </p>
             )}
           </div>
@@ -138,13 +138,13 @@ function Quiz({ quiz, color }: { quiz: QuizQ[]; color: string }) {
           <Icon name="check" size={18} /> Check answers
         </button>
       ) : (
-        <div className="rounded-2xl p-5 text-center text-white" style={{ background: `linear-gradient(120deg, ${color}, ${color}bb)` }}>
+        <div className="rounded-2xl p-5 text-center text-white bg-slate-900 dark:bg-white dark:text-slate-900">
           <Icon name={score / quiz.length >= 0.8 ? "award" : score / quiz.length >= 0.5 ? "target" : "bookOpen"} size={34} className="mx-auto" />
-          <p className="font-display text-[22px] font-extrabold mt-1">Score: {score} / {quiz.length}</p>
-          <p className="text-white/90 text-[14px] font-medium">
-            {score / quiz.length >= 0.8 ? "Excellent — board-ready!" : score / quiz.length >= 0.5 ? "Good — ek aur revision karo." : "Slides dobara dekho, phir try karo."}
+          <p className="text-[22px] font-extrabold mt-1">Score: {score} / {quiz.length}</p>
+          <p className="opacity-80 text-[14px] font-medium">
+            {score / quiz.length >= 0.8 ? "Excellent — board-ready!" : score / quiz.length >= 0.5 ? "Good — revise once more." : "Review the slides, then try again."}
           </p>
-          <button onClick={() => { setAns({}); setDone(false); }} className="btn-g bg-white/20 text-white hover:bg-white/30 text-sm mt-3">
+          <button onClick={() => { setAns({}); setDone(false); }} className="btn-g bg-white/20 dark:bg-black/10 hover:bg-white/30 dark:hover:bg-black/20 text-sm mt-3">
             <Icon name="refreshCw" size={16} /> Try again
           </button>
         </div>
@@ -159,7 +159,7 @@ function BugRow() {
   const [txt, setTxt] = useState("");
   if (sent) return (
     <p className="flex items-center gap-2 text-[14px] font-semibold text-g-green mt-6">
-      <Icon name="checkCircle" size={18} /> Thanks — teacher tak pahunch gaya.
+      <Icon name="checkCircle" size={18} /> Thanks — sent to the teacher.
     </p>
   );
   return (
@@ -169,9 +169,9 @@ function BugRow() {
       fetch("/api/bug-report", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: txt }) }).catch(() => {});
       setSent(true);
     }}>
-      <div className="flex items-center gap-2.5 flex-1 bg-white dark:bg-[#1e1f20] border border-[#e1e3e6] dark:border-[#444746] rounded-full pl-4 pr-2 py-1.5 focus-within:border-brand-600 transition">
+      <div className="flex items-center gap-2.5 flex-1 bg-white dark:bg-[#161b22] border border-slate-300 dark:border-[#30363d] rounded-full pl-4 pr-2 py-1.5 focus-within:border-slate-900 dark:focus-within:border-white transition">
         <Icon name="flag" size={16} className="text-ink-mute flex-none" />
-        <input value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Koi galti dikhi? Yahan likho…"
+        <input value={txt} onChange={(e) => setTxt(e.target.value)} placeholder="Spotted a mistake? Write it here…"
           className="flex-1 bg-transparent outline-none text-sm min-w-0" maxLength={300} />
         <button className="btn-g btn-g-blue text-[13px] !py-2 flex-none"><Icon name="send" size={15} /> Send</button>
       </div>
@@ -216,8 +216,7 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
           ? <Link href={nextHref} className="btn-g btn-g-white text-sm"><Icon name="arrowRight" size={16} /> Next</Link>
           : <span className="btn-g btn-g-white text-sm opacity-40 pointer-events-none"><Icon name="arrowRight" size={16} /> Next</span>}
         <button onClick={() => toggle(key)}
-          className={`btn-g text-sm ${done ? "text-white" : "btn-g-white"}`}
-          style={done ? { background: "#188038" } : undefined}>
+          className={`btn-g text-sm ${done ? "btn-g-dark" : "btn-g-white"}`}>
           <Icon name="check" size={16} strokeWidth={3} /> {done ? "Done" : "Mark done"}
         </button>
         <Link href="/smart-board" className="btn-g btn-g-dark text-sm sm:ml-auto">
@@ -230,12 +229,10 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
         )}
       </div>
 
-      {/* labs filter chips */}
+      {/* filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap">
         {tabs.map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`chip-f ${active === t ? "on" : ""}`}
-            style={active === t ? { background: sub.color, borderColor: sub.color } : undefined}>
+          <button key={t} onClick={() => setTab(t)} className={`chip-f ${active === t ? "on" : ""}`}>
             <Icon name={TABMETA[t]?.icon || "dot"} size={15} /> {TABMETA[t]?.label || t}
           </button>
         ))}
@@ -243,46 +240,46 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
       {/* panels */}
       <div className="mt-2">
-        {active === "slides" && <Slides slides={D.slides || []} color={sub.color} />}
+        {active === "slides" && <Slides slides={D.slides || []} />}
 
         {active === "mindmap" && D.mindmap && (
           <div>
-            <PHead icon="brain" color={sub.color}>Mind Map — poora chapter ek nazar me</PHead>
+            <PHead icon="brain">Mind Map — the whole chapter at a glance</PHead>
             <div className="mm-wrap"><div className="mm">
-              <div className="mm-center" style={{ background: sub.color }}>{D.mindmap.central}</div>
+              <div className="mm-center">{D.mindmap.central}</div>
               <div className="mm-trunk" />
               <div className="mm-branches">
                 {D.mindmap.branches.map((b, i) => (
-                  <div key={i} className="mm-branch" style={{ ["--bc" as string]: b.color || sub.color }}>
+                  <div key={i} className="mm-branch" style={{ ["--bc" as string]: b.color || "#1a73e8" }}>
                     <h4>{b.label}</h4>
                     <ul>{(b.children || []).map((k, j) => <li key={j}>{k}</li>)}</ul>
                   </div>
                 ))}
               </div>
             </div></div>
-            <div className="mt-3 rounded-2xl border-l-4 px-4 py-3 text-sm bg-brand-50 dark:bg-white/5" style={{ borderColor: sub.color }}>
-              <b>Classroom tip:</b> Smart board par kholo, branches ko ek-ek karke cover karke bachchon se puchho.
-              {" "}<Link href="/smart-board" className="font-bold text-brand-600 dark:text-brand-300 inline-flex items-center gap-1">Smart Board me kholo <Icon name="arrowRight" size={14} /></Link>
+            <div className="mt-3 rounded-2xl border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] px-4 py-3 text-sm">
+              <b>Classroom tip:</b> open it on the smart board, cover the branches one by one, and ask the class.
+              {" "}<Link href="/smart-board" className="font-bold text-brand-600 inline-flex items-center gap-1">Open in Smart Board <Icon name="arrowRight" size={14} /></Link>
             </div>
           </div>
         )}
 
         {active === "flow" && D.flowchart && (
           <div>
-            <PHead icon="listOrdered" color={sub.color}>Flow Chart — step by step</PHead>
+            <PHead icon="listOrdered">Flow Chart — step by step</PHead>
             <div className="max-w-xl mx-auto">
               {D.flowchart.map((f, i) => (
                 <div key={i}>
-                  <div className="flex gap-3.5 items-start bg-white dark:bg-[#1e1f20] border-2 border-[#e1e3e6] dark:border-[#444746] rounded-2xl p-4 shadow-card"
+                  <div className="flex gap-3.5 items-start bg-white dark:bg-[#161b22] border-2 border-slate-200 dark:border-[#30363d] rounded-2xl p-4 shadow-card"
                     style={f.type === "decision" ? { borderColor: "#e37400", borderStyle: "dashed" } : f.type === "result" ? { borderColor: "#146c2e" } : undefined}>
-                    <span className="w-9 h-9 rounded-xl grid place-items-center text-white font-display font-extrabold flex-none" style={{ background: sub.color }}>{i + 1}</span>
+                    <span className="w-9 h-9 rounded-xl grid place-items-center text-white bg-slate-900 dark:bg-white dark:text-slate-900 font-extrabold flex-none">{i + 1}</span>
                     <span><b className="block text-[15px]">{f.title}</b>
                       {f.desc && <small className="text-ink-mute dark:text-slate-400 text-[13.5px]">{f.desc}</small>}
-                      {f.type === "decision" && <small className="block text-[11.5px] font-extrabold uppercase tracking-wider text-g-amber mt-1">Decision point</small>}
+                      {f.type === "decision" && <small className="block text-[11.5px] font-extrabold uppercase tracking-wider text-amber-700 dark:text-amber-400 mt-1">Decision point</small>}
                       {f.type === "result" && <small className="block text-[11.5px] font-extrabold uppercase tracking-wider text-g-green mt-1">Result</small>}
                     </span>
                   </div>
-                  {i < D.flowchart!.length - 1 && <div className="flex justify-center py-1.5"><Icon name="chevronDown" size={22} style={{ color: sub.color }} /></div>}
+                  {i < D.flowchart!.length - 1 && <div className="flex justify-center py-1.5"><Icon name="chevronDown" size={22} className="text-slate-300 dark:text-slate-600" /></div>}
                 </div>
               ))}
             </div>
@@ -291,16 +288,16 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "timeline" && D.timeline && (
           <div>
-            <PHead icon="clock" color={sub.color}>Timeline — dates pakki karo</PHead>
+            <PHead icon="clock">Timeline — master the dates</PHead>
             <div className="max-w-2xl">
               {D.timeline.map((t, i) => (
                 <div key={i} className="flex gap-4">
                   <div className="flex flex-col items-center">
-                    <span className="w-4 h-4 rounded-full border-[3px] flex-none mt-1.5 bg-white dark:bg-[#1e1f20]" style={{ borderColor: sub.color }} />
-                    {i < D.timeline!.length - 1 && <span className="w-[2.5px] flex-1 rounded" style={{ background: `${sub.color}55` }} />}
+                    <span className="w-4 h-4 rounded-full border-[3px] border-slate-900 dark:border-white flex-none mt-1.5 bg-white dark:bg-[#161b22]" />
+                    {i < D.timeline!.length - 1 && <span className="w-[2.5px] flex-1 rounded bg-slate-200 dark:bg-[#30363d]" />}
                   </div>
                   <div className="pb-6">
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3 py-1 rounded-full text-white" style={{ background: sub.color }}>
+                    <span className="inline-flex items-center gap-1.5 text-[12px] font-extrabold px-3 py-1 rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900">
                       <Icon name="calendar" size={13} /> {t.y}
                     </span>
                     <p className="text-[14.5px] text-ink-soft dark:text-slate-300 mt-1.5">{t.t}</p>
@@ -313,26 +310,26 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "notes" && (
           <div>
-            <PHead icon="notebookPen" color={sub.color}>Exam-ready Notes</PHead>
+            <PHead icon="notebookPen">Exam-ready Notes</PHead>
             <div className="grid gap-2.5">
               {(D.notes || []).map((n, i) => (
-                <div key={i} className="bg-white dark:bg-[#1e1f20] border border-[#e1e3e6] dark:border-[#444746] rounded-2xl px-4 py-3 text-[14.5px] shadow-card [&_b]:text-brand-600 dark:[&_b]:text-brand-300" dangerouslySetInnerHTML={{ __html: n }} />
+                <div key={i} className="bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl px-4 py-3 text-[14.5px] shadow-card [&_b]:text-brand-600" dangerouslySetInnerHTML={{ __html: n }} />
               ))}
             </div>
             <div className="flex gap-2 mt-3.5 flex-wrap">
               <button onClick={() => window.print()} className="btn-g btn-g-white text-sm"><Icon name="printer" size={16} /> Print notes</button>
-              <Link href="/smart-board" className="btn-g btn-g-white text-sm"><Icon name="squarePen" size={16} /> Smart Board par padhao</Link>
+              <Link href="/smart-board" className="btn-g btn-g-white text-sm"><Icon name="squarePen" size={16} /> Teach on Smart Board</Link>
             </div>
           </div>
         )}
 
         {active === "formulas" && D.formulas && (
           <div>
-            <PHead icon="sigma" color={sub.color}>Formula Bank</PHead>
+            <PHead icon="sigma">Formula Bank</PHead>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {D.formulas.map((f, i) => (
                 <div key={i} className="form-card">
-                  <small className="block font-sans font-bold text-xs mb-1.5 uppercase tracking-wider opacity-80">{f.name}</small>
+                  <small className="block font-sans font-bold text-xs mb-1.5 uppercase tracking-wider opacity-70">{f.name}</small>
                   <div className="text-[19px]">{f.expr}</div>
                 </div>
               ))}
@@ -342,14 +339,14 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "examples" && D.examples?.map((e, i) => (
           <div key={i} className="card-g p-4 sm:p-5 mb-3.5">
-            <p className="font-display font-extrabold text-[16px] flex gap-2.5 items-start">
-              <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-white text-[13px] font-extrabold flex-none" style={{ background: sub.color }}>{i + 1}</span>
+            <p className="font-extrabold text-[16px] tracking-tight flex gap-2.5 items-start">
+              <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-white bg-slate-900 dark:bg-white dark:text-slate-900 text-[13px] font-extrabold flex-none">{i + 1}</span>
               {e.title}
             </p>
             <ol className="list-decimal pl-12 mt-2.5 space-y-1.5 text-[14.5px] text-ink-soft dark:text-slate-300">
               {e.steps.map((s, j) => <li key={j}>{s}</li>)}
             </ol>
-            <div className="mt-3 ml-5 rounded-r-xl border-l-4 px-4 py-2.5 text-[14px] bg-brand-50 dark:bg-white/5" style={{ borderColor: sub.color }}>
+            <div className="mt-3 ml-5 rounded-r-xl border-l-4 border-slate-900 dark:border-white bg-slate-50 dark:bg-white/5 px-4 py-2.5 text-[14px]">
               <b>Answer:</b> {e.answer}
             </div>
           </div>
@@ -357,13 +354,13 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "diagrams" && D.diagrams?.map((d, i) => (
           <div key={i} className="card-g p-4 sm:p-5 mb-3.5">
-            <p className="font-display font-extrabold text-[16px] flex items-center gap-2">
-              <Icon name="penTool" size={18} style={{ color: sub.color }} /> {d.title}
+            <p className="font-extrabold text-[16px] tracking-tight flex items-center gap-2">
+              <Icon name="penTool" size={18} className="text-ink-mute" /> {d.title}
             </p>
             <p className="text-[14px] text-ink-mute dark:text-slate-400 mt-1.5">{d.desc}</p>
             {d.label && <div className="inline-block mt-2.5 font-mono text-[13px] bg-slate-100 dark:bg-black/40 border border-dashed border-slate-300 dark:border-slate-600 px-4 py-2 rounded-xl">{d.label}</div>}
             <div>
-              <Link href="/smart-board" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-600 dark:text-brand-300 mt-2.5">
+              <Link href="/smart-board" className="inline-flex items-center gap-1.5 text-[13px] font-bold text-brand-600 mt-2.5">
                 <Icon name="squarePen" size={15} /> Draw this on the board <Icon name="arrowRight" size={14} />
               </Link>
             </div>
@@ -372,11 +369,11 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "words" && (
           <div>
-            <PHead icon="languages" color={sub.color}>Word Bank</PHead>
+            <PHead icon="languages">Word Bank</PHead>
             <div className="card-g divide-y divide-slate-100 dark:divide-white/5 overflow-hidden">
               {(D.words || []).map((w, i) => (
                 <div key={i} className="px-4 py-3 text-[14.5px]">
-                  <b style={{ color: sub.color }}>{w.w}</b> — {w.m}
+                  <b className="text-slate-900 dark:text-white">{w.w}</b> — {w.m}
                   <br /><span className="text-ink-mute dark:text-slate-400 text-[13.5px]">Ex: {w.u}</span>
                 </div>
               ))}
@@ -386,33 +383,33 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
         {active === "quiz" && (
           <div>
-            <PHead icon="puzzle" color={sub.color}>Self-Test Quiz ({(D.quiz || []).length} questions)</PHead>
-            <Quiz quiz={D.quiz || []} color={sub.color} />
+            <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length} questions)</PHead>
+            <Quiz quiz={D.quiz || []} />
           </div>
         )}
 
         {active === "pyq" && (
           <div>
-            <PHead icon="trophy" color={sub.color}>Previous Year Questions (practice)</PHead>
+            <PHead icon="trophy">Previous Year Questions (practice)</PHead>
             <div className="grid gap-2.5">
               {(D.pyq || []).map((p, i) => (
-                <div key={i} className="flex gap-3 bg-white dark:bg-[#1e1f20] border border-[#e1e3e6] dark:border-[#444746] rounded-2xl px-4 py-3 text-[14.5px] shadow-card">
-                  <Icon name="penLine" size={17} className="flex-none mt-0.5" style={{ color: sub.color }} /> {p}
+                <div key={i} className="flex gap-3 bg-white dark:bg-[#161b22] border border-slate-200 dark:border-[#30363d] rounded-2xl px-4 py-3 text-[14.5px] shadow-card">
+                  <Icon name="penLine" size={17} className="flex-none mt-0.5 text-ink-mute" /> {p}
                 </div>
               ))}
             </div>
-            <div className="mt-3 rounded-2xl border-l-4 px-4 py-3 text-sm bg-brand-50 dark:bg-white/5" style={{ borderColor: sub.color }}>
-              <b>Tip:</b> Har PYQ ko timer lagakar likho — phir NCERT se match karo.
+            <div className="mt-3 rounded-2xl border border-slate-200 dark:border-[#30363d] bg-white dark:bg-[#161b22] px-4 py-3 text-sm">
+              <b>Tip:</b> write every PYQ with a timer — then match it against the NCERT.
             </div>
           </div>
         )}
 
         {isAuto && (
-          <div className="rounded-2xl border-2 border-dashed border-brand-300 dark:border-brand-700 bg-brand-50/60 dark:bg-white/5 p-4 sm:p-5 mt-5 flex gap-3">
-            <Icon name="info" size={22} className="text-brand-600 dark:text-brand-300 flex-none mt-0.5" />
+          <div className="rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-600 p-4 sm:p-5 mt-5 flex gap-3">
+            <Icon name="info" size={22} className="text-ink-mute flex-none mt-0.5" />
             <p className="text-[14px] text-ink-soft dark:text-slate-300">
-              <b>Auto guide:</b> is chapter ka poora smart content abhi taiyaar ho raha hai.
-              Teacher ho? <Link href="/admin" className="font-bold text-brand-600 dark:text-brand-300 underline underline-offset-2">Admin panel</Link> se asli content bhar do — turant sabko dikhega.
+              <b>Auto guide:</b> full smart content for this chapter is being prepared.
+              Are you a teacher? Fill in the real content from the <Link href="/admin" className="font-bold text-brand-600 underline underline-offset-2">Admin panel</Link> — everyone will see it instantly.
             </p>
           </div>
         )}

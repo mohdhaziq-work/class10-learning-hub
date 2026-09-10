@@ -18,23 +18,25 @@ export async function generateMetadata({ params }: { params: { subjectId: string
 export default function SubjectPage({ params }: { params: { subjectId: string } }) {
   const sub = getSubject(params.subjectId);
   if (!sub) notFound();
+  const total = sub.groups.reduce((a, g) => a + g.chapters.length, 0);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
-      <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute dark:text-slate-400 mt-5 mb-3">
-        <Link href="/" className="flex items-center gap-1 hover:text-brand-600"><Icon name="home" size={15} /> Home</Link>
+      <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute dark:text-slate-400 mt-5 mb-4">
+        <Link href="/" className="flex items-center gap-1 hover:text-black dark:hover:text-white transition"><Icon name="home" size={15} /> Home</Link>
         <Icon name="chevronRight" size={14} />
         <span className="text-ink dark:text-slate-200 font-semibold">{sub.name}</span>
       </nav>
       <div className="flex items-center gap-4 flex-wrap">
-        <span className="w-14 h-14 rounded-2xl grid place-items-center text-white shadow-lift" style={{ background: `linear-gradient(135deg, ${sub.color}, ${sub.color}bb)` }}>
+        <span className="w-14 h-14 rounded-2xl grid place-items-center text-white bg-slate-900 dark:bg-white dark:text-slate-900">
           <Icon name={sub.icon} size={28} />
         </span>
         <div>
-          <h1 className="font-display text-2xl sm:text-[32px] font-extrabold tracking-tight leading-none">{sub.name} <span className="text-base font-semibold text-ink-mute dark:text-slate-400">{sub.hindi}</span></h1>
-          <p className="text-ink-soft dark:text-slate-300 mt-1.5 max-w-2xl text-[15px]">{sub.tagline}</p>
+          <h1 className="text-2xl sm:text-[32px] font-extrabold tracking-tight leading-none">{sub.name}</h1>
+          <p className="font-mono text-[12px] text-ink-mute dark:text-slate-400 mt-1.5">{total} chapters · slides, notes & quizzes</p>
+          <p className="text-ink-soft dark:text-slate-300 mt-1 max-w-2xl text-[15px]">{sub.tagline}</p>
         </div>
       </div>
-      <div className="mt-4"><SubjectChapters sub={sub} /></div>
+      <div className="mt-5"><SubjectChapters sub={sub} /></div>
     </div>
   );
 }

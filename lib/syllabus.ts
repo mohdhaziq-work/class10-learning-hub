@@ -1,5 +1,5 @@
 /* Full NCERT Class 10 syllabus — typed, framework-free.
-   Admin panel / API / pages sab yahi se data lete hain. */
+   The Admin panel / API / pages all read data from here. */
 
 export interface ChapterRef { n: number; title: string; hi?: string }
 export interface SubjectGroup { label: string; chapters: ChapterRef[] }
@@ -11,90 +11,90 @@ export interface Subject {
 export const SUBJECTS: Subject[] = [
   {
     id: "maths", name: "Mathematics", hindi: "गणित", icon: "calculator", color: "#0b57d0",
-    tagline: "Formulas, solved examples aur practice — sabse strong Maths taiyaari.",
+    tagline: "Formulas, solved examples, and practice — the strongest Maths preparation.",
     features: ["slides", "formulas", "examples", "notes", "quiz", "pyq"],
     groups: [{
       label: "All Chapters", chapters: [
-        { n: 1,  title: "Real Numbers", hi: "वास्तविक संख्याएँ" },
-        { n: 2,  title: "Polynomials", hi: "बहुपद" },
-        { n: 3,  title: "Pair of Linear Equations in Two Variables", hi: "दो चर वाले रैखिक समीकरण" },
-        { n: 4,  title: "Quadratic Equations", hi: "द्विघात समीकरण" },
-        { n: 5,  title: "Arithmetic Progressions", hi: "समांतर श्रेढ़ियाँ" },
-        { n: 6,  title: "Triangles", hi: "त्रिभुज" },
-        { n: 7,  title: "Coordinate Geometry", hi: "निर्देशांक ज्यामिति" },
-        { n: 8,  title: "Introduction to Trigonometry", hi: "त्रिकोणमिति का परिचय" },
-        { n: 9,  title: "Some Applications of Trigonometry", hi: "त्रिकोणमिति के अनुप्रयोग" },
-        { n: 10, title: "Circles", hi: "वृत्त" },
-        { n: 11, title: "Areas Related to Circles", hi: "वृत्तों से संबंधित क्षेत्रफल" },
-        { n: 12, title: "Surface Areas and Volumes", hi: "पृष्ठीय क्षेत्रफल और आयतन" },
-        { n: 13, title: "Statistics", hi: "सांख्यिकी" },
-        { n: 14, title: "Probability", hi: "प्रायिकता" },
+        { n: 1,  title: "Real Numbers", hi: "Euclid's lemma, HCF & LCM" },
+        { n: 2,  title: "Polynomials", hi: "Zeroes, coefficients & graphs" },
+        { n: 3,  title: "Pair of Linear Equations in Two Variables", hi: "Elimination, substitution & cross-multiplication" },
+        { n: 4,  title: "Quadratic Equations", hi: "Factorisation, formula & nature of roots" },
+        { n: 5,  title: "Arithmetic Progressions", hi: "nth term, sum & applications" },
+        { n: 6,  title: "Triangles", hi: "Similarity, Pythagoras & areas" },
+        { n: 7,  title: "Coordinate Geometry", hi: "Distance, section & midpoint formulae" },
+        { n: 8,  title: "Introduction to Trigonometry", hi: "Ratios, standard values & identities" },
+        { n: 9,  title: "Some Applications of Trigonometry", hi: "Heights & distances" },
+        { n: 10, title: "Circles", hi: "Tangents & theorems" },
+        { n: 11, title: "Areas Related to Circles", hi: "Sectors, segments & combinations" },
+        { n: 12, title: "Surface Areas and Volumes", hi: "Solids, frustum & conversions" },
+        { n: 13, title: "Statistics", hi: "Mean, median, mode & graphs" },
+        { n: 14, title: "Probability", hi: "Classical & experimental probability" },
       ]
     }]
   },
   {
     id: "science", name: "Science", hindi: "विज्ञान", icon: "flaskConical", color: "#188038",
-    tagline: "Diagrams, flow charts, activities aur mind maps ke saath Science easy.",
+    tagline: "Diagrams, flowcharts, activities, and mind maps make Science easy.",
     features: ["slides", "mindmap", "flow", "notes", "formulas", "diagrams", "quiz", "pyq"],
     groups: [{
       label: "All Chapters", chapters: [
-        { n: 1,  title: "Chemical Reactions and Equations", hi: "रासायनिक अभिक्रियाएँ एवं समीकरण" },
-        { n: 2,  title: "Acids, Bases and Salts", hi: "अम्ल, क्षारक एवं लवण" },
-        { n: 3,  title: "Metals and Non-metals", hi: "धातु एवं अधातु" },
-        { n: 4,  title: "Carbon and its Compounds", hi: "कार्बन एवं उसके यौगिक" },
-        { n: 5,  title: "Life Processes", hi: "जैव प्रक्रम" },
-        { n: 6,  title: "Control and Coordination", hi: "नियंत्रण एवं समन्वय" },
-        { n: 7,  title: "How do Organisms Reproduce?", hi: "जीव जनन कैसे करते हैं?" },
-        { n: 8,  title: "Heredity", hi: "आनुवंशिकता" },
-        { n: 9,  title: "Light – Reflection and Refraction", hi: "प्रकाश – परावर्तन तथा अपवर्तन" },
-        { n: 10, title: "The Human Eye and the Colourful World", hi: "मानव नेत्र तथा रंगबिरंगा संसार" },
-        { n: 11, title: "Electricity", hi: "विद्युत" },
-        { n: 12, title: "Magnetic Effects of Electric Current", hi: "विद्युत धारा के चुंबकीय प्रभाव" },
-        { n: 13, title: "Our Environment", hi: "हमारा पर्यावरण" },
+        { n: 1,  title: "Chemical Reactions and Equations", hi: "Equations, types & balancing" },
+        { n: 2,  title: "Acids, Bases and Salts", hi: "Properties, pH & everyday uses" },
+        { n: 3,  title: "Metals and Non-metals", hi: "Properties, extraction & corrosion" },
+        { n: 4,  title: "Carbon and its Compounds", hi: "Bonding, homologous series & soaps" },
+        { n: 5,  title: "Life Processes", hi: "Nutrition, respiration & excretion" },
+        { n: 6,  title: "Control and Coordination", hi: "Nervous system & plant hormones" },
+        { n: 7,  title: "How do Organisms Reproduce?", hi: "Asexual, sexual & reproductive health" },
+        { n: 8,  title: "Heredity", hi: "Mendel, traits & evolution basics" },
+        { n: 9,  title: "Light – Reflection and Refraction", hi: "Mirrors, lenses & power" },
+        { n: 10, title: "The Human Eye and the Colourful World", hi: "Defects, dispersion & scattering" },
+        { n: 11, title: "Electricity", hi: "Ohm's law, circuits & heating effect" },
+        { n: 12, title: "Magnetic Effects of Electric Current", hi: "Field, motors & induction" },
+        { n: 13, title: "Our Environment", hi: "Ecosystems, ozone & waste" },
       ]
     }]
   },
   {
     id: "sst", name: "Social Science", hindi: "सामाजिक विज्ञान", icon: "globe", color: "#e37400",
-    tagline: "History timelines, Geo maps, Civics charts, Economics concepts.",
+    tagline: "Timelines, maps, charts, and key concepts across History, Geography, Civics, and Economics.",
     features: ["slides", "mindmap", "flow", "timeline", "notes", "quiz", "pyq"],
     groups: [
-      { label: " History — India and the Contemporary World II", chapters: [
-        { n: 1, title: "The Rise of Nationalism in Europe", hi: "यूरोप में राष्ट्रवाद का उदय" },
-        { n: 2, title: "Nationalism in India", hi: "भारत में राष्ट्रवाद" },
-        { n: 3, title: "The Making of a Global World", hi: "भूमंडलीकृत विश्व का बनना" },
-        { n: 4, title: "Print Culture and the Modern World", hi: "मुद्रण संस्कृति और आधुनिक विश्व" },
+      { label: "History — India and the Contemporary World II", chapters: [
+        { n: 1, title: "The Rise of Nationalism in Europe", hi: "French Revolution to unification" },
+        { n: 2, title: "Nationalism in India", hi: "Non-cooperation to Quit India" },
+        { n: 3, title: "The Making of a Global World", hi: "Trade, industrialisation & depression" },
+        { n: 4, title: "Print Culture and the Modern World", hi: "Press, reform & nationalism" },
       ]},
-      { label: " Geography — Contemporary India II", chapters: [
-        { n: 1, title: "Resources and Development", hi: "संसाधन एवं विकास" },
-        { n: 2, title: "Forest and Wildlife Resources", hi: "वन एवं वन्यजीव संसाधन" },
-        { n: 3, title: "Water Resources", hi: "जल संसाधन" },
-        { n: 4, title: "Agriculture", hi: "कृषि" },
-        { n: 5, title: "Minerals and Energy Resources", hi: "खनिज तथा ऊर्जा संसाधन" },
-        { n: 6, title: "Manufacturing Industries", hi: "विनिर्माण उद्योग" },
-        { n: 7, title: "Lifelines of National Economy", hi: "राष्ट्रीय अर्थव्यवस्था की जीवनरेखाएँ" },
+      { label: "Geography — Contemporary India II", chapters: [
+        { n: 1, title: "Resources and Development", hi: "Types, planning & conservation" },
+        { n: 2, title: "Forest and Wildlife Resources", hi: "Flora, fauna & conservation" },
+        { n: 3, title: "Water Resources", hi: "Scarcity, harvesting & dams" },
+        { n: 4, title: "Agriculture", hi: "Types, patterns & reforms" },
+        { n: 5, title: "Minerals and Energy Resources", hi: "Ores, power & conservation" },
+        { n: 6, title: "Manufacturing Industries", hi: "Agro, mineral & liberalisation" },
+        { n: 7, title: "Lifelines of National Economy", hi: "Transport, communication & tourism" },
       ]},
-      { label: " Political Science — Democratic Politics II", chapters: [
-        { n: 1, title: "Power Sharing", hi: "सत्ता की साझेदारी" },
-        { n: 2, title: "Federalism", hi: "संघवाद" },
-        { n: 3, title: "Gender, Religion and Caste", hi: "जाति, धर्म और लैंगिक मसले" },
-        { n: 4, title: "Political Parties", hi: "राजनीतिक दल" },
-        { n: 5, title: "Outcomes of Democracy", hi: "लोकतंत्र के परिणाम" },
+      { label: "Political Science — Democratic Politics II", chapters: [
+        { n: 1, title: "Power Sharing", hi: "Horizontal, federal & social" },
+        { n: 2, title: "Federalism", hi: "Features & Indian practice" },
+        { n: 3, title: "Gender, Religion and Caste", hi: "Equality, communalism & secular state" },
+        { n: 4, title: "Political Parties", hi: "Functions, types & reforms" },
+        { n: 5, title: "Outcomes of Democracy", hi: "Accountability, dignity & quality" },
       ]},
-      { label: " Economics — Understanding Economic Development", chapters: [
-        { n: 1, title: "Development", hi: "विकास" },
-        { n: 2, title: "Sectors of the Indian Economy", hi: "भारतीय अर्थव्यवस्था के क्षेत्रक" },
-        { n: 3, title: "Money and Credit", hi: "मुद्रा और साख" },
-        { n: 4, title: "Globalisation and the Indian Economy", hi: "वैश्वीकरण और भारतीय अर्थव्यवस्था" },
+      { label: "Economics — Understanding Economic Development", chapters: [
+        { n: 1, title: "Development", hi: "Goals, income & sustainability" },
+        { n: 2, title: "Sectors of the Indian Economy", hi: "Primary, secondary & tertiary" },
+        { n: 3, title: "Money and Credit", hi: "Banks, SHGs & loans" },
+        { n: 4, title: "Globalisation and the Indian Economy", hi: "MNCs, WTO & impact on India" },
       ]},
     ]
   },
   {
     id: "english", name: "English", hindi: "अंग्रेज़ी", icon: "bookOpen", color: "#9334e6",
-    tagline: "Summaries, theme charts, word banks aur Q&A — First Flight + Footprints.",
+    tagline: "Summaries, theme charts, word banks, and Q&A — First Flight + Footprints.",
     features: ["slides", "mindmap", "flow", "notes", "words", "quiz", "pyq"],
     groups: [
-      { label: " First Flight — Prose", chapters: [
+      { label: "First Flight — Prose", chapters: [
         { n: 1, title: "A Letter to God", hi: "G.L. Fuentes" },
         { n: 2, title: "Nelson Mandela: Long Walk to Freedom", hi: "Nelson Mandela" },
         { n: 3, title: "Two Stories About Flying", hi: "Liam O'Flaherty / Frederick Forsyth" },
@@ -105,7 +105,7 @@ export const SUBJECTS: Subject[] = [
         { n: 8, title: "The Sermon at Benares", hi: "Betty Renshaw" },
         { n: 9, title: "The Proposal", hi: "Anton Chekhov (Play)" },
       ]},
-      { label: " First Flight — Poetry", chapters: [
+      { label: "First Flight — Poetry", chapters: [
         { n: 1, title: "Dust of Snow", hi: "Robert Frost" },
         { n: 2, title: "Fire and Ice", hi: "Robert Frost" },
         { n: 3, title: "A Tiger in the Zoo", hi: "Leslie Norris" },
@@ -118,7 +118,7 @@ export const SUBJECTS: Subject[] = [
         { n: 10, title: "The Tale of Custard the Dragon", hi: "Ogden Nash" },
         { n: 11, title: "For Anne Gregory", hi: "W.B. Yeats" },
       ]},
-      { label: " Footprints Without Feet — Supplementary", chapters: [
+      { label: "Footprints Without Feet — Supplementary", chapters: [
         { n: 1, title: "A Triumph of Surgery", hi: "James Herriot" },
         { n: 2, title: "The Thief's Story", hi: "Ruskin Bond" },
         { n: 3, title: "The Midnight Visitor", hi: "Robert Arthur" },
@@ -133,41 +133,41 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: "hindi", name: "Hindi", hindi: "हिन्दी", icon: "languages", color: "#b3261e",
-    tagline: "सारांश, कठिन शब्द, प्रश्न-अभ्यास — क्षितिज + कृतिका।",
+    tagline: "Summaries, difficult words, and question practice — Kshitij + Kritika.",
     features: ["slides", "mindmap", "notes", "words", "quiz", "pyq"],
     groups: [
-      { label: " क्षितिज — गद्य खंड", chapters: [
-        { n: 1, title: "नेताजी का चश्मा", hi: "स्वयं प्रकाश" },
-        { n: 2, title: "बालगोबिन भगत", hi: "रामवृक्ष बेनीपुरी" },
-        { n: 3, title: "लखनवी अंदाज़", hi: "यशपाल" },
-        { n: 4, title: "मानवीय करुणा की दिव्या चमक", hi: "सर्वेश्वर दयाल सक्सेना" },
-        { n: 5, title: "तोप", hi: "वीरेन डंगवाल" },
-        { n: 6, title: "कर चले हम फ़िदा", hi: "कैफ़ी आज़मी" },
+      { label: "Kshitij — Prose", chapters: [
+        { n: 1, title: "नेताजी का चश्मा", hi: "Swayam Prakash" },
+        { n: 2, title: "बालगोबिन भगत", hi: "Ramvriksha Benipuri" },
+        { n: 3, title: "लखनवी अंदाज़", hi: "Yashpal" },
+        { n: 4, title: "मानवीय करुणा की दिव्या चमक", hi: "Sarveshwar Dayal Saxena" },
+        { n: 5, title: "तोप", hi: "Viren Dangwal" },
+        { n: 6, title: "कर चले हम फ़िदा", hi: "Kaifi Azmi" },
       ]},
-      { label: " क्षितिज — काव्य खंड", chapters: [
-        { n: 1, title: "सूर के पद", hi: "सूरदास" },
-        { n: 2, title: "राम-लक्ष्मण-परशुराम संवाद", hi: "तुलसीदास" },
-        { n: 3, title: "आत्मकथ्य", hi: "जयशंकर प्रसाद" },
-        { n: 4, title: "उत्साह", hi: "सूर्यकांत त्रिपाठी 'निराला'" },
-        { n: 5, title: "यह दंतुरित मुसकान", hi: "नागार्जुन" },
-        { n: 6, title: "छाया मत छूना", hi: "गिरिजा कुमार माथुर" },
-        { n: 7, title: "कन्यादान", hi: "ऋतुराज" },
-        { n: 8, title: "मधुर-मधुर मेरे दीपक जल", hi: "महादेवी वर्मा" },
-        { n: 9, title: "पर्वत प्रदेश में पावस", hi: "सुमित्रानंदन पंत" },
-        { n: 10, title: "मनुष्यता", hi: "मैथिलीशरण गुप्त" },
+      { label: "Kshitij — Poetry", chapters: [
+        { n: 1, title: "सूर के पद", hi: "Surdas" },
+        { n: 2, title: "राम-लक्ष्मण-परशुराम संवाद", hi: "Tulsidas" },
+        { n: 3, title: "आत्मकथ्य", hi: "Jaishankar Prasad" },
+        { n: 4, title: "उत्साह", hi: "Suryakant Tripathi 'Nirala'" },
+        { n: 5, title: "यह दंतुरित मुसकान", hi: "Nagarjuna" },
+        { n: 6, title: "छाया मत छूना", hi: "Girija Kumar Mathur" },
+        { n: 7, title: "कन्यादान", hi: "Rituraj" },
+        { n: 8, title: "मधुर-मधुर मेरे दीपक जल", hi: "Mahadevi Verma" },
+        { n: 9, title: "पर्वत प्रदेश में पावस", hi: "Sumitranandan Pant" },
+        { n: 10, title: "मनुष्यता", hi: "Maithilisharan Gupt" },
       ]},
-      { label: " कृतिका — पूरक पाठ", chapters: [
-        { n: 1, title: "माता का अंचल", hi: "शिवपूजन सहाय" },
-        { n: 2, title: "जॉर्ज पंचम की नाक", hi: "कमलेश्वर" },
-        { n: 3, title: "साना-साना हाथ जोड़ि", hi: "मृदुला गर्ग" },
-        { n: 4, title: "मैं क्यों लिखता हूँ", hi: "अज्ञेय" },
-        { n: 5, title: "स्त्री-शिक्षा के विरोधी कुतर्कों का खंडन", hi: "महावीर प्रसाद द्विवेदी" },
+      { label: "Kritika — Supplementary Reader", chapters: [
+        { n: 1, title: "माता का अंचल", hi: "Shivpujan Sahay" },
+        { n: 2, title: "जॉर्ज पंचम की नाक", hi: "Kamleshwar" },
+        { n: 3, title: "साना-साना हाथ जोड़ि", hi: "Mridula Garg" },
+        { n: 4, title: "मैं क्यों लिखता हूँ", hi: "Agyeya" },
+        { n: 5, title: "स्त्री-शिक्षा के विरोधी कुतर्कों का खंडन", hi: "Mahavir Prasad Dwivedi" },
       ]},
     ]
   },
   {
     id: "ai", name: "Artificial Intelligence", hindi: "कृत्रिम बुद्धिमत्ता", icon: "bot", color: "#00696b",
-    tagline: "AI Project Cycle, Modelling, Computer Vision, NLP aur Python — KIPS book (CBSE 417) ke saath future-ready bano.",
+    tagline: "AI Project Cycle, Modelling, Computer Vision, NLP, and Python — future-ready with the KIPS book (CBSE 417).",
     features: ["slides", "mindmap", "flow", "notes", "quiz", "pyq"],
     groups: [
       { label: "Part A — Employability Skills", chapters: [

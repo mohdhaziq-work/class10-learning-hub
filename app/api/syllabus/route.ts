@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { SUBJECTS, totalChapters } from "@/lib/syllabus";
 
-/* Poora syllabus JSON me — mobile app / future integrations ke liye */
+/* Full syllabus as JSON — for mobile apps / future integrations */
 export async function GET() {
   const slim = SUBJECTS.map((s) => ({
     id: s.id, name: s.name, hindi: s.hindi, icon: s.icon, color: s.color,

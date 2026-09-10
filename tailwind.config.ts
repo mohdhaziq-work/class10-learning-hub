@@ -1,38 +1,38 @@
 import type { Config } from "tailwindcss";
 
-/* Google-inspired design tokens — Material blues, clean surfaces, Jakarta display type */
 const config: Config = {
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   darkMode: "class",
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         brand: {
           50: "#e8f0fe", 100: "#d2e3fc", 200: "#aecbfa", 300: "#8ab4f8",
-          400: "#669df6", 500: "#4285f4", 600: "#0b57d0", 700: "#0842a0", 800: "#0a2f6b",
+          400: "#669df6", 500: "#1a73e8", 600: "#1a73e8", 700: "#1557b0", 800: "#0f3d91",
         },
-        ink: { DEFAULT: "#1f1f1f", soft: "#444746", mute: "#5f6368" },
-        gbg: "#f6f8fc",
-        g: { red: "#b3261e", green: "#146c2e", amber: "#e37400", purple: "#9334e6", teal: "#00696b" },
+        gold: "#c9a227",
+        ink: { DEFAULT: "#141414", soft: "#3c4043", mute: "#6b7280" },
+        gbg: "#fafafa",
+        coal: "#0d1117",
+        g: { red: "#b3261e", green: "#146c2e", amber: "#b06000", purple: "#9334e6", teal: "#00696b" },
       },
       fontFamily: {
-        display: ['"Plus Jakarta Sans"', "Inter", "system-ui", "sans-serif"],
-        sans: ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "Arial", "sans-serif"],
+        display: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       boxShadow: {
-        card: "0 1px 2px rgba(60,64,67,.12), 0 2px 8px rgba(60,64,67,.08)",
-        lift: "0 4px 16px rgba(60,64,67,.16), 0 8px 32px rgba(11,87,208,.10)",
-        pop: "0 8px 28px rgba(60,64,67,.22)",
+        card: "0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08)",
+        lift: "0 8px 24px rgba(16,24,40,.10), 0 2px 6px rgba(16,24,40,.06)",
+        pop: "0 16px 48px rgba(16,24,40,.16)",
       },
       keyframes: {
         fadeUp: { from: { opacity: "0", transform: "translateY(18px)" }, to: { opacity: "1", transform: "none" } },
         floaty: { "0%,100%": { transform: "translateY(0)" }, "50%": { transform: "translateY(-10px)" } },
-        blob: { "0%,100%": { transform: "translate(0,0) scale(1)" }, "50%": { transform: "translate(24px,-18px) scale(1.06)" } },
       },
       animation: {
         fadeUp: "fadeUp .6s ease both",
         floaty: "floaty 5s ease-in-out infinite",
-        blob: "blob 9s ease-in-out infinite",
       },
     },
   },

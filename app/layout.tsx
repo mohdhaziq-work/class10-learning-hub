@@ -1,34 +1,40 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import "./smart-board/board.css";
+
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
+const jetbrains = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: { default: "Class 10 Learning Hub — Smart Learning + Smart Board", template: "%s — Class 10 Learning Hub" },
-  description: "Class 10 all subjects chapter-wise: slides, mind maps, flow charts, formulas, quizzes, AI subject + advanced Smart Board. Free forever, works on every device.",
-  keywords: ["class 10", "NCERT", "CBSE", "smart board", "maths", "science", "SST", "english", "hindi", "artificial intelligence", "KIPS", "mind maps", "quiz"],
-  authors: [{ name: "Class 10 Learning Hub" }],
-  openGraph: {
-    title: "Class 10 Learning Hub", type: "website",
-    description: "Smart learning + Smart Board — 6 subjects, 100+ chapters, free forever.",
+  metadataBase: new URL("https://class10-learning-hub.onrender.com"),
+  title: {
+    default: "Class 10 Learning Hub — Smart Learning, Free Forever",
+    template: "%s · Class 10 Learning Hub",
   },
-  manifest: "/manifest.webmanifest",
+  description:
+    "Free Class 10 study hub: smart slides, mind maps, quizzes and PYQs for Maths, Science, SST, English, Hindi and AI — plus an advanced Smart Board for classrooms.",
+  keywords: ["class 10", "NCERT", "CBSE", "smart board", "maths", "science", "free study", "AI CBSE 417"],
   icons: { icon: "/favicon.svg" },
+  manifest: "/manifest.webmanifest",
+  themeColor: "#111111",
+  openGraph: {
+    title: "Class 10 Learning Hub",
+    description: "Smart slides, quizzes and a classroom Smart Board. Free forever.",
+    type: "website",
+  },
 };
-
-export const viewport: Viewport = { themeColor: "#0b57d0", width: "device-width", initialScale: 1 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable}`}>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('c10-theme')||'light';if(t==='dark')document.documentElement.classList.add('dark')}catch(e){}})()` }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('c10-theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}})()`,
+          }}
+        />
       </head>
-      <body className="font-sans bg-gbg text-ink dark:bg-[#131314] dark:text-[#e3e3e3] antialiased">
-        {children}
-      </body>
+      <body className="font-sans">{children}</body>
     </html>
   );
 }

@@ -1,4 +1,4 @@
-/* Firebase config — env se. Bina env ke site local-first mode me 100% chalegi. */
+/* Firebase config — from env. Without env the site runs 100% in local-first mode. */
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "",

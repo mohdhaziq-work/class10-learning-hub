@@ -52,7 +52,7 @@ export function overallPct(): { done: number; total: number } {
   return { done: Object.keys(p).length, total };
 }
 
-/* Cloud se ek baar merge (local jeetta hai — classroom me wahi sahi) */
+/* One-time merge from cloud (local wins — that is correct for classrooms) */
 export function mergeCloudOnce() {
   if (typeof window === "undefined") return;
   if (sessionStorage.getItem("c10-cloud-merged")) return;

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { chapterDetail, autoDetail } from "@/lib/content";
 import { getChapter } from "@/lib/syllabus";
 
-/* GET /api/content/maths-0-0 → chapter detail (built-in ya auto fallback) */
+/* GET /api/content/maths-0-0 → chapter detail (built-in or auto fallback) */
 export async function GET(_req: Request, { params }: { params: { key: string } }) {
   const [s, g, c] = params.key.split("-");
   const found = getChapter(s, parseInt(g || "0", 10), parseInt(c || "0", 10));

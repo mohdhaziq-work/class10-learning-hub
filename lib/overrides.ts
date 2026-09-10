@@ -1,5 +1,5 @@
 "use client";
-/* Teacher content overrides — Admin panel se save hota hai.
+/* Teacher content overrides — saved from the Admin panel.
    Priority: Firestore remote > localStorage > built-in content. */
 import { useEffect, useState } from "react";
 import type { ChapterDetail } from "./content";
@@ -34,7 +34,7 @@ export function deleteOverride(key: string) {
   localStorage.setItem(KEY, JSON.stringify(all));
 }
 
-/* Chapter page ke liye merged detail: built-in + local + remote */
+/* Merged detail for chapter pages: built-in + local + remote */
 export function useMergedDetail(key: string, builtin: ChapterDetail | null) {
   const [detail, setDetail] = useState<ChapterDetail | null>(() => getLocalOverride(key) || builtin);
   const [source, setSource] = useState<"builtin" | "local" | "cloud">(

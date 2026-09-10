@@ -620,12 +620,12 @@ export class BoardEngine {
     else if (ext === "docx") this.openDocx(file);
     else if (["txt", "md"].includes(ext)) this.openText(file);
     else if (["png", "jpg", "jpeg", "webp", "gif", "bmp"].includes(ext)) this.openImage(file);
-    else this.toast("Ye file type support nahi: " + ext);
+    else this.toast("File type not supported: " + ext);
     if (this.layout === "board") this.setLayout("split");
   }
 
   private async openPdf(file: File) {
-    this.setDocEmpty(true, `<h2>PDF khul rahi hai…</h2><p>${file.name}</p>`);
+    this.setDocEmpty(true, `<h2>Opening PDF…</h2><p>${file.name}</p>`);
     try {
       const buf = await file.arrayBuffer();
       this.pdfDoc = await (pdfjsLib as any).getDocument({ data: buf }).promise;
@@ -636,10 +636,10 @@ export class BoardEngine {
       for (let n = 1; n <= this.totalPages; n++) this.buildPageShell(n);
       this.buildThumbs();
       this.currentPage = 1; this.updatePgLabel();
-      this.toast(`${this.totalPages} pages loaded — likhna shuru karo!`);
+      this.toast(`${this.totalPages} pages loaded — start writing!`);
     } catch (err) {
       console.error(err);
-      this.setDocEmpty(true, `<h2>PDF nahi khuli</h2><p>File corrupt ho sakti hai. Doosri file try karo.</p>`);
+      this.setDocEmpty(true, `<h2>Could not open PDF</h2><p>The file may be corrupt. Try another file.</p>`);
     }
   }
 
@@ -854,7 +854,7 @@ export class BoardEngine {
   }
 
   private async openDocx(file: File) {
-    this.setDocEmpty(true, `<h2>DOCX khul rahi hai…</h2>`);
+    this.setDocEmpty(true, `<h2>Opening DOCX…</h2>`);
     try {
       const mammoth = ((await import("mammoth/mammoth.browser")) as any).default || ((await import("mammoth/mammoth.browser")) as any);
       const buf = await file.arrayBuffer();
@@ -863,10 +863,10 @@ export class BoardEngine {
       this.totalPages = 1; this.currentPage = 1;
       this.setDocEmpty(false);
       this.mountHtmlDoc(res.value || "<p><i>Khaali document</i></p>");
-      this.updatePgLabel(); this.toast("DOCX ready — highlight aur likho!");
+      this.updatePgLabel(); this.toast("DOCX ready — highlight and write!");
     } catch (err) {
       console.error(err);
-      this.setDocEmpty(true, `<h2>DOCX nahi khuli</h2><p>.doc (purana format) ko pehle .docx me save karo.</p>`);
+      this.setDocEmpty(true, `<h2>Could not open DOCX</h2><p>Save old .doc files as .docx first.</p>`);
     }
   }
 
@@ -888,9 +888,9 @@ export class BoardEngine {
       this.totalPages = 1; this.currentPage = 1;
       this.setDocEmpty(false);
       this.mountHtmlDoc(`<img src="${url}" style="width:100%;display:block;border-radius:4px">`);
-      this.updatePgLabel(); this.toast("Image ready — us par draw karo!");
+      this.updatePgLabel(); this.toast("Image ready — draw on it!");
     };
-    img.onerror = () => this.toast("Image nahi khuli");
+    img.onerror = () => this.toast("Could not open the image");
     img.src = url;
   }
 
@@ -1049,7 +1049,7 @@ export class BoardEngine {
       this.setTool("shape"); this.paintShapeGrid();
       (this.$("#shapePop") as HTMLElement).classList.remove("show");
       (this.$("#toolShapes") as HTMLElement).classList.add("on");
-      this.toast("Shape: " + this.shape + " — drag karke banao");
+      this.toast("Shape: " + this.shape + " — drag to draw");
     };
     this.on(document, "click", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
@@ -1068,12 +1068,12 @@ export class BoardEngine {
 
     this.$("#toolClear").onclick = () => {
       const isBoard = this.active.kind !== "doc";
-      if (!confirm(isBoard ? "Whiteboard ka saara kaam delete karein?" : `Page ${this.active.page} ki saari drawing delete karein?`)) return;
+      if (!confirm(isBoard ? "Delete all whiteboard work?" : `Delete all drawings on page ${this.active.page}?`)) return;
       const st = this.activeStore();
       st.pushHistory(); st.objects = [];
       this.editingObj = null; this.selected = null;
       if (isBoard) this.renderBoard(); else this.refreshAnnot(this.active.page || 1);
-      this.scheduleSave(); this.toast("Saaf ho gaya");
+      this.scheduleSave(); this.toast("Cleared");
     };
 
     this.$("#btnUndo").onclick = () => this.doUndo();
@@ -1109,11 +1109,11 @@ export class BoardEngine {
 
     this.$("#btnFull").onclick = () => {
       if (document.fullscreenElement) document.exitFullscreen();
-      else document.documentElement.requestFullscreen().catch(() => this.toast("Fullscreen allow nahi hua"));
+      else document.documentElement.requestFullscreen().catch(() => this.toast("Fullscreen not allowed"));
     };
     this.$("#btnSave").onclick = () => {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Save ho gaya"); }
-      catch { this.toast("Save fail — board me badi images hain"); }
+      try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
+      catch { this.toast("Save failed — the board has large images"); }
     };
     this.$("#btnWidgets").onclick = () => { this.openModal("mClass"); this.renderAttendance(); };
     this.$("#btnExport").onclick = () => this.openModal("mExport");
@@ -1132,7 +1132,7 @@ export class BoardEngine {
       this.selected = null;
       if (this.active.kind === "doc") this.refreshAnnot(this.active.page || 1); else this.renderBoard();
       this.scheduleSave();
-    } else this.toast("Undo ke liye kuch nahi");
+    } else this.toast("Nothing to undo");
   }
   private doRedo() {
     const st = this.activeStore();
@@ -1140,7 +1140,7 @@ export class BoardEngine {
       this.selected = null;
       if (this.active.kind === "doc") this.refreshAnnot(this.active.page || 1); else this.renderBoard();
       this.scheduleSave();
-    } else this.toast("Redo ke liye kuch nahi");
+    } else this.toast("Nothing to redo");
   }
 
   /* ==========================================================================
@@ -1186,7 +1186,7 @@ export class BoardEngine {
     /* text */
     this.$("#textOk").onclick = () => {
       const v = ((this.$("#textInput") as HTMLTextAreaElement).value || "").trim();
-      if (!v) { this.toast("Pehle kuch likho!"); return; }
+      if (!v) { this.toast("Write something first!"); return; }
       const fs = +(this.$("#textSize") as HTMLInputElement).value;
       if (this.editingObj) {
         this.editingObj.store.pushHistory();
@@ -1215,7 +1215,7 @@ export class BoardEngine {
     /* sticky */
     this.$("#stickyOk").onclick = () => {
       const v = ((this.$("#stickyInput") as HTMLTextAreaElement).value || "").trim();
-      if (!v) { this.toast("Note khaali hai!"); return; }
+      if (!v) { this.toast("Note is empty!"); return; }
       if (this.editingObj) {
         this.editingObj.store.pushHistory();
         this.editingObj.obj.text = v; this.editingObj.obj.bg = this.stickyColor;
@@ -1257,7 +1257,7 @@ export class BoardEngine {
         this.closeModal(this.$("#mGraph"));
         if (this.layout === "doc") this.setLayout("split");
         this.setActive("board", null);
-        this.toast("Graph board par aa gaya!");
+        this.toast("Graph added to the board!");
       };
       img.src = url;
     };
@@ -1280,7 +1280,7 @@ export class BoardEngine {
     const expr = ((this.$("#graphFn") as HTMLInputElement).value || "").trim() || "x";
     let f: (x: number, m: typeof Math) => number;
     try { f = safeFn(expr); f(0, Math); }
-    catch { ctx.fillStyle = "#f87171"; ctx.font = "15px sans-serif"; ctx.fillText("Function samajh nahi aaya — e.g. x*x-4", 20, 30); return false; }
+    catch { ctx.fillStyle = "#f87171"; ctx.font = "15px sans-serif"; ctx.fillText("Could not parse function — e.g. x*x-4", 20, 30); return false; }
     ctx.strokeStyle = (this.$("#graphColor") as HTMLSelectElement).value;
     ctx.lineWidth = 3; ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 8;
     ctx.beginPath();
@@ -1329,7 +1329,7 @@ export class BoardEngine {
   private renderAttendance() {
     const box = this.$("#attList") as HTMLElement;
     const names = this.attNames();
-    box.innerHTML = names.length ? "" : `<p style="color:var(--sb-muted)">Pehle Picker me naam likho — wahi list yahan aayegi.</p>`;
+    box.innerHTML = names.length ? "" : `<p style="color:var(--sb-muted)">Add names in the Picker first — the same list appears here.</p>`;
     names.forEach((n) => {
       const lb = document.createElement("label");
       const cb = document.createElement("input");
@@ -1366,7 +1366,7 @@ export class BoardEngine {
           if (this.timerInt) clearInterval(this.timerInt);
           this.timerInt = null;
           (this.$("#timerStart") as HTMLElement).textContent = "Start";
-          this.beep(); this.toast("Time khatm!");
+          this.beep(); this.toast("Time's up!");
         }
       }, 1000);
     };
@@ -1379,7 +1379,7 @@ export class BoardEngine {
     };
     this.$("#pickerGo").onclick = () => {
       const names = this.attNames();
-      if (!names.length) { this.toast("Pehle naam likho!"); return; }
+      if (!names.length) { this.toast("Add names first!"); return; }
       let n = 0;
       const iv = setInterval(() => {
         (this.$("#pickerName") as HTMLElement).textContent = " " + names[Math.floor(Math.random() * names.length)];
@@ -1410,23 +1410,23 @@ export class BoardEngine {
       this.boardStore.objects.forEach((o) => drawObject(ctx, o));
       ctx.restore();
       this.download(cv.toDataURL("image/png"), "smart-board.png");
-      this.toast("Board PNG download ho gaya");
+      this.toast("Board PNG downloaded");
     };
     this.$("#exPagePng").onclick = () => {
-      if (!this.doc || this.doc.kind !== "pdf") { this.toast("Pehle PDF kholo"); return; }
+      if (!this.doc || this.doc.kind !== "pdf") { this.toast("Open a PDF first"); return; }
       const pg = this.pages.find((p) => p.num === this.currentPage);
-      if (!pg || !pg.rendered) { this.toast("Page abhi load ho raha hai"); return; }
+      if (!pg || !pg.rendered) { this.toast("Page is still loading"); return; }
       const cv = document.createElement("canvas");
       cv.width = pg.base.width; cv.height = pg.base.height;
       const ctx = cv.getContext("2d")!;
       ctx.drawImage(pg.base, 0, 0); ctx.drawImage(pg.annot, 0, 0);
       this.download(cv.toDataURL("image/png"), `page-${this.currentPage}.png`);
-      this.toast(`Page ${this.currentPage} PNG download ho gaya`);
+      this.toast(`Page ${this.currentPage} PNG downloaded`);
     };
     this.$("#exJson").onclick = () => {
       const data = this.collectSession();
       this.download("data:application/json;charset=utf-8,"+ encodeURIComponent(JSON.stringify(data)), "smart-board-session.json");
-      this.toast("Session download ho gaya");
+      this.toast("Session downloaded");
     };
     this.$("#exImportBtn").onclick = () => (this.$("#exImport") as HTMLInputElement).click();
     this.$("#exImport").onchange = (e: Event) => {
@@ -1434,14 +1434,14 @@ export class BoardEngine {
       const f = inp.files?.[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = () => {
-        try { this.applySession(JSON.parse(String(rd.result))); this.toast("Session load ho gaya!"); }
-        catch { this.toast("File samajh nahi aayi"); }
+        try { this.applySession(JSON.parse(String(rd.result))); this.toast("Session loaded!"); }
+        catch { this.toast("Could not read the file"); }
       };
       rd.readAsText(f); inp.value = "";
     };
     this.$("#exPrint").onclick = () => window.print();
     this.$("#exWipe").onclick = () => {
-      if (!confirm("SAAARA kaam (board + PDF drawings + lists) delete ho jayega. Pakka?")) return;
+      if (!confirm("EVERYTHING (board + PDF drawings + lists) will be deleted. Sure?")) return;
       this.boardStore.objects = []; this.boardStore.undo = []; this.boardStore.redo = [];
       Object.keys(this.docStores).forEach((k) => delete this.docStores[k]);
       this.attendance = {}; (this.$("#pickerList") as HTMLTextAreaElement).value = "";
@@ -1450,7 +1450,7 @@ export class BoardEngine {
       this.pages.forEach((p) => { if (p.rendered) this.redrawAnnot(p); });
       this.redrawHtmlAnnot();
       this.closeModal(this.$("#mExport"));
-      this.toast("Sab delete ho gaya");
+      this.toast("Everything deleted");
     };
   }
 
@@ -1496,7 +1496,7 @@ export class BoardEngine {
       if (!prev) return;
       this.applySession(prev);
       if ((prev.board && prev.board.length) || prev.names) {
-        setTimeout(() => { if (!this.destroyed) this.toast("Pichhla kaam wapas mil gaya!"); }, 600);
+        setTimeout(() => { if (!this.destroyed) this.toast("Previous work restored!"); }, 600);
       }
     } catch { /* noop */ }
   }

@@ -4,13 +4,13 @@ import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Smart Board",
-  description: "Advanced classroom smart board: PDF/DOCX kholo, annotate karo, split whiteboard, maths graph plotter. Free.",
+  description: "Advanced classroom smart board: open PDFs, annotate, split whiteboard, maths graph plotter. Free.",
 };
 
 function Loading() {
   return (
     <div style={{ height: "100vh", display: "grid", placeItems: "center", background: "#0b1020", color: "#eef1ff", fontSize: 18, fontWeight: 700 }}>
-      <span className="animate-pulse">Smart Board load ho raha hai…</span>
+      <span className="animate-pulse">Loading Smart Board…</span>
     </div>
   );
 }
