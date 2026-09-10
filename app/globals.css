@@ -5,7 +5,6 @@
 /* ---------- base ---------- */
 html { scroll-behavior: smooth; }
 body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLegibility; }
-.dark body, .dark { background: #0d1117; }
 ::selection { background: #1a73e8; color: #fff; }
 
 .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
@@ -22,14 +21,12 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 /* filter chips */
 .chip-f { @apply inline-flex items-center gap-1.5 font-semibold text-[13.5px] px-4 py-2 rounded-full border border-slate-300 dark:border-[#30363d] bg-white dark:bg-[#161b22] text-ink-soft dark:text-slate-300 cursor-pointer transition whitespace-nowrap hover:border-slate-500; }
 .chip-f.on { @apply text-white border-transparent; background: #141414; }
-.dark .chip-f.on { background: #e6edf3; color: #0d1117; }
 
 /* eyebrow label */
 .eyebrow { @apply font-mono text-[11.5px] font-semibold uppercase tracking-[.18em] text-ink-mute dark:text-slate-400; }
 
 /* ---------- slides ---------- */
 .slide-stage { background: #fff; color: #141414; border: 1px solid #e5e7eb; border-radius: 20px; padding: clamp(24px, 4vw, 48px); min-height: 340px; position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08); }
-.dark .slide-stage { background: #161b22; color: #e6edf3; border-color: #30363d; }
 .slide-stage::before { content: ""; position: absolute; inset: 0; background: radial-gradient(600px 200px at 85% -40px, rgba(26,115,232,.07), transparent); pointer-events: none; }
 .slide-stage:fullscreen { border-radius: 0; display: flex; flex-direction: column; justify-content: center; }
 .slide-kicker { @apply font-mono text-[11.5px] font-semibold uppercase tracking-[.18em] text-ink-mute dark:text-slate-400 relative; }
@@ -38,19 +35,15 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 .slide-points li { padding-left: 28px; position: relative; }
 .slide-points li::before { content: ""; position: absolute; left: 2px; top: .62em; width: 7px; height: 7px; border-radius: 99px; background: #1a73e8; }
 .formula-big { font-family: "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace; background: #f6f8fa; border: 1px solid #e5e7eb; color: #141414; border-radius: 12px; padding: 12px 18px; display: inline-block; margin-top: 16px; font-size: clamp(14px, 2.2vw, 18px); font-weight: 600; }
-.dark .formula-big { background: #0d1117; border-color: #30363d; color: #e6edf3; }
 
 /* ---------- mindmap ---------- */
 .mm-wrap { overflow-x: auto; padding: 10px 4px; }
 .mm { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 640px; }
 .mm-center { background: #141414; color: #fff; font-weight: 800; padding: 14px 30px; border-radius: 16px; font-size: 18px; text-align: center; max-width: 440px; letter-spacing: -0.01em; }
-.dark .mm-center { background: #e6edf3; color: #0d1117; }
 .mm-trunk { width: 3px; height: 24px; background: #d1d5db; border-radius: 4px; }
 .mm-branches { display: flex; gap: 14px; width: 100%; justify-content: center; align-items: stretch; }
 .mm-branch { flex: 1; border-radius: 16px; padding: 14px; min-width: 0; border: 1.5px solid var(--bc, #1a73e8); background: #fff; }
-.dark .mm-branch { background: #161b22; }
 .mm-branch h4 { margin: 0 0 8px; color: var(--bc, #1a73e8); font-size: 14.5px; border-bottom: 1.5px dashed #e5e7eb; padding-bottom: 7px; font-weight: 800; }
-.dark .mm-branch h4 { border-color: #30363d; }
 .mm-branch ul { margin: 0; padding-left: 18px; font-size: 13.5px; display: grid; gap: 5px; }
 
 /* ---------- formula cards ---------- */
@@ -59,7 +52,6 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 /* ---------- scrollbars ---------- */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-thumb { background: #c9ced6; border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
-.dark *::-webkit-scrollbar-thumb { background: #30363d; border: 2px solid transparent; background-clip: content-box; }
 *::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- print ---------- */
