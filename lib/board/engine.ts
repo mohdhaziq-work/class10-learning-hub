@@ -7,6 +7,8 @@ import * as pdfjsLib from "pdfjs-dist";
 import QRCode from "qrcode";
 
 export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
+import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
+
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
 
 function uid(): string { return "o" + Math.random().toString(36).slice(2, 9); }
@@ -243,6 +245,8 @@ export class BoardEngine {
   /* board canvas */
   private boardScroll!: HTMLElement; private boardCanvas!: HTMLCanvasElement; private bctx!: CanvasRenderingContext2D;
   private boardW = 800; private boardH = 600; private DPR = 1;
+  private replayN: number | null = null; private replayTimer: ReturnType<typeof setInterval> | null = null;
+  private shapeAI = true; private funWired = false;
   private boardDraft: BoardObject | null = null;
   private selected: { surface: "board" | "doc"; page?: number; obj: BoardObject } | null = null;
   private dragSel: any = null; private pinch: { d: number; z: number } | null = null;
@@ -391,7 +395,7 @@ export class BoardEngine {
     this.drawBoardPattern(ctx, z, px, py);
     ctx.save();
     ctx.translate(px, py); ctx.scale(z, z);
-    this.boardStore.objects.forEach((o) => drawObject(ctx, o));
+    (this.replayN === null ? this.boardStore.objects : this.boardStore.objects.slice(0, this.replayN)).forEach((o) => drawObject(ctx, o));
     if (this.boardDraft) drawObject(ctx, this.boardDraft);
     ctx.restore();
     if (this.selected && this.selected.surface === "board") {
@@ -523,6 +527,7 @@ export class BoardEngine {
       return;
     }
     if (tool === "laser") return;
+    if (tool === "spotlight") { if (phase !== "up" && e) this.moveSpot(e.clientX, e.clientY); return; }
     if (tool === "text" || tool === "sticky") {
       if (phase === "down" && w) { this.pendingAnchor = { surface: "board", x: w.x, y: w.y }; this.openModal(tool === "text" ? "mText" : "mSticky"); }
       return;
@@ -548,7 +553,17 @@ export class BoardEngine {
     } else if (phase === "up" && this.boardDraft) {
       if (this.boardDraft.type === "shape" && Math.abs((this.boardDraft.x2 || 0) - (this.boardDraft.x1 || 0)) < 4 && Math.abs((this.boardDraft.y2 || 0) - (this.boardDraft.y1 || 0)) < 4) {
         this.boardStore.undo.pop();
-      } else this.boardStore.objects.push(this.boardDraft);
+      } else {
+        this.boardStore.objects.push(this.boardDraft);
+        if (this.shapeAI && this.boardDraft.type === "stroke" && this.boardDraft.tool === "pen" && (this.boardDraft.points?.length || 0) > 12) {
+          const rec = recognizeShape(this.boardDraft.points!);
+          if (rec) this.boardStore.objects[this.boardStore.objects.length - 1] = {
+            id: this.boardDraft.id, type: "shape", shape: rec.shape,
+            x1: rec.x1, y1: rec.y1, x2: rec.x2, y2: rec.y2,
+            color: this.boardDraft.color, size: Math.max(this.boardDraft.size || 4, 3), opacity: this.boardDraft.opacity,
+          };
+        }
+      }
       this.boardDraft = null; this.renderBoard(); this.scheduleSave();
     }
   }
@@ -613,6 +628,54 @@ export class BoardEngine {
       this.docZoom = 1; this.$("#zoomLbl").textContent = "100%";
       if (this.doc?.kind === "pdf") this.computeFit(); else this.applyHtmlZoom();
     };
+    this.$("#btnFitBoard").onclick = () => {
+      const f = fitBoard(this.boardStore.objects, this.boardW, this.boardH);
+      if (!f) { this.toast("Draw something first"); return; }
+      this.boardZoom = f.zoom; this.boardPan.x = f.x; this.boardPan.y = f.y; this.renderBoard();
+    };
+    this.$("#btnReplay").onclick = () => this.openReplay();
+    this.$("#btnTemplates").onclick = () => this.openModal("mTemplates");
+    const rSlider = this.$("#replaySlider") as HTMLInputElement;
+    rSlider.oninput = () => { this.stopReplayTimer(); this.replayN = +rSlider.value; this.updateReplayPos(); this.renderBoard(); };
+    this.$("#replayPlay").onclick = () => {
+      if (this.replayTimer) { this.stopReplayTimer(); (this.$("#replayPlay") as HTMLElement).textContent = "Play"; return; }
+      const speed = +((this.$("#replaySpeed") as HTMLSelectElement).value || 14);
+      let i = this.replayN ?? 0;
+      if (i >= this.boardStore.objects.length) i = 0;
+      (this.$("#replayPlay") as HTMLElement).textContent = "Pause";
+      this.replayTimer = setInterval(() => {
+        i = Math.min(this.boardStore.objects.length, i + 1);
+        this.replayN = i; rSlider.value = String(i); this.updateReplayPos(); this.renderBoard();
+        if (i >= this.boardStore.objects.length) { this.stopReplayTimer(); (this.$("#replayPlay") as HTMLElement).textContent = "Play"; }
+      }, Math.max(16, Math.round(1000 / speed)));
+    };
+    this.$("#replayClose").onclick = () => { this.closeModal(this.$("#mReplay") as HTMLElement); this.stopReplay(); };
+    const calcOut = this.$("#calcOut") as HTMLElement;
+    let calcExpr = "";
+    this.$all("#calcGrid button").forEach((b: HTMLElement) => (b.onclick = () => {
+      const k = b.dataset.k || "";
+      if (k === "C") calcExpr = "";
+      else if (k === "DEL") calcExpr = calcExpr.slice(0, -1);
+      else if (k === "=") {
+        try {
+          const safe = calcExpr.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
+          if (!/^[0-9+\-*/(). ]*$/.test(safe) || !safe.trim()) throw new Error("bad");
+          const v = Function(`"use strict"; return (${safe})`)();
+          calcExpr = typeof v === "number" && isFinite(v) ? String(Math.round(v * 1e10) / 1e10) : "Error";
+        } catch { calcExpr = "Error"; }
+      } else calcExpr += k;
+      calcOut.textContent = calcExpr || "0";
+    }));
+    this.$("#btnCalc").onclick = () => { calcOut.textContent = calcExpr || "0"; this.openModal("mCalc"); };
+    this.$all("#tplGrid button").forEach((b: HTMLElement) => (b.onclick = () => {
+      const tpl = TEMPLATES.find((t) => t.id === b.dataset.tpl);
+      if (!tpl) return;
+      this.boardStore.pushHistory();
+      this.boardStore.objects.push(...tpl.build(this.boardW, this.boardH));
+      this.closeModal(this.$("#mTemplates") as HTMLElement);
+      this.setLayout("board"); this.renderBoard(); this.scheduleSave();
+      this.toast(`Template added: ${tpl.name}`);
+    }));
   }
 
   private openFile(file: File) {
@@ -1144,6 +1207,8 @@ export class BoardEngine {
   private setTool(t: string) {
     this.tool = t;
     this.$all("#rail .tool[data-tool]").forEach((b: HTMLElement) => b.classList.toggle("on", b.dataset.tool === t));
+    const sp = this.$("#spotOverlay") as HTMLElement | null;
+    if (sp && t !== "spotlight") sp.style.display = "none";
     (this.$("#toolShapes") as HTMLElement).classList.toggle("on", !["select", "pan", "pen", "highlighter", "eraser", "text", "sticky", "laser"].includes(t));
     this.boardCanvas.style.cursor = t === "pan" ? "grab" : t === "select" ? "default" : t === "laser" ? "none" : "crosshair";
     this.hidePops();
@@ -1251,7 +1316,7 @@ export class BoardEngine {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
       catch { this.toast("Save failed — the board has large images"); }
     };
-    this.$("#btnWidgets").onclick = () => { this.openModal("mClass"); this.renderAttendance(); };
+    this.$("#btnWidgets").onclick = () => { this.openModal("mClass"); this.renderAttendance(); this.wireFunOnce(); };
     this.$("#btnExport").onclick = () => this.openModal("mExport");
   }
 
@@ -1325,6 +1390,8 @@ export class BoardEngine {
   }
   private wireLaser() {
     this.on(window, "pointermove", (e: PointerEvent) => {
+      if (this.tool === "spotlight") this.moveSpot(e.clientX, e.clientY);
+      else { const sp = this.$("#spotOverlay") as HTMLElement | null; if (sp && sp.style.display !== "none") sp.style.display = "none"; }
       if (this.tool !== "laser") { this.laserDot.style.display = "none"; return; }
       this.laserDot.style.display = "block";
       this.laserDot.style.left = e.clientX + "px"; this.laserDot.style.top = e.clientY + "px";
@@ -1333,6 +1400,100 @@ export class BoardEngine {
     this.on(window, "pointerdown", (e: PointerEvent) => {
       if (this.tool === "laser") this.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
     });
+  }
+
+  /* ==================== Replay / Spotlight / Fun ==================== */
+  private moveSpot(cx: number, cy: number) {
+    const sp = this.$("#spotOverlay") as HTMLElement | null;
+    if (sp) { sp.style.display = "block"; sp.style.setProperty("--sx", cx + "px"); sp.style.setProperty("--sy", cy + "px"); }
+  }
+  private openReplay() {
+    this.stopReplay();
+    const n = this.boardStore.objects.length;
+    const slider = this.$("#replaySlider") as HTMLInputElement;
+    slider.max = String(n); slider.value = String(n);
+    this.replayN = n; this.updateReplayPos(); this.renderBoard();
+    this.openModal("mReplay");
+  }
+  private updateReplayPos() {
+    (this.$("#replayPos") as HTMLElement).textContent = `${this.replayN ?? 0} / ${this.boardStore.objects.length}`;
+  }
+  private stopReplayTimer() { if (this.replayTimer) { clearInterval(this.replayTimer); this.replayTimer = null; } }
+  private stopReplay() {
+    this.stopReplayTimer();
+    const btn = this.$("#replayPlay") as HTMLElement | null;
+    if (btn) btn.textContent = "Play";
+    if (this.replayN !== null) { this.replayN = null; this.renderBoard(); }
+  }
+  private wireFunOnce() {
+    if (this.funWired) return; this.funWired = true;
+    this.$("#btnDice").onclick = () => {
+      let t = 0;
+      const iv = setInterval(() => {
+        t++;
+        (this.$("#die1") as HTMLElement).textContent = String(1 + Math.floor(Math.random() * 6));
+        (this.$("#die2") as HTMLElement).textContent = String(1 + Math.floor(Math.random() * 6));
+        if (t > 12) {
+          clearInterval(iv); confettiBurst(this.root);
+          this.toast(`Dice: ${(this.$("#die1") as HTMLElement).textContent} + ${(this.$("#die2") as HTMLElement).textContent}`);
+        }
+      }, 65);
+    };
+    this.$("#btnSpin").onclick = () => this.spinWheel();
+    let sa = +(localStorage.getItem("sb.score.a") || 0), sb = +(localStorage.getItem("sb.score.b") || 0);
+    const paint = () => {
+      (this.$("#scA") as HTMLElement).textContent = String(sa);
+      (this.$("#scB") as HTMLElement).textContent = String(sb);
+    };
+    const keep = () => { localStorage.setItem("sb.score.a", String(sa)); localStorage.setItem("sb.score.b", String(sb)); };
+    this.$("#scAplus").onclick = () => { sa++; keep(); paint(); };
+    this.$("#scAminus").onclick = () => { sa--; keep(); paint(); };
+    this.$("#scBplus").onclick = () => { sb++; keep(); paint(); };
+    this.$("#scBminus").onclick = () => { sb--; keep(); paint(); };
+    this.$("#scReset").onclick = () => { sa = 0; sb = 0; keep(); paint(); };
+    paint();
+  }
+  private spinWheel() {
+    const cv = this.$("#spinCanvas") as HTMLCanvasElement;
+    const ctx = cv.getContext("2d"); if (!ctx) return;
+    const raw = (this.$("#pickerList") as HTMLTextAreaElement).value.split("\n").map((s) => s.trim()).filter(Boolean);
+    const names = raw.length ? raw : ["1", "2", "3", "4", "5", "6"];
+    const n = names.length, cx = 120, cy = 120, R = 112, seg = (Math.PI * 2) / n;
+    const draw = (rot: number, hi: number) => {
+      ctx.clearRect(0, 0, 240, 240);
+      for (let i = 0; i < n; i++) {
+        const a0 = rot + i * seg, a1 = rot + (i + 1) * seg;
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, a0, a1); ctx.closePath();
+        ctx.fillStyle = i % 2 ? "#f1f4f9" : "#ffffff"; ctx.fill();
+        ctx.strokeStyle = "#e5e7eb"; ctx.stroke();
+        ctx.save(); ctx.translate(cx, cy); ctx.rotate((a0 + a1) / 2);
+        ctx.fillStyle = "#141414"; ctx.font = "700 13px Inter, system-ui, sans-serif"; ctx.textAlign = "right";
+        ctx.fillText(names[i].slice(0, 14), R - 12, 5); ctx.restore();
+      }
+      if (hi >= 0) {
+        ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, rot + hi * seg, rot + (hi + 1) * seg); ctx.closePath();
+        ctx.fillStyle = "rgba(26,115,232,.25)"; ctx.fill();
+      }
+      ctx.beginPath(); ctx.moveTo(cx, cy - R - 2); ctx.lineTo(cx - 10, cy - R - 20); ctx.lineTo(cx + 10, cy - R - 20); ctx.closePath();
+      ctx.fillStyle = "#1a73e8"; ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fillStyle = "#141414"; ctx.fill();
+    };
+    draw(0, -1);
+    const rot0 = Math.random() * Math.PI * 2;
+    const total = 5 + Math.random() * 3, dur = 3200, t0 = performance.now();
+    const anim = (t: number) => {
+      const p = Math.min(1, (t - t0) / dur);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const r = rot0 + total * Math.PI * 2 * ease;
+      draw(r, -1);
+      if (p < 1) requestAnimationFrame(anim);
+      else {
+        let norm = (-Math.PI / 2 - r) % (Math.PI * 2); if (norm < 0) norm += Math.PI * 2;
+        const idx = Math.floor(norm / seg) % n;
+        draw(r, idx); confettiBurst(this.root); this.toast(`Spinner: ${names[idx]}`);
+      }
+    };
+    requestAnimationFrame(anim);
   }
 
   /* ==========================================================================
@@ -1508,11 +1669,11 @@ export class BoardEngine {
   }
 
   private wireWidgets() {
-    const tabs: Record<string, string> = { tabTimer: "paneTimer", tabPicker: "panePicker", tabAtt: "paneAtt" };
+    const tabs: Record<string, string> = { tabTimer: "paneTimer", tabPicker: "panePicker", tabAtt: "paneAtt", tabFun: "paneFun" };
     Object.keys(tabs).forEach((id) => {
       this.$("#" + id).onclick = () => {
-        Object.keys(tabs).forEach((k) => { (this.$("#" + k) as HTMLElement).classList.remove("primary"); (this.$("#" + tabs[k]) as HTMLElement).style.display = "none"; });
-        (this.$("#" + id) as HTMLElement).classList.add("primary");
+        Object.keys(tabs).forEach((k) => { (this.$("#" + k) as HTMLElement).classList.remove("on"); (this.$("#" + tabs[k]) as HTMLElement).style.display = "none"; });
+        (this.$("#" + id) as HTMLElement).classList.add("on");
         (this.$("#" + tabs[id]) as HTMLElement).style.display = "block";
       };
     });
@@ -1889,7 +2050,7 @@ export class BoardEngine {
         return;
       }
       const k = e.key.toLowerCase();
-      const map: Record<string, string> = { v: "select", h: "pan", p: "pen", m: "highlighter", e: "eraser", t: "text", s: "sticky" };
+      const map: Record<string, string> = { v: "select", h: "pan", p: "pen", m: "highlighter", e: "eraser", t: "text", s: "sticky", o: "spotlight" };
       if (map[k]) { this.setTool(map[k]); return; }
       if (k === "l") { this.shape = "line"; this.setTool("shape"); this.paintShapeGrid(); }
       else if (k === "r") { this.shape = "rect"; this.setTool("shape"); this.paintShapeGrid(); }
@@ -1912,7 +2073,7 @@ export class BoardEngine {
       }
       else if (e.key === "[") this.gotoBoardPage(this.boardPage - 1);
       else if (e.key === "]") this.gotoBoardPage(this.boardPage + 1);
-      else if (e.key === "Escape") { this.$all(".modal.show").forEach((m: HTMLElement) => this.closeModal(m)); this.hidePops(); this.stopUpPoll(); }
+      else if (e.key === "Escape") { this.$all(".modal.show").forEach((m: HTMLElement) => this.closeModal(m)); this.hidePops(); this.stopUpPoll(); this.stopReplay(); }
     });
   }
 }

@@ -76,12 +76,14 @@ export default function SmartBoard() {
           <button className="sb-btn" id="btnOpen" title="Open PDF / DOCX / TXT / Image"><Icon name="folder" size={16} /> Open</button>
           <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
           <span className="sb-file" id="fileName">No file open — or drag &amp; drop</span>
+          <button className="sb-btn" id="btnTemplates" title="Ready-made lesson templates — mind map, kanban, quiz, timeline"><Icon name="layoutGrid" size={16} /> Templates</button>
         </div>
 
         <div className="sb-group" role="group" aria-label="History">
           <button className="sb-btn" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={16} /></button>
           <button className="sb-btn" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={16} /></button>
           <button className="sb-btn" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={16} /></button>
+          <button className="sb-btn" id="btnReplay" title="Replay — watch the board build itself like a video"><Icon name="rotateCcw" size={16} /> Replay</button>
         </div>
 
         <div className="sb-group" role="group" aria-label="Zoom">
@@ -89,6 +91,7 @@ export default function SmartBoard() {
           <span className="zoom-lbl" id="zoomLbl">100%</span>
           <button className="sb-btn" id="btnZoomIn" title="Zoom in"><Icon name="plus" size={16} /></button>
           <button className="sb-btn" id="btnFit" title="Fit to width"><Icon name="scan" size={16} /> Fit</button>
+          <button className="sb-btn" id="btnFitBoard" title="Zoom to fit board content"><Icon name="target" size={16} /></button>
         </div>
 
         <div className="sb-spacer" />
@@ -129,6 +132,7 @@ export default function SmartBoard() {
           {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
           <div className="rail-sep" />
           {tool("laser", "circleDot", "LASER", "Laser pointer")}
+          <button className="tool" data-tool="spotlight" title="Spotlight — dim everything except where you point (O)"><Icon name="sun" size={21} /><small>SPOT</small></button>
           <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={21} /><small>SHADE</small></button>
           <button className="tool" id="toolRuler" title="Ruler — drag to measure"><Icon name="ruler" size={21} /><small>RULER</small></button>
           <button className="tool" id="toolProtractor" title="Protractor — drag to measure angles, double-tap to rotate"><Icon name="protractor" size={21} /><small>ANGLE</small></button>
@@ -142,6 +146,7 @@ export default function SmartBoard() {
             <div id="shadeHint">Screen hidden — drag the bar to reveal, double-tap to close</div>
             <div id="shadeHandle" title="Drag to reveal"><span /></div>
           </div>
+          <div id="spotOverlay" style={{ display: "none" }} />
 
           <section className="pane" id="paneDoc">
             <div className="pane-head"><span className="dot" style={{ background: "#188038" }} /> Document <span className="pane-sub">teach PDFs / notes here</span></div>
@@ -227,6 +232,7 @@ export default function SmartBoard() {
         <div className="math-syms" id="mathSyms" />
         <div className="mrow">
           <button className="mbtn primary" id="btnGraph"><Icon name="activity" size={17} /> Graph plotter (y = f(x))</button>
+          <button className="mbtn" id="btnCalc"><Icon name="sigma" size={17} /> Calculator</button>
         </div>
       </div>
 
@@ -268,6 +274,7 @@ export default function SmartBoard() {
           <button className="on" id="tabTimer"><Icon name="timer" size={16} /> Timer</button>
           <button id="tabPicker"><Icon name="dices" size={16} /> Picker</button>
           <button id="tabAtt"><Icon name="listChecks" size={16} /> Attendance</button>
+          <button id="tabFun"><Icon name="dices" size={16} /> Fun</button>
         </div>
         <div id="paneTimer">
           <div id="timerFace">05:00</div>
@@ -286,6 +293,22 @@ export default function SmartBoard() {
           <div className="mrow" style={{ marginTop: 0 }}><button className="mbtn" id="attAll"><Icon name="check" size={17} /> All present</button><button className="mbtn" id="attNone">Reset</button></div>
           <div className="att-list" id="attList" />
           <p id="attCount" style={{ marginTop: 10 }} />
+        </div>
+        <div id="paneFun" style={{ display: "none" }}>
+          <h5 className="set-head">Dice</h5>
+          <div className="dice-row"><div className="die" id="die1">1</div><div className="die" id="die2">1</div></div>
+          <div className="mrow"><button className="mbtn primary" id="btnDice"><Icon name="dices" size={16} /> Roll dice</button></div>
+          <h5 className="set-head">Spinner — uses the picker name list</h5>
+          <div className="spin-wrap"><canvas id="spinCanvas" width={240} height={240} /></div>
+          <div className="mrow"><button className="mbtn primary" id="btnSpin">Spin</button></div>
+          <h5 className="set-head">Scoreboard</h5>
+          <div className="score-grid">
+            <div className="score-card"><b id="scA">0</b><span>Team A</span>
+              <div className="sc-btns"><button id="scAminus">−1</button><button id="scAplus">+1</button></div></div>
+            <div className="score-card"><b id="scB">0</b><span>Team B</span>
+              <div className="sc-btns"><button id="scBminus">−1</button><button id="scBplus">+1</button></div></div>
+          </div>
+          <div className="mrow"><button className="mbtn" id="scReset">Reset scores</button></div>
         </div>
         <div className="mrow"><button className="mbtn" data-close="1">Close</button></div>
       </div></div>
@@ -369,6 +392,47 @@ export default function SmartBoard() {
           <span><kbd>F</kbd> fullscreen · <kbd>←</kbd><kbd>→</kbd> pages</span>
         </div>
         <div className="mrow"><button className="mbtn primary" data-close="1"><Icon name="check" size={17} /> Got it</button></div>
+      </div></div>
+
+      <div className="modal" id="mReplay"><div className="modal-card">
+        <h2><Icon name="rotateCcw" size={22} /> Board Replay</h2>
+        <p>Scrub or play through everything on this board page — object by object, like a video of the lesson.</p>
+        <input type="range" id="replaySlider" min={0} defaultValue={0} style={{ width: "100%" }} />
+        <div className="replay-row">
+          <button className="mbtn primary" id="replayPlay">Play</button>
+          <select id="replaySpeed" title="Speed" defaultValue={14}>
+            <option value={6}>Slow</option>
+            <option value={14}>Normal</option>
+            <option value={30}>Fast</option>
+          </select>
+          <span className="pg" id="replayPos">0 / 0</span>
+        </div>
+        <div className="mrow"><button className="mbtn" id="replayClose">Close</button></div>
+      </div></div>
+
+      <div className="modal" id="mCalc"><div className="modal-card" style={{ maxWidth: 330 }}>
+        <h2><Icon name="sigma" size={22} /> Calculator</h2>
+        <div className="calc-out" id="calcOut">0</div>
+        <div className="calc-grid" id="calcGrid">
+          {["C", "(", ")", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "DEL", "="].map((k) => (
+            <button key={k} data-k={k}>{k}</button>
+          ))}
+        </div>
+      </div></div>
+
+      <div className="modal" id="mTemplates"><div className="modal-card" style={{ maxWidth: 620 }}>
+        <h2><Icon name="layoutGrid" size={22} /> Templates</h2>
+        <p>One click adds a ready-made layout to the board — then edit anything freely.</p>
+        <div className="tpl-grid" id="tplGrid">
+          <button data-tpl="mindmap"><span className="ti"><Icon name="brain" size={17} /></span><b>Mind Map</b><span>Central idea + 4 branches with connectors</span></button>
+          <button data-tpl="lesson"><span className="ti"><Icon name="notebookPen" size={17} /></span><b>Lesson Plan</b><span>Objective to homework in 5 steps</span></button>
+          <button data-tpl="kanban"><span className="ti"><Icon name="columns2" size={17} /></span><b>Kanban Board</b><span>To do / Doing / Done columns</span></button>
+          <button data-tpl="quiz"><span className="ti"><Icon name="puzzle" size={17} /></span><b>Quiz Time</b><span>3 question cards for class polls</span></button>
+          <button data-tpl="timeline"><span className="ti"><Icon name="clock" size={17} /></span><b>Timeline</b><span>6 event points on one line</span></button>
+          <button data-tpl="vocab"><span className="ti"><Icon name="languages" size={17} /></span><b>Vocabulary Bank</b><span>Word + meaning grid</span></button>
+          <button data-tpl="checklist"><span className="ti"><Icon name="listChecks" size={17} /></span><b>Checklist</b><span>8 tick-box rows for revision</span></button>
+          <button data-tpl="planner"><span className="ti"><Icon name="calendar" size={17} /></span><b>Weekly Planner</b><span>Mon to Sun columns</span></button>
+        </div>
       </div></div>
 
       <div className="sb-toast" id="sbToast" />
