@@ -11,10 +11,11 @@ import { SST_HISTORY } from "./content/sst-history";
 import { SST_GEOGRAPHY } from "./content/sst-geography";
 import { SST_CIVICS } from "./content/sst-civics";
 import { SST_ECONOMICS } from "./content/sst-economics";
+import { AI } from "./content/ai";
 
 export type { Slide, MindmapBranch, Mindmap, FlowNode, Formula, Example, Diagram, TimelineItem, Word, QuizQ, ChapterDetail } from "./content/types";
 
-const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS, SCIENCE, SST_HISTORY, SST_GEOGRAPHY, SST_CIVICS, SST_ECONOMICS];
+const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS, SCIENCE, SST_HISTORY, SST_GEOGRAPHY, SST_CIVICS, SST_ECONOMICS, AI];
 
 export const CHAPTER_DETAILS: Record<string, ChapterDetail> = Object.assign({}, ...FILES, BUILTIN);
 

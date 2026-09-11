@@ -162,32 +162,83 @@ export const SUBJECTS: Subject[] = [
   },
   {
     id: "ai", name: "Artificial Intelligence", hindi: "कृत्रिम बुद्धिमत्ता", icon: "bot", color: "#00696b",
-    tagline: "AI Project Cycle, Modelling, Computer Vision, NLP, and Python — future-ready with the KIPS book (CBSE 417).",
+    tagline: "Employability Skills + AI Project Cycle, Modelling, Evaluation, Statistical Data, Vision, NLP and Python — exactly as the KIPS book (CBSE 417).",
     features: ["slides", "mindmap", "flow", "notes", "quiz", "pyq"],
-        groups: [
-      { label: "Part A — Employability Skills", chapters: [
-        { n: 1, title: "Communication Skills-II", hi: "Methods, feedback, barriers, writing" },
-        { n: 2, title: "Self-Management Skills-II", hi: "Stress management, working independently" },
-        { n: 3, title: "ICT Skills-II", hi: "OS, file operations, computer security" },
-        { n: 4, title: "Entrepreneurial Skills-II", hi: "Entrepreneurship as a career" },
-        { n: 5, title: "Green Skills-II", hi: "Sustainable development" },
+    groups: [
+      { label: "Part A • Unit 1 — Communication Skills-II", chapters: [
+        { n: 1, title: "Methods of Communication", hi: "Verbal, non-verbal, visual & formal" },
+        { n: 2, title: "Communication Cycle", hi: "Sender → message → channel → feedback" },
+        { n: 3, title: "Effective Communication", hi: "The 7 Cs of great communication" },
+        { n: 4, title: "Communication Barriers", hi: "Types of barriers & how to remove them" },
+        { n: 5, title: "Basic Writing Skills", hi: "Parts of speech & sentence building" },
       ]},
-      { label: "Unit 1 — AI Project Cycle & Ethical Frameworks", chapters: [
-        { n: 1, title: "Revisiting the AI Project Cycle", hi: "Problem scoping to deployment" },
-        { n: 2, title: "Problem Scoping & Data Acquisition", hi: "4Ws canvas, features, datasets, sources" },
-        { n: 3, title: "Data Exploration & Visualization", hi: "Charts, trends, correlations" },
-        { n: 4, title: "AI Ethics & Bias", hi: "Ethical frameworks, AI access, SDG impact" },
+      { label: "Part A • Unit 2 — Self-Management Skills-II", chapters: [
+        { n: 6, title: "Stress Management and its Techniques", hi: "Eustress, distress & coping methods" },
+        { n: 7, title: "Ability to Work Independently", hi: "Self-awareness, goals & time management" },
       ]},
-      { label: "Unit 2 — Advanced Concepts of Modelling", chapters: [
-        { n: 1, title: "Rule-based & Learning-based Models", hi: "Decision trees, types of learning" },
-        { n: 2, title: "Neural Networks & Deep Learning", hi: "ANN, layers, weights, activations" },
+      { label: "Part A • Unit 3 — ICT Skills-II", chapters: [
+        { n: 8, title: "Basic Computer Operations", hi: "OS basics & everyday operations" },
+        { n: 9, title: "Managing Files and Folders", hi: "Create, organise, search & shortcuts" },
+        { n: 10, title: "Care and Maintenance of a Computer", hi: "Cleaning, power care & posture" },
       ]},
-      { label: "Units 3–7 — Evaluate, Data, Vision, NLP, Python", chapters: [
-        { n: 1, title: "Evaluating Models", hi: "Confusion matrix, accuracy, precision, recall" },
-        { n: 2, title: "Statistical Data", hi: "Mean, median, mode, spread, spreadsheets" },
-        { n: 3, title: "Computer Vision", hi: "Pixels, OpenCV, convolution, CNN applications" },
-        { n: 4, title: "Natural Language Processing", hi: "Tokenisation, chatbots, NLTK, LLMs" },
-        { n: 5, title: "Advance Python for AI", hi: "Jupyter, NumPy, pandas, AI programs" },
+      { label: "Part A • Unit 4 — Entrepreneurial Skills-II", chapters: [
+        { n: 11, title: "Entrepreneur and Entrepreneurship", hi: "Functions, qualities & myths" },
+      ]},
+      { label: "Part A • Unit 5 — Green Skills-II", chapters: [
+        { n: 12, title: "Sustainable Development", hi: "Needs, pillars & a green lifestyle" },
+      ]},
+      { label: "Part B • Unit 1 — AI Project Cycle & Ethical Frameworks", chapters: [
+        { n: 1, title: "Revisiting the AI Project Cycle", hi: "The roadmap of every AI project" },
+        { n: 2, title: "Stages of the AI Project Cycle", hi: "Scoping → data → exploration → modelling" },
+        { n: 3, title: "Revisiting AI, ML and DL", hi: "How the three worlds nest" },
+        { n: 4, title: "Introduction to AI Domains", hi: "Data Science, Computer Vision, NLP" },
+        { n: 5, title: "Ethical Frameworks for AI", hi: "Bias, access, privacy & AI for good" },
+        { n: 6, title: "Bioethics", hi: "Ethics when AI meets life sciences" },
+      ]},
+      { label: "Part B • Unit 2 — Advanced Concepts of Modelling", chapters: [
+        { n: 1, title: "Introduction to Modelling", hi: "Rule-based vs learning-based models" },
+        { n: 2, title: "Types of Machine Learning Models", hi: "Supervised, unsupervised, reinforcement" },
+        { n: 3, title: "Types of Deep Learning", hi: "Deep networks with many layers" },
+        { n: 4, title: "Artificial Neural Networks", hi: "Neurons, weights, layers & training" },
+      ]},
+      { label: "Part B • Unit 3 — Evaluating Models", chapters: [
+        { n: 1, title: "Need of Model Evaluation", hi: "Why testing a model matters" },
+        { n: 2, title: "Importance of Model Evaluation", hi: "Accuracy, fairness & trust" },
+        { n: 3, title: "Evaluating Model's Performance", hi: "Train/test split & reality vs prediction" },
+        { n: 4, title: "Accuracy and Error", hi: "Reading the confusion matrix" },
+        { n: 5, title: "Evaluation Metrics for Classification", hi: "Precision, recall & F1 score" },
+        { n: 6, title: "Ethical Concerns Around Model Evaluation", hi: "Fair, honest, responsible AI" },
+      ]},
+      { label: "Part B • Unit 4 — Statistical Data", chapters: [
+        { n: 1, title: "Common Terminologies Used with Data", hi: "Records, fields, structured & raw" },
+        { n: 2, title: "Introduction to Data Science", hi: "From raw data to decisions" },
+        { n: 3, title: "Applications of Data Science", hi: "Health, business, weather & sports" },
+        { n: 4, title: "Introduction to Orange Data Mining", hi: "No-code data science workflows" },
+        { n: 5, title: "No-code, Low-code and High-code", hi: "Three ways to build AI" },
+        { n: 6, title: "Statistical Data: Case Walkthrough", hi: "A dataset from question to insight" },
+      ]},
+      { label: "Part B • Unit 5 — Computer Vision", chapters: [
+        { n: 1, title: "Introduction to Computer Vision", hi: "Machines that see" },
+        { n: 2, title: "Applications of Computer Vision", hi: "Self-driving cars to face unlock" },
+        { n: 3, title: "Concepts of Computer Vision", hi: "Pixels, resolution & how computers see" },
+        { n: 4, title: "Image Features", hi: "Edges, corners & feature maps" },
+        { n: 5, title: "Convolution", hi: "The filter that reveals features" },
+        { n: 6, title: "Understanding CNN", hi: "Convolution → ReLU → pooling → FC" },
+      ]},
+      { label: "Part B • Unit 6 — Natural Language Processing", chapters: [
+        { n: 1, title: "Introduction to NLP", hi: "Machines that read and talk" },
+        { n: 2, title: "Human Languages versus Computer Languages", hi: "Ambiguity vs binary precision" },
+        { n: 3, title: "Stages of NLP", hi: "Tokenise → normalise → analyse" },
+        { n: 4, title: "TF-IDF", hi: "Term Frequency–Inverse Document Frequency" },
+        { n: 5, title: "Introduction to Sentiment Analysis", hi: "Reading emotions in text" },
+        { n: 6, title: "Introduction to Chatbots", hi: "Rule-based & AI-powered chatbots" },
+      ]},
+      { label: "Part B • Unit 7 — Advance Python", chapters: [
+        { n: 1, title: "Introduction to Jupyter Notebook", hi: "Cells, kernels & notebooks for AI" },
+        { n: 2, title: "Introduction to NumPy", hi: "Arrays: the heart of AI maths" },
+        { n: 3, title: "NumPy Case Walkthrough", hi: "A real dataset, real operations" },
+        { n: 4, title: "Python for AI", hi: "Why Python rules machine learning" },
+        { n: 5, title: "No-code AI Tools", hi: "Teachable Machine & PictoBlox" },
       ]},
     ]
   },
