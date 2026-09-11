@@ -68,58 +68,14 @@ export default function SmartBoard() {
   return (
     <div ref={rootRef} className="sb-root" data-layout="split">
 
-      {/* ================= TOP BAR ================= */}
-      <header className="sb-top">
-        <div className="sb-brand"><span className="b"><Icon name="squarePen" size={18} /></span><span>Smart Board</span></div>
-
-        <div className="sb-group">
-          <button className="sb-btn" id="btnOpen" title="Open PDF / DOCX / TXT / Image"><Icon name="folder" size={16} /> Open</button>
-          <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
-          <span className="sb-file" id="fileName">No file open — or drag &amp; drop</span>
-          <button className="sb-btn" id="btnTemplates" title="Ready-made lesson templates — mind map, kanban, quiz, timeline"><Icon name="layoutGrid" size={16} /> Templates</button>
-        </div>
-
-        <div className="sb-group" role="group" aria-label="History">
-          <button className="sb-btn" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={16} /></button>
-          <button className="sb-btn" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={16} /></button>
-          <button className="sb-btn" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={16} /></button>
-          <button className="sb-btn" id="btnReplay" title="Replay — watch the board build itself like a video"><Icon name="rotateCcw" size={16} /> Replay</button>
-        </div>
-
-        <div className="sb-group" role="group" aria-label="Zoom">
-          <button className="sb-btn" id="btnZoomOut" title="Zoom out"><Icon name="minus" size={16} /></button>
-          <span className="zoom-lbl" id="zoomLbl">100%</span>
-          <button className="sb-btn" id="btnZoomIn" title="Zoom in"><Icon name="plus" size={16} /></button>
-          <button className="sb-btn" id="btnFit" title="Fit to width"><Icon name="scan" size={16} /> Fit</button>
-          <button className="sb-btn" id="btnFitBoard" title="Zoom to fit board content"><Icon name="target" size={16} /></button>
-        </div>
-
-        <div className="sb-spacer" />
-
-        <div className="sb-group sb-seg" id="layoutGroup" title="Layout">
-          <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={16} /> Doc</button>
-          <button className="sb-btn on" data-layout="split" title="Doc + Board side by side (2)"><Icon name="columns2" size={16} /> Split</button>
-          <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={16} /> Board</button>
-        </div>
-
-        <div className="sb-group">
-          <button className="sb-btn" id="btnUpload" title="Upload from your phone — scan the QR code"><Icon name="scan" size={16} /> Phone</button>
-          <button className="sb-btn" id="btnWidgets" title="Timer, student picker, attendance"><Icon name="timer" size={16} /> Class</button>
-          <button className="sb-btn" id="btnSave" title="Save session (auto-save is on)"><Icon name="save" size={16} /> Save</button>
-          <button className="sb-btn" id="btnExport" title="Export PNG / Print / JSON"><Icon name="download" size={16} /> Export</button>
-        </div>
-
-        <div className="sb-group sb-icons">
-          <button className="sb-btn" id="btnSettings" title="Settings"><Icon name="settings" size={17} /></button>
-          <button className="sb-btn" id="btnHelp" title="Guide &amp; shortcuts"><Icon name="circleHelp" size={17} /></button>
-          <button className="sb-btn" id="btnFull" title="Fullscreen (F)"><Icon name="maximize" size={17} /></button>
-          <a className="sb-btn" href="/" title="Back to Learning Hub"><Icon name="home" size={17} /></a>
-        </div>
-      </header>
+      {/* hidden file input (opened from Files / empty pane) */}
+      <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
 
       {/* ================= MAIN ================= */}
       <div className="sb-main">
         <aside className="sb-rail" id="rail" aria-label="Tools">
+          <div className="rail-brand" title="Smart Board"><Icon name="squarePen" size={17} /></div>
+          <div className="rail-tools">
           {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
           {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
           <div className="rail-sep" />
@@ -139,6 +95,26 @@ export default function SmartBoard() {
           <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={21} /><small>MATHS</small></button>
           <div className="rail-sep" />
           <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={21} /><small>CLEAR</small></button>
+            <div className="rail-sep" />
+            <div className="rail-pair">
+              <button className="tool half" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={18} /></button>
+              <button className="tool half" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={18} /></button>
+            </div>
+            <div className="rail-pair">
+              <button className="tool half" id="btnFiles" title="Files — open, phone upload, saved files (no re-uploading)"><Icon name="folder" size={18} /></button>
+              <button className="tool half" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={18} /></button>
+            </div>
+            <div className="rail-pair">
+              <button className="tool half" id="btnReplay" title="Replay — watch the board build itself like a video"><Icon name="rotateCcw" size={18} /></button>
+              <button className="tool half" id="btnWidgets" title="Class tools — timer, picker, attendance, dice, spinner"><Icon name="timer" size={18} /></button>
+            </div>
+          </div>
+          <div className="rail-foot">
+            <button id="btnSettings" title="Settings"><Icon name="settings" size={16} /></button>
+            <button id="btnHelp" title="Guide &amp; shortcuts"><Icon name="circleHelp" size={16} /></button>
+            <button id="btnFull" title="Fullscreen (F)"><Icon name="maximize" size={16} /></button>
+            <a href="/" title="Back to Learning Hub"><Icon name="home" size={16} /></a>
+          </div>
         </aside>
 
         <div className="sb-work">
@@ -149,7 +125,7 @@ export default function SmartBoard() {
           <div id="spotOverlay" style={{ display: "none" }} />
 
           <section className="pane" id="paneDoc">
-            <div className="pane-head"><span className="dot" style={{ background: "#188038" }} /> Document <span className="pane-sub">teach PDFs / notes here</span></div>
+            <div className="pane-head"><span className="dot" style={{ background: "#188038" }} /> Document <span className="pane-sub" id="fileName">no file open — use Files on the left</span></div>
             <div className="pane-body">
               <div id="docScroll">
                 <div className="doc-empty" id="docEmpty">
@@ -174,6 +150,14 @@ export default function SmartBoard() {
               <div id="protractor" className="measure"><svg id="protractorSvg" width="260" height="150" /></div>
             </div>
           </section>
+
+          <div className="zoom-float" id="zoomFloat">
+            <button className="sb-btn" id="btnZoomOut" title="Zoom out"><Icon name="minus" size={15} /></button>
+            <span className="zoom-lbl" id="zoomLbl">100%</span>
+            <button className="sb-btn" id="btnZoomIn" title="Zoom in"><Icon name="plus" size={15} /></button>
+            <button className="sb-btn" id="btnFit" title="Fit to width"><Icon name="scan" size={15} /></button>
+            <button className="sb-btn" id="btnFitBoard" title="Zoom to fit board content"><Icon name="target" size={15} /></button>
+          </div>
         </div>
       </div>
 
@@ -195,6 +179,12 @@ export default function SmartBoard() {
             <option value="ruled">Ruled</option>
             <option value="dotted">Dotted</option>
           </select>
+        </div>
+        <button className="sb-btn" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={16} /></button>
+        <div className="sb-group sb-seg" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
+          <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={15} /></button>
+          <button className="sb-btn on" data-layout="split" title="Document + Board (2)"><Icon name="columns2" size={15} /></button>
+          <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={15} /></button>
         </div>
         <div className="page-ctl">
           <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
@@ -321,6 +311,23 @@ export default function SmartBoard() {
         <div className="mrow"><button className="mbtn" data-close="1">Close</button></div>
       </div></div>
 
+      <div className="modal" id="mFiles"><div className="modal-card">
+        <h2><Icon name="folder" size={22} /> Files</h2>
+        <p>Open from your device or phone — <b>everything is saved on this device</b> and opens instantly next time. No re-uploading.</p>
+        <div className="mrow" style={{ marginTop: 0 }}>
+          <button className="mbtn primary" id="btnOpen" title="Open PDF / DOCX / TXT / image from this device"><Icon name="folder" size={17} /> Open from device</button>
+          <button className="mbtn" id="btnUpload" title="Scan the QR code with your phone and send any file"><Icon name="scan" size={17} /> From phone</button>
+        </div>
+        <div className="mrow">
+          <button className="mbtn" id="btnSave" title="Save session (auto-save is always on)"><Icon name="save" size={17} /> Save now</button>
+          <button className="mbtn" id="btnExport" title="Export PNG / print / session JSON"><Icon name="download" size={17} /> Export</button>
+        </div>
+        <label style={{ marginTop: 16 }}>Saved on this device</label>
+        <div className="fl-list" id="fileList" />
+        <p style={{ fontSize: 12.5, marginBottom: 0, marginTop: 10 }}>Videos and files over 60 MB are not cached.</p>
+        <div className="mrow"><button className="mbtn primary" data-close="1">Close</button></div>
+      </div></div>
+
       <div className="modal" id="mUpload"><div className="modal-card" style={{ maxWidth: 620 }}>
         <h2><Icon name="scan" size={22} /> Upload from Phone</h2>
         <p>Scan the code with your phone camera, pick any file — PDF, image, video, audio, document — and it opens here automatically.</p>
@@ -377,7 +384,7 @@ export default function SmartBoard() {
       <div className="modal" id="mHelp"><div className="modal-card">
         <h2><Icon name="circleHelp" size={22} /> Smart Board Guide</h2>
         <div style={{ display: "grid", gap: 10, fontSize: 14 }}>
-          <p><b>Open</b> to load a PDF / DOCX / image, or drag-drop it</p>
+          <p><b>Files</b> on the left rail — open from device or phone, or pick a <b>saved file</b> (no re-uploading)</p>
           <p>In <b>Split</b>, PDF on one side and board on the other — drag the divider</p>
           <p>Write with pen / highlighter • <b>Shapes</b> has line, arrow, circle, star, tick</p>
           <p><b>Maths</b> button: symbols + graph plotter</p>

@@ -8,6 +8,7 @@ import QRCode from "qrcode";
 
 export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
 import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
+import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
 
@@ -300,6 +301,7 @@ export class BoardEngine {
     this.wireExport();
     this.wirePages();
     this.wireUpload();
+    this.wireFiles();
     this.wireShade();
     this.wireMeasure();
     this.wireKeys();
@@ -311,6 +313,7 @@ export class BoardEngine {
     this.sizeBoard();
     this.setActive("board", null);
     if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
+    else this.refreshEmpty();
     this.sizeTrail();
     this.laserLoop();
     const ro = new ResizeObserver(() => this.sizeBoard());
@@ -696,6 +699,10 @@ export class BoardEngine {
     else if (["mp3", "wav", "ogg", "oga", "m4a", "aac", "flac"].includes(ext)) this.openAudio(URL.createObjectURL(file), file.name);
     else this.openGeneric(URL.createObjectURL(file), file.name, file.size);
     if (this.layout === "board") this.setLayout("split");
+    /* cache the file on this device — no re-uploading next time */
+    if (!["mp4","webm","ogv","mov","m4v","mp3","wav","ogg","oga","m4a","aac","flac"].includes(ext)) {
+      putFile(file.name, file, file.type).catch(() => {});
+    }
   }
 
   private async openPdf(file: File) {
@@ -713,8 +720,12 @@ export class BoardEngine {
   async openPdfFromUrl(url: string, name: string) {
     this.resetDocViewer(name, url, "pdf");
     try {
-      const buf = await this.fetchBytes(url, "Loading NCERT PDF…", name);
+      const buf = await this.fetchBytes(url, "Loading PDF…", name);
       await this.loadPdfBuffer(buf.buffer);
+      /* phone scans / uploads: keep a copy on this device */
+      if (!url.startsWith("/api/pdf") && !url.includes("ncert.nic.in")) {
+        putFile(name, new Blob([buf], { type: "application/pdf" }), "application/pdf").catch(() => {});
+      }
     } catch (err) {
       console.error(err);
       this.setDocEmpty(true, `<h2>Could not load PDF</h2><p>Check your internet connection and try again.</p>`);
@@ -1835,6 +1846,75 @@ export class BoardEngine {
   /* ==========================================================================
      KEYBOARD
      ========================================================================== */
+  /* ---------- saved files (IndexedDB) — no re-uploading ---------- */
+  private wireFiles() {
+    const b = this.$("#btnFiles");
+    if (b) b.onclick = () => { this.openModal("mFiles"); this.renderFiles(); };
+  }
+
+  private async renderFiles() {
+    const list = this.$("#fileList") as HTMLElement | null;
+    if (!list) return;
+    const files = await listFiles();
+    const note = this.$("#filesNote") as HTMLElement | null;
+    if (note) note.textContent = files.length
+      ? `${files.length} file(s) saved on this device — tap to open instantly`
+      : "Files you open or upload are saved here automatically.";
+    if (!files.length) {
+      list.innerHTML = `<div class="up-empty">No saved files yet — open one from your device or phone.</div>`;
+      return;
+    }
+    list.innerHTML = files.map((f) => {
+      const ext = (f.name.split(".").pop() || "?").toUpperCase().slice(0, 4);
+      return `<div class="fl-row" data-id="${this.esc(f.id)}">
+        <span class="fl-ext">${this.esc(ext)}</span>
+        <div class="fl-meta"><b title="${this.esc(f.name)}">${this.esc(f.name)}</b><span>${fmtSize(f.size)} · ${fmtWhen(f.openedAt)}</span></div>
+        <button class="fl-del" data-del="${this.esc(f.id)}" title="Remove from saved files">✕</button>
+      </div>`;
+    }).join("");
+    this.$all("#fileList .fl-row").forEach((row: HTMLElement) => {
+      row.onclick = (e: MouseEvent) => {
+        const del = (e.target as HTMLElement).closest("[data-del]");
+        const id = (del as HTMLElement | null)?.dataset.del || row.dataset.id || "";
+        if (del) { deleteFile(id).then(() => { this.renderFiles(); this.refreshEmpty(); }); }
+        else this.openSaved(id);
+      };
+    });
+  }
+
+  private async openSaved(id: string) {
+    const f = await getFile(id);
+    if (!f) { this.toast("File not found — it may have been removed."); return; }
+    this.closeModal(this.$("#mFiles") as HTMLElement);
+    this.openFile(new File([f.blob], f.name, { type: f.type || "application/octet-stream" }));
+    touchFile(id).catch(() => {});
+  }
+
+  /* recent files shown right inside the empty document pane */
+  private async refreshEmpty() {
+    if (this.doc) return;
+    const em = this.$("#docEmpty") as HTMLElement | null;
+    if (!em) return;
+    const files = (await listFiles()).slice(0, 8);
+    em.style.display = "block";
+    em.innerHTML = `
+      <div class="big">📂</div>
+      <h2>Open a file — or pick a saved one</h2>
+      <p>Tap <b>Saved files</b> on the left rail, or open from your device / phone.<br />
+      Everything you open is kept on this device — no re-uploading.</p>
+      <div class="fl-quick">
+        <button id="emptyOpenBtn">📁 Open from device</button>
+        <button id="emptyPhoneBtn">📱 Upload from phone</button>
+      </div>
+      ${files.length ? `<div class="fl-chips">${files.map((f) =>
+        `<button class="fl-chip" data-id="${this.esc(f.id)}"><b>${this.esc(f.name)}</b><span>${fmtSize(f.size)}</span></button>`).join("")}</div>` : ""}`;
+    (em.querySelector("#emptyOpenBtn") as HTMLElement | null)?.addEventListener("click", () =>
+      (this.$("#fileInput") as HTMLInputElement).click());
+    (em.querySelector("#emptyPhoneBtn") as HTMLElement | null)?.addEventListener("click", () => this.openUpload());
+    this.$all("#docEmpty .fl-chip").forEach((c: HTMLElement) =>
+      c.addEventListener("click", () => this.openSaved(c.dataset.id || "")));
+  }
+
   /* ---------- phone upload via QR ---------- */
   private upSid = "";
   private upTimer: ReturnType<typeof setInterval> | null = null;
