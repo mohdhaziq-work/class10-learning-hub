@@ -7,10 +7,14 @@ import { FOOTPRINTS } from "./content/footprints";
 import { HINDI } from "./content/hindi";
 import { MATHS } from "./content/maths";
 import { SCIENCE } from "./content/science";
+import { SST_HISTORY } from "./content/sst-history";
+import { SST_GEOGRAPHY } from "./content/sst-geography";
+import { SST_CIVICS } from "./content/sst-civics";
+import { SST_ECONOMICS } from "./content/sst-economics";
 
 export type { Slide, MindmapBranch, Mindmap, FlowNode, Formula, Example, Diagram, TimelineItem, Word, QuizQ, ChapterDetail } from "./content/types";
 
-const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS, SCIENCE];
+const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS, SCIENCE, SST_HISTORY, SST_GEOGRAPHY, SST_CIVICS, SST_ECONOMICS];
 
 export const CHAPTER_DETAILS: Record<string, ChapterDetail> = Object.assign({}, ...FILES, BUILTIN);
 
