@@ -4,10 +4,12 @@ import type { ChapterDetail, QuizQ } from "./content/types";
 import { CHAPTER_DETAILS as BUILTIN } from "./content/builtin";
 import { ENGLISH } from "./content/english";
 import { FOOTPRINTS } from "./content/footprints";
+import { HINDI } from "./content/hindi";
+import { MATHS } from "./content/maths";
 
 export type { Slide, MindmapBranch, Mindmap, FlowNode, Formula, Example, Diagram, TimelineItem, Word, QuizQ, ChapterDetail } from "./content/types";
 
-const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS];
+const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS];
 
 export const CHAPTER_DETAILS: Record<string, ChapterDetail> = Object.assign({}, ...FILES, BUILTIN);
 

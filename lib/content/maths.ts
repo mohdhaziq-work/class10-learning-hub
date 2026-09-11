@@ -1,0 +1,493 @@
+/* Mathematics — chapters 2-14 (ch 1 Real Numbers lives in builtin.ts). Keys: maths-0-x.
+   Maths rule: formulas + solved examples + quiz + PYQ; no mindmap/flowchart. */
+import type { ChapterDetail } from "./types";
+
+export const MATHS: Record<string, ChapterDetail> = {
+
+"maths-0-1": {
+  slides: [
+    { kicker: "Chapter 2 • Algebra", title: "Polynomials — Degree, Zeroes, Graphs",
+      points: ["Polynomial in x: p(x) = aₙxⁿ + … + a₁x + a₀ (aₙ ≠ 0), degree = n", "Zero: p(α) = 0 — the point where the graph cuts the x-axis", "Linear → 1 zero; Quadratic → 2; Cubic → 3 (max)"], formula: "Zeroes of p(x) = x-intercepts of its graph" },
+    { kicker: "Quadratic ax² + bx + c", title: "The Golden Relations",
+      points: ["If α, β are zeroes: x² − (α+β)x + αβ = 0", "Sum: α + β = −b/a", "Product: αβ = c/a"], formula: "α+β = −b/a   •   αβ = c/a" },
+    { kicker: "Graphs", title: "Shapes You Must Recognise",
+      points: ["Linear: a straight line (1 x-intercept)", "Quadratic: parabola (∪ or ∩) — up to 2 intercepts", "Cubic: wave — up to 3 intercepts"], formula: "Number of zeroes ≤ degree" },
+    { kicker: "Exam Corner", title: "Question Types",
+      points: ["Find zeroes by factorisation, verify sum/product", "Form a quadratic when zeroes (or relations) are given", "Graph: count zeroes from the curve"], formula: "Divide → factorise → verify relations" },
+  ],
+  formulas: [
+    { name: "Sum of zeroes (quad.)", expr: "α + β = −b/a" },
+    { name: "Product of zeroes (quad.)", expr: "αβ = c/a" },
+    { name: "Form quadratic from zeroes", expr: "x² − (α+β)x + αβ = 0" },
+    { name: "Sum (cubic ax³+bx²+cx+d)", expr: "α+β+γ = −b/a" },
+    { name: "Product (cubic)", expr: "αβγ = −d/a" },
+    { name: "Pairwise sum (cubic)", expr: "αβ+βγ+γα = c/a" },
+  ],
+  examples: [
+    { title: "Find the zeroes of x² − 2x − 8 and verify relations", steps: ["x² − 2x − 8 = (x − 4)(x + 2)", "Zeroes: x = 4, x = −2", "Sum = 4 + (−2) = 2 = −(−2)/1 ✓", "Product = 4 × (−2) = −8 = −8/1 ✓"], answer: "Zeroes: 4 and −2 — relations verified" },
+    { title: "Find a quadratic whose zeroes are 2 + √3 and 2 − √3", steps: ["Sum = (2+√3) + (2−√3) = 4", "Product = (2+√3)(2−√3) = 4 − 3 = 1", "x² − (sum)x + product = 0", "x² − 4x + 1 = 0"], answer: "x² − 4x + 1 = 0" },
+    { title: "If one zero of kx² + 3x + 4 is 1, find k (style question)", steps: ["p(1) = 0 → k(1)² + 3(1) + 4 = 0", "k + 7 = 0"], answer: "k = −7" },
+  ],
+  notes: [
+    "<b>Degree</b> = highest power; degree 1, 2, 3 → linear, quadratic, cubic.",
+    "Zeroes are where <b>p(x) = 0</b>, i.e. the graph meets the x-axis.",
+    "A quadratic's parabola opens up if a > 0 (∪), down if a < 0 (∩).",
+    "For cubic: α+β+γ = −b/a, αβ+βγ+γα = c/a, αβγ = −d/a.",
+    "A polynomial of degree n has <b>at most n zeroes</b>.",
+  ],
+  quiz: [
+    { q: "The zeroes of x² − 9 are…", options: ["9, −9", "3, −3", "0, 9", "none"], answer: 1, why: "x² − 9 = (x−3)(x+3) → x = ±3." },
+    { q: "If α, β are zeroes of ax²+bx+c, then α+β equals…", options: ["b/a", "−b/a", "c/a", "−c/a"], answer: 1, why: "Sum of zeroes = −b/a." },
+    { q: "A cubic polynomial can have at most how many zeroes?", options: ["1", "2", "3", "4"], answer: 2, why: "Number of zeroes ≤ degree = 3." },
+    { q: "The graph of y = x² + 1 cuts the x-axis…", options: ["at 2 points", "at 1 point", "never", "at origin"], answer: 2, why: "x² + 1 > 0 always — no real zero." },
+  ],
+  pyq: ["Find the zeroes of 6x² − 3 − 7x and verify the relations. (CBSE 2023, 3m)", "Find a quadratic polynomial whose zeroes are 5 and −7. (CBSE 2022, 2m)"],
+},
+
+"maths-0-2": {
+  slides: [
+    { kicker: "Chapter 3 • Algebra", title: "Pair of Linear Equations in Two Variables",
+      points: ["General form: a₁x + b₁y + c₁ = 0 and a₂x + b₂y + c₂ = 0", "Graphical solution: the point where the two lines intersect", "Consistent → lines intersect or coincide; inconsistent → parallel"], formula: "a₁/a₂, b₁/b₂, c₁/c₂ — compare the ratios" },
+    { kicker: "Conditions", title: "The Ratio Rule (memorise!)",
+      points: ["a₁/a₂ ≠ b₁/b₂ → unique solution (intersecting)", "a₁/a₂ = b₁/b₂ = c₁/c₂ → infinitely many (coincident)", "a₁/a₂ = b₁/b₂ ≠ c₁/c₂ → no solution (parallel)"], formula: "Intersect • Coincide • Parallel" },
+    { kicker: "Methods", title: "Substitution, Elimination, Cross-Multiplication",
+      points: ["Substitution: express y from one equation, put in the other", "Elimination: multiply to cancel one variable", "Cross-multiplication: direct formula x = (b₁c₂−b₂c₁)/(a₁b₂−a₂b₁)"], formula: "Choose whichever is faster" },
+    { kicker: "Word Problems", title: "The Scoring Area",
+      points: ["Age, boat-stream, fractions, two-digit numbers, fixed + per-unit cost", "Steps: variables → equations → solve → answer with units", "Check consistency of the pair first in 1-markers"], formula: "2 variables, 2 equations, 1 clear answer" },
+  ],
+  formulas: [
+    { name: "Consistency test", expr: "Compare a₁/a₂, b₁/b₂, c₁/c₂" },
+    { name: "Cross-multiplication x", expr: "x = (b₁c₂ − b₂c₁)/(a₁b₂ − a₂b₁)" },
+    { name: "Cross-multiplication y", expr: "y = (c₁a₂ − c₂a₁)/(a₁b₂ − a₂b₁)" },
+  ],
+  examples: [
+    { title: "Solve: x + y = 14, x − y = 4", steps: ["Add: 2x = 18 → x = 9", "Put in x + y = 14 → 9 + y = 14"], answer: "x = 9, y = 5" },
+    { title: "Solve by substitution: 2x + 3y = 11, 2x − 4y = −24", steps: ["Subtract: 7y = 35 → y = 5", "2x + 15 = 11 → 2x = −4"], answer: "x = −2, y = 5" },
+    { title: "For what value of k do 3x + y = 1 and (2k−1)x + (k−1)y = 2k+1 have no solution?", steps: ["Need a₁/a₂ = b₁/b₂ ≠ c₁/c₂", "3/(2k−1) = 1/(k−1) → 3k − 3 = 2k − 1", "k = 2; check c-ratio: 1/5 ≠ 1/3 ✓"], answer: "k = 2" },
+  ],
+  notes: [
+    "Compare <b>a₁/a₂ : b₁/b₂ : c₁/c₂</b> — it answers every 1-mark question.",
+    "Lines intersect → <b>unique</b>; coincide → <b>infinite</b>; parallel → <b>none</b>.",
+    "Substitution works best when one coefficient is 1.",
+    "In word problems, <b>define variables first</b>, then translate line by line.",
+    "Verify by substituting answers back into BOTH equations.",
+  ],
+  quiz: [
+    { q: "If a₁/a₂ = b₁/b₂ ≠ c₁/c₂, the lines are…", options: ["intersecting", "coincident", "parallel", "perpendicular"], answer: 2, why: "Equal slopes, different intercepts → parallel, no solution." },
+    { q: "The solution of x = 3, y = −2 satisfies…", options: ["x + y = 5", "x + y = 1", "x − y = 1", "2x + y = 3"], answer: 1, why: "3 + (−2) = 1." },
+    { q: "Which method uses y = (c₁a₂ − c₂a₁)/(a₁b₂ − a₂b₁)?", options: ["Substitution", "Elimination", "Cross-multiplication", "Graphical"], answer: 2, why: "That's the cross-multiplication formula." },
+  ],
+  pyq: ["Draw graphs of x − y + 1 = 0 and 3x + 2y − 12 = 0; find the intersection. (CBSE 2023, 5m)", "For which k will kx + 3y = k − 3 and 12x + ky = k have no solution? (CBSE 2022, 3m)"],
+},
+
+"maths-0-3": {
+  slides: [
+    { kicker: "Chapter 4 • Algebra", title: "Quadratic Equations",
+      points: ["Standard form: ax² + bx + c = 0 (a ≠ 0)", "Solution methods: factorisation • completing the square • quadratic formula", "Roots are real only when D = b² − 4ac ≥ 0"], formula: "x = (−b ± √(b² − 4ac)) / 2a" },
+    { kicker: "Discriminant", title: "Nature of Roots",
+      points: ["D > 0 → two distinct real roots", "D = 0 → two equal real roots (x = −b/2a)", "D < 0 → no real roots"], formula: "D = b² − 4ac — the judge" },
+    { kicker: "Completing the Square", title: "The Bridge Method",
+      points: ["Divide by a: x² + (b/a)x = −c/a", "Add (b/2a)² to both sides", "Factor the perfect square, take square roots"], formula: "(x + b/2a)² = (b² − 4ac)/4a²" },
+    { kicker: "Word Problems", title: "Where Marks Are Won",
+      points: ["Area, speed–time, work, consecutive integers, age", "Always: reject the root that is impossible (negative side, −ve time)", "Write the final answer as a sentence"], formula: "Frame → Solve → Reject → Answer" },
+  ],
+  formulas: [
+    { name: "Quadratic formula", expr: "x = (−b ± √D)/2a" },
+    { name: "Discriminant", expr: "D = b² − 4ac" },
+    { name: "Sum of roots", expr: "α + β = −b/a" },
+    { name: "Product of roots", expr: "αβ = c/a" },
+  ],
+  examples: [
+    { title: "Solve 2x² − 4x + 3 = 0 by formula", steps: ["D = (−4)² − 4(2)(3) = 16 − 24 = −8", "D < 0 → no real roots"], answer: "No real roots" },
+    { title: "Solve by factorisation: x² − 5x + 6 = 0", steps: ["x² − 5x + 6 = (x − 2)(x − 3)", "x − 2 = 0 or x − 3 = 0"], answer: "x = 2, x = 3" },
+    { title: "Find k if x² − 4x + k = 0 has equal roots", steps: ["Equal roots → D = 0", "16 − 4k = 0"], answer: "k = 4" },
+    { title: "The area of a rectangle is 96 cm²; length exceeds breadth by 4 cm. Find dimensions.", steps: ["b(b + 4) = 96 → b² + 4b − 96 = 0", "(b + 12)(b − 8) = 0 → b = 8 (reject −12)", "length = 12"], answer: "8 cm × 12 cm" },
+  ],
+  notes: [
+    "Standard form first: <b>ax² + bx + c = 0</b> — then everything follows.",
+    "<b>D > 0</b>: distinct real; <b>D = 0</b>: equal; <b>D < 0</b>: none.",
+    "Completing the square proves the quadratic formula itself.",
+    "Word problems: <b>negative/absurd roots are rejected</b> — always state why.",
+    "Splitting the middle term: find two numbers with product ac and sum b.",
+  ],
+  quiz: [
+    { q: "The discriminant of 3x² + 5x + 2 is…", options: ["1", "25", "−1", "49"], answer: 0, why: "D = 25 − 24 = 1." },
+    { q: "Roots of x² − 6x + 9 = 0 are…", options: ["3, 3", "9, 1", "−3, −3", "6, 3"], answer: 0, why: "(x−3)² = 0 → equal roots 3, 3." },
+    { q: "If D = 0, the graph of the quadratic…", options: ["cuts x-axis twice", "touches x-axis once", "never meets x-axis", "is a line"], answer: 1, why: "Equal roots → parabola just touches the axis." },
+  ],
+  pyq: ["Find the nature of roots of 2x² − 4x + 3 = 0. (CBSE 2023, 1m)", "The sum of squares of two consecutive positive integers is 365; find them. (CBSE 2023, 3m)", "Solve by completing the square: 4x² + 4√3x + 3 = 0. (CBSE 2022, 3m)"],
+},
+
+"maths-0-4": {
+  slides: [
+    { kicker: "Chapter 5 • Algebra", title: "Arithmetic Progressions",
+      points: ["AP: a, a+d, a+2d, … — common difference d fixed", "nth term: aₙ = a + (n−1)d", "Sum of n terms: Sₙ = n/2 [2a + (n−1)d]"], formula: "aₙ = a + (n−1)d" },
+    { kicker: "Sums", title: "Two Sum Formulas",
+      points: ["Sₙ = n/2 [2a + (n−1)d] — when a, d known", "Sₙ = n/2 (a + l) — when first & last term known", "aₙ = Sₙ − Sₙ₋₁ — recover terms from sums"], formula: "Sₙ = n/2 (a + l)" },
+    { kicker: "Problem Types", title: "Which Term? How Many Terms? What Sum?",
+      points: ["'Which term is 78?' → solve aₙ = 78 for n", "'Sum of first 20 terms' → direct Sₙ", "Middle-term / three-in-AP: take a−d, a, a+d"], formula: "Three unknowns in AP → a−d, a, a+d" },
+    { kicker: "Exam Corner", title: "Board Favourites",
+      points: ["Save-money problems (₹5 first week, +₹5 every week)", "nth-term-from-end: l − (n−1)d", "If Sₙ is given as expression, aₙ = Sₙ − Sₙ₋₁"], formula: "From end: l − (n−1)d" },
+  ],
+  formulas: [
+    { name: "nth term", expr: "aₙ = a + (n−1)d" },
+    { name: "Sum of n terms", expr: "Sₙ = n/2 [2a + (n−1)d]" },
+    { name: "Sum (first & last)", expr: "Sₙ = n/2 (a + l)" },
+    { name: "Term from sum", expr: "aₙ = Sₙ − Sₙ₋₁" },
+  ],
+  examples: [
+    { title: "Which term of the AP 3, 8, 13, … is 78?", steps: ["a = 3, d = 5, aₙ = 78", "3 + (n−1)5 = 78 → 5n − 2 = 78", "5n = 80"], answer: "n = 16 → 16th term" },
+    { title: "Find the sum of first 22 terms of the AP 1, 4, 7, …", steps: ["a = 1, d = 3, n = 22", "S₂₂ = 11[2(1) + 21(3)] = 11 × 65"], answer: "S₂₂ = 715" },
+    { title: "The 17th term of an AP exceeds its 10th term by 7. Find d.", steps: ["a₁₇ − a₁₀ = 7", "(a + 16d) − (a + 9d) = 7d = 7"], answer: "d = 1" },
+  ],
+  notes: [
+    "Common difference: <b>d = a₂ − a₁</b> (also = aₙ − aₙ₋₁).",
+    "Three terms in AP → assume <b>a−d, a, a+d</b> — sums get easy.",
+    "<b>aₙ = Sₙ − Sₙ₋₁</b> converts sum-questions into term-questions.",
+    "nth term from the end = <b>l − (n−1)d</b>, l = last term.",
+    "If aₙ is given 'positive/negative' — solve the inequality after finding n.",
+  ],
+  quiz: [
+    { q: "The 10th term of 2, 7, 12, … is…", options: ["47", "52", "42", "57"], answer: 0, why: "a₁₀ = 2 + 9(5) = 47." },
+    { q: "If a = 5 and d = 3, then S₅ equals…", options: ["55", "65", "50", "35"], answer: 0, why: "S₅ = 2.5[10 + 12] = 55." },
+    { q: "Three numbers in AP are best taken as…", options: ["a, ar, ar²", "a−d, a, a+d", "a, a+1, a+2", "2a, 2d, 2n"], answer: 1, why: "The middle cancels in sums — clean algebra." },
+  ],
+  pyq: ["How many terms of the AP 9, 17, 25 must be taken to give a sum of 636? (CBSE 2023, 3m)", "Find the 31st term of an AP whose 11th term is 38 and 16th term is 73. (CBSE 2022, 3m)"],
+},
+
+"maths-0-5": {
+  slides: [
+    { kicker: "Chapter 6 • Geometry", title: "Triangles — Similarity",
+      points: ["Similar: same shape — equal angles, proportional sides", "Criteria: AA (or AAA) • SSS • SAS", "BPT (Thales): line ∥ one side divides the other two proportionally"], formula: "∆ABC ~ ∆PQR → AB/PQ = BC/QR = CA/RP" },
+    { kicker: "BPT & Its Converse", title: "The Parallel Divider",
+      points: ["In ∆ABC, DE ∥ BC → AD/DB = AE/EC", "Converse: if AD/DB = AE/EC then DE ∥ BC", "Used in almost every 'prove parallel' board question"], formula: "DE ∥ BC ⟺ AD/DB = AE/EC" },
+    { kicker: "Pythagoras Family", title: "Triplets and Proofs",
+      points: ["In right ∆: hypotenuse² = sum of legs²", "Converse: if a²+b² = c² → right angle at the vertex opposite c", "Similar triangles give the standard proofs of Pythagoras"], formula: "AC² = AB² + BC²" },
+    { kicker: "Areas", title: "Ratio of Areas",
+      points: ["Areas of similar triangles ∝ squares of corresponding sides", "ar(ABC)/ar(PQR) = (AB/PQ)² = (BC/QR)²", "Also = (altitude)² = (median)² ratios"], formula: "ar ratio = (side ratio)²" },
+  ],
+  formulas: [
+    { name: "Similarity condition", expr: "∠A = ∠P, ∠B = ∠Q → AA" },
+    { name: "BPT", expr: "DE ∥ BC → AD/DB = AE/EC" },
+    { name: "Pythagoras", expr: "AC² = AB² + BC²" },
+    { name: "Area ratio", expr: "ar(∆₁)/ar(∆₂) = (side₁/side₂)²" },
+    { name: "Mean proportional", expr: "In right ∆ with altitude to hypotenuse: BD² = AD × DC" },
+  ],
+  examples: [
+    { title: "In ∆ABC, DE ∥ BC, AD = 2 cm, DB = 3 cm, AE = 4 cm. Find EC.", steps: ["BPT: AD/DB = AE/EC", "2/3 = 4/EC", "EC = 6"], answer: "EC = 6 cm" },
+    { title: "The sides of two similar triangles are in ratio 3:4. Areas ratio?", steps: ["Area ratio = (side ratio)²", "(3/4)² = 9/16"], answer: "9 : 16" },
+    { title: "A ladder 13 m rests against a wall, foot 5 m away. Height reached?", steps: ["h² + 5² = 13²", "h² = 169 − 25 = 144"], answer: "h = 12 m (5-12-13 triplet)" },
+  ],
+  notes: [
+    "Similar = <b>same shape</b>; congruent = same shape <b>and</b> size.",
+    "<b>AA</b> is the fastest criterion — two angles are enough.",
+    "Pythagorean triplets to memorise: <b>3-4-5, 5-12-13, 8-15-17, 7-24-25</b>.",
+    "In similarity proofs: first state the <b>criterion</b>, then the correspondence.",
+    "Right triangle + altitude to hypotenuse: both small triangles are <b>similar to the big one and to each other</b>.",
+  ],
+  quiz: [
+    { q: "If ∆ABC ~ ∆DEF and AB/DE = 3/5, then ar(ABC)/ar(DEF) = ?", options: ["3/5", "9/25", "6/10", "5/3"], answer: 1, why: "Area ratio = square of side ratio." },
+    { q: "Which is NOT a criterion for similarity of triangles?", options: ["AA", "SSS", "SAS", "SSA"], answer: 3, why: "Two sides and a non-included angle (SSA) do not guarantee similarity." },
+    { q: "In right ∆ABC (right angle at B), AC is…", options: ["a leg", "the hypotenuse", "an altitude", "a median"], answer: 1, why: "The side opposite the right angle is the hypotenuse." },
+  ],
+  pyq: ["State and prove the Basic Proportionality Theorem. (CBSE 2023, 5m)", "In an equilateral triangle, prove that 3 × (side)² = 4 × (altitude)². (CBSE 2022, 3m)"],
+},
+
+"maths-0-6": {
+  slides: [
+    { kicker: "Chapter 7 • Geometry", title: "Coordinate Geometry",
+      points: ["A point = (x, y); x-axis distance = |x|, y-axis distance = |y|", "Distance formula joins two points", "Section formula finds points that divide a segment in ratio m:n"], formula: "d = √[(x₂−x₁)² + (y₂−y₁)²]" },
+    { kicker: "Distance", title: "Lengths and Triangle Types",
+      points: ["Find type of triangle: compute all 3 sides — equilateral/isosceles/scalene", "Collinearity: AB + BC = AC → points on one line", "Point on x-axis: (x, 0); on y-axis: (0, y)"], formula: "Collinear ⟺ AB + BC = AC" },
+    { kicker: "Section Formula", title: "Midpoint and Ratio Division",
+      points: ["Midpoint: ((x₁+x₂)/2, (y₁+y₂)/2)", "Section m:n → ((mx₂+nx₁)/(m+n), (my₂+ny₁)/(m+n))", "Centroid of triangle: average of vertices"], formula: "Centroid = ((x₁+x₂+x₃)/3, (y₁+y₂+y₃)/3)" },
+    { kicker: "Exam Corner", title: "Question Bank",
+      points: ["Prove a parallelogram/rectangle using midpoints & distances", "Find ratio when a point lies ON a given line (equation trick)", "Area of triangle = ½|x₁(y₂−y₃) + x₂(y₃−y₁) + x₃(y₁−y₂)|"], formula: "Distance • Midpoint • Section • Centroid" },
+  ],
+  formulas: [
+    { name: "Distance", expr: "d = √[(x₂−x₁)² + (y₂−y₁)²]" },
+    { name: "Midpoint", expr: "M = ((x₁+x₂)/2, (y₁+y₂)/2)" },
+    { name: "Section (m:n)", expr: "P = ((mx₂+nx₁)/(m+n), (my₂+ny₁)/(m+n))" },
+    { name: "Centroid", expr: "G = ((x₁+x₂+x₃)/3, (y₁+y₂+y₃)/3)" },
+    { name: "Area of triangle", expr: "A = ½|x₁(y₂−y₃)+x₂(y₃−y₁)+x₃(y₁−y₂)|" },
+  ],
+  examples: [
+    { title: "Find the distance between (1, 0) and (7, 6)", steps: ["d = √[(7−1)² + (6−0)²]", "= √(36+36) = √72 = 6√2"], answer: "6√2 units" },
+    { title: "Find the midpoint of (−3, 5) and (7, −1)", steps: ["M = ((−3+7)/2, (5−1)/2)", "= (2, 2)"], answer: "(2, 2)" },
+    { title: "Show (2, −2), (−2, 1) and (5, 2) form a right triangle (style)", steps: ["AB² = 16+9 = 25; BC² = 49+1 = 50; CA² = 9+16 = 25", "AB = CA = 5 → isosceles; AB² + CA² = BC²"], answer: "Right isosceles at A" },
+  ],
+  notes: [
+    "Distance formula is just <b>Pythagoras on the grid</b>.",
+    "Midpoint = section formula with <b>m : n = 1 : 1</b>.",
+    "For 'find k so that P lies on segment in ratio', use the <b>section formula</b> and equate coordinates.",
+    "Collinear points → <b>area of triangle = 0</b>.",
+    "Quadrant signs: I (+,+), II (−,+), III (−,−), IV (+,−).",
+  ],
+  quiz: [
+    { q: "Distance of (6, 8) from the origin is…", options: ["10", "14", "8", "48"], answer: 0, why: "√(36+64) = √100 = 10." },
+    { q: "Midpoint of (0, 0) and (10, 4) is…", options: ["(10, 4)", "(5, 2)", "(5, 4)", "(2, 5)"], answer: 1, why: "Average both coordinates." },
+    { q: "The centroid of a triangle with vertices (0,0), (3,0), (0,3) is…", options: ["(1, 1)", "(1.5, 1.5)", "(3, 3)", "(1, 1.5)"], answer: 0, why: "((0+3+0)/3, (0+0+3)/3) = (1,1)." },
+  ],
+  pyq: ["Find a point on the y-axis equidistant from (5, −2) and (−3, 2). (CBSE 2023, 3m)", "In what ratio does (4, 6) divide the join of (2, 4) and (8, 10)? (CBSE 2022, 3m)"],
+},
+
+"maths-0-7": {
+  slides: [
+    { kicker: "Chapter 8 • Trigonometry", title: "Introduction to Trigonometry",
+      points: ["In right ∆: sin, cos, tan of an angle = ratios of sides", "Memory: SOH-CAH-TOA", "Reciprocals: cosec, sec, cot"], formula: "sin θ = P/H • cos θ = B/H • tan θ = P/B" },
+    { kicker: "Standard Angles", title: "The Table (0° to 90°)",
+      points: ["sin: 0, 1/2, 1/√2, √3/2, 1 for 0°, 30°, 45°, 60°, 90°", "cos is the reverse of sin; tan = sin/cos", "θ and (90° − θ): sin(90°−θ) = cos θ, tan(90°−θ) = cot θ"], formula: "sin30° = 1/2, cos60° = 1/2, tan45° = 1" },
+    { kicker: "Identities", title: "The Big Three",
+      points: ["sin²θ + cos²θ = 1", "1 + tan²θ = sec²θ", "1 + cot²θ = cosec²θ", "Use them to simplify and prove LHS = RHS"], formula: "sin²θ + cos²θ = 1" },
+    { kicker: "Exam Corner", title: "Scoring Strategy",
+      points: ["4-mark 'prove that' — start from the complex side", "Replace 1 with sin²+cos² whenever needed", "Never expand blindly — look for identity patterns"], formula: "Prove LHS = RHS, never both sides at once" },
+  ],
+  formulas: [
+    { name: "Basic ratios", expr: "sinθ = P/H, cosθ = B/H, tanθ = P/B" },
+    { name: "Reciprocals", expr: "cosecθ = 1/sinθ, secθ = 1/cosθ, cotθ = 1/tanθ" },
+    { name: "Identity 1", expr: "sin²θ + cos²θ = 1" },
+    { name: "Identity 2", expr: "1 + tan²θ = sec²θ" },
+    { name: "Identity 3", expr: "1 + cot²θ = cosec²θ" },
+    { name: "Complementary", expr: "sin(90°−θ) = cosθ; tan(90°−θ) = cotθ" },
+  ],
+  examples: [
+    { title: "Evaluate: 2 tan 45° + cos 30° · sin 60°", steps: ["2(1) + (√3/2)(√3/2)", "= 2 + 3/4"], answer: "11/4 = 2.75" },
+    { title: "Prove: (1 + tan²θ)/(1 + cot²θ) = tan²θ", steps: ["LHS = sec²θ / cosec²θ", "= (1/cos²θ) × (sin²θ/1)", "= sin²θ/cos²θ = tan²θ = RHS"], answer: "Proved" },
+    { title: "If sinθ = 3/5, find cosθ and tanθ", steps: ["cos²θ = 1 − 9/25 = 16/25", "cosθ = 4/5", "tanθ = (3/5)/(4/5)"], answer: "cosθ = 4/5, tanθ = 3/4" },
+  ],
+  notes: [
+    "Write the table daily for a week — it becomes permanent.",
+    "<b>tan θ = sin θ / cos θ</b> — most used identity in evaluations.",
+    "In 'prove' questions, convert everything to <b>sin & cos</b> when stuck.",
+    "Complementary pairs: <b>sin−cos, tan−cot, sec−cosec</b>.",
+    "Values beyond the table are NOT asked — master these five angles.",
+  ],
+  quiz: [
+    { q: "sin 60° equals…", options: ["1/2", "√2/2", "√3/2", "1"], answer: 2, why: "sin 60° = √3/2." },
+    { q: "1 + tan²θ equals…", options: ["cosec²θ", "sec²θ", "sin²θ", "cot²θ"], answer: 1, why: "Standard identity 2." },
+    { q: "If tanθ = 1, then θ = …", options: ["30°", "45°", "60°", "90°"], answer: 1, why: "tan 45° = 1." },
+  ],
+  pyq: ["Prove that √(1+sinθ)/(1−sinθ) = secθ + tanθ. (CBSE 2023, 3m)", "If √3 cotθ = 1, find the value of sin²θ + cos²θ. (CBSE 2022, 2m)"],
+},
+
+"maths-0-8": {
+  slides: [
+    { kicker: "Chapter 9 • Trigonometry", title: "Heights and Distances",
+      points: ["Angle of elevation: looking UP from horizontal", "Angle of depression: looking DOWN from horizontal", "Always draw: observer, object, horizontal line, right triangle"], formula: "tan θ = height / base" },
+    { kicker: "Method", title: "The 4-Step Ritual",
+      points: ["Step 1: Draw the figure, mark angles & knowns", "Step 2: Pick the triangle with the known side", "Step 3: Choose tan (angle + adjacent) or sin (angle + hypotenuse)", "Step 4: Solve; use √2 ≈ 1.414, √3 ≈ 1.732"], formula: "30° → 1/√3, 45° → 1, 60° → √3" },
+    { kicker: "Two-Triangle Problems", title: "Same Object, Two Positions",
+      points: ["A man walks toward a tower — angles change from 30° to 60°", "Use the common side (height) to link both triangles", "Answer is usually d = h(√3 − 1) or similar"], formula: "h tan60° − h tan30° = walked distance" },
+    { kicker: "Exam Corner", title: "Board Patterns",
+      points: ["Tower + shadow, broken tree, kite/string, ship & lighthouse", "Angle of depression from tower = angle of elevation from ground (alternate angles)", "Write the final statement with units"], formula: "Depression from top = Elevation from bottom" },
+  ],
+  formulas: [
+    { name: "Core relation", expr: "tanθ = opposite/adjacent" },
+    { name: "Two-position walk", expr: "d = h(cot30° − cot60°) = 2h/√3·(…)" },
+    { name: "Useful values", expr: "tan30° = 1/√3 ≈ 0.577, tan60° = √3 ≈ 1.732" },
+  ],
+  examples: [
+    { title: "A tower stands vertically on the ground. From a point 30 m away, the angle of elevation of the top is 60°. Find the height.", steps: ["tan60° = h/30", "h = 30√3 ≈ 30 × 1.732"], answer: "h ≈ 51.96 m ≈ 52 m" },
+    { title: "A tree breaks and the top touches the ground 8 m away, making 30° with the ground. Find the original height.", steps: ["Upright part: 8·tan30° = 8/√3", "Broken (hypotenuse): 8/cos30° = 16/√3", "Total = 8/√3 + 16/√3 = 24/√3"], answer: "8√3 m ≈ 13.86 m" },
+    { title: "From the top of a 7 m high building, angle of depression of a car is 30°. How far is the car?", steps: ["tan30° = 7/d", "d = 7√3"], answer: "d = 7√3 ≈ 12.12 m" },
+  ],
+  notes: [
+    "Always draw the <b>horizontal line first</b> — angles live on it.",
+    "Angle of depression from top = angle of elevation from bottom (<b>alternate ∠s</b>).",
+    "Kite/string problems: string = <b>hypotenuse</b> → use sin.",
+    "Shadow problems: shadow = <b>adjacent</b> → use tan.",
+    "Round off only at the <b>last step</b>; keep √3 till the end.",
+  ],
+  quiz: [
+    { q: "The angle of elevation of the sun when a 10 m pole casts a 10√3 m shadow is…", options: ["30°", "45°", "60°", "75°"], answer: 0, why: "tanθ = 10/10√3 = 1/√3 → θ = 30°." },
+    { q: "In two-position problems, the linking side is usually…", options: ["the walked distance", "the height of the tower", "the shadow", "the string"], answer: 1, why: "Both triangles share the tower's height." },
+  ],
+  pyq: ["Two poles of heights 6 m and 11 m stand vertically; distance between feet 12 m. Find the distance between their tops. (CBSE 2023, 3m)", "From the top of a 60 m high tower, angles of depression of two cars are 30° and 60°. Find the distance between them. (CBSE 2022, 3m)"],
+},
+
+"maths-0-9": {
+  slides: [
+    { kicker: "Chapter 10 • Geometry", title: "Circles — Tangents",
+      points: ["Tangent: a line touching the circle at exactly ONE point", "Secant: crosses at two points", "Tangent is the limiting case of a secant"], formula: "Tangent ⊥ radius at the point of contact" },
+    { kicker: "Theorems", title: "The Two You Must Prove",
+      points: ["Theorem 10.1: tangent at any point ⊥ radius through that point", "Theorem 10.2: lengths of tangents from an external point are equal", "Both proofs come in 4-5 mark board questions"], formula: "PA = PB (from external P)" },
+    { kicker: "Applications", title: "Circles + Triangles + Quadrilaterals",
+      points: ["Circumscribed quadrilateral: AB + CD = BC + DA (tangent sums)", "Incircle of a triangle: equal tangent segments from each vertex", "∠ between tangents = 180° − ∠ at centre (quadrilateral OAPB)"], formula: "∠APB = 180° − ∠AOB" },
+    { kicker: "Exam Corner", title: "Board Favourites",
+      points: ["Prove PA = PB using congruency (SSS + RHS)", "Find ∠ between tangents given central angle", "Length of tangent from P: √(OP² − r²) (Pythagoras)"], formula: "PT = √(d² − r²)" },
+  ],
+  formulas: [
+    { name: "Equal tangents", expr: "PA = PB (from external point P)" },
+    { name: "Tangent-radius", expr: "OA ⊥ PT at contact point A" },
+    { name: "Tangent length", expr: "PT = √(OP² − r²)" },
+    { name: "Angle between tangents", expr: "∠APB = 180° − ∠AOB" },
+  ],
+  examples: [
+    { title: "Tangents PA and PB from P make ∠APB = 60°. Find ∠AOB.", steps: ["∠APB = 180° − ∠AOB", "60° = 180° − ∠AOB"], answer: "∠AOB = 120°" },
+    { title: "From a point 10 cm from the centre, a tangent is drawn to a circle of radius 6 cm. Find its length.", steps: ["PT = √(10² − 6²)", "= √64"], answer: "PT = 8 cm" },
+    { title: "Prove: the tangents at the ends of a diameter are parallel.", steps: ["Tangent ⊥ radius at both contact points", "Both perpendicular to the same line (diameter)", "Two lines ⊥ to the same line are parallel"], answer: "Proved" },
+  ],
+  notes: [
+    "Tangent touches at exactly <b>one point</b> — the point of contact.",
+    "From an external point, <b>exactly two tangents</b> can be drawn.",
+    "PA = PB proof: join OP; <b>∆OAP ≅ ∆OBP (RHS)</b>.",
+    "Circumscribed quad: <b>sums of opposite sides equal</b>.",
+    "Tangent length needs only <b>Pythagoras</b>: √(d² − r²).",
+  ],
+  quiz: [
+    { q: "How many tangents can be drawn from a point ON the circle?", options: ["0", "1", "2", "Infinite"], answer: 1, why: "Exactly one — at that point itself." },
+    { q: "A tangent to a circle is… to the radius at the contact point.", options: ["parallel", "perpendicular", "inclined at 45°", "equal"], answer: 1, why: "The tangent-radius theorem." },
+    { q: "In the figure, if ∠AOB = 140°, then ∠APB between tangents is…", options: ["40°", "70°", "140°", "220°"], answer: 0, why: "180° − 140° = 40°." },
+  ],
+  pyq: ["Prove that the tangents drawn from an external point are equal. (CBSE 2023, 5m)", "Two concentric circles radii 5 cm, 3 cm; find the length of the tangent to the inner circle from a point on the outer. (CBSE 2022, 3m)"],
+},
+
+"maths-0-10": {
+  slides: [
+    { kicker: "Chapter 11 • Mensuration", title: "Areas Related to Circles",
+      points: ["Minor/major sectors and segments", "Area of sector = (θ/360°) × πr²", "Length of arc = (θ/360°) × 2πr"], formula: "Sector area = θ/360 × πr²" },
+    { kicker: "Segments", title: "Area of a Segment",
+      points: ["Segment = sector − triangle", "Minor segment: (θ/360)πr² − (1/2)r² sinθ", "For 90°: πr²/4 − r²/2"], formula: "Segment = sector − triangle" },
+    { kicker: "Combinations", title: "Mixed Figures (Board Favourite)",
+      points: ["Square + 4 quadrants; rectangle + semicircles", "Grass/spray problems: area of one = total ÷ number", "Leave answers in π unless told to use 22/7 or 3.14"], formula: "Shaded area = bigger − smaller" },
+    { kicker: "Exam Corner", title: "Speed Tips",
+      points: ["π = 22/7 when r is a multiple of 7; else 3.14", "Angles in combinations are usually 90° or 60°", "Draw and label each small region before summing"], formula: "Multiple of 7 → 22/7" },
+  ],
+  formulas: [
+    { name: "Circumference", expr: "2πr" },
+    { name: "Area of circle", expr: "πr²" },
+    { name: "Arc length", expr: "(θ/360°) × 2πr" },
+    { name: "Sector area", expr: "(θ/360°) × πr²" },
+    { name: "Segment area", expr: "(θ/360°)πr² − ½r² sinθ" },
+  ],
+  examples: [
+    { title: "r = 6 cm, θ = 60°. Find arc length and sector area.", steps: ["Arc = 60/360 × 2π(6) = 2π cm", "Sector = 60/360 × π(36) = 6π cm²"], answer: "Arc = 2π ≈ 6.28 cm; Area = 6π ≈ 18.85 cm²" },
+    { title: "Find the area of a quadrant of a circle of radius 7 cm (π = 22/7).", steps: ["Area = ¼ × 22/7 × 49", "= ¼ × 154"], answer: "38.5 cm²" },
+    { title: "Two crosses roads (style): a square park of side 20 m has the biggest circular fountain. Find remaining area.", steps: ["Circle: r = 10, area = 100π ≈ 314", "Square = 400", "400 − 314"], answer: "≈ 86 cm² (with π = 3.14)" },
+  ],
+  notes: [
+    "Sector = 'pizza slice'; segment = 'slice minus triangle'.",
+    "For <b>60°</b> segment: (π/6 − √3/4)r²; for <b>90°</b>: (π/4 − ½)r².",
+    "Perimeter of a sector = <b>arc + 2r</b> (radii included!).",
+    "In combination figures, <b>subtract</b> or <b>add</b> — never guess; draw first.",
+    "Chord length 2r sin(θ/2) — useful in segment problems.",
+  ],
+  quiz: [
+    { q: "Area of a semicircle of radius 7 cm (π = 22/7) is…", options: ["154 cm²", "77 cm²", "44 cm²", "38.5 cm²"], answer: 1, why: "½ × 22/7 × 49 = 77." },
+    { q: "The angle of a sector with ¼ of the circle's area is…", options: ["45°", "60°", "90°", "120°"], answer: 2, why: "360/4 = 90°." },
+    { q: "Perimeter of a sector includes…", options: ["only the arc", "arc + two radii", "only radii", "diameter"], answer: 1, why: "Arc + 2r closes the shape." },
+  ],
+  pyq: ["Find the area of the shaded region in a square of side 14 cm with four quadrants drawn. (CBSE 2023, 3m)", "A chord of a circle of radius 12 cm subtends 120° at the centre; find the segment area. (CBSE 2022, 3m)"],
+},
+
+"maths-0-11": {
+  slides: [
+    { kicker: "Chapter 12 • Mensuration", title: "Surface Areas and Volumes",
+      points: ["Combo solids: cylinder + hemisphere, cone on cylinder, cube-corners removed", "KEY RULE: volume melted/poured IN = volume of the new shape", "Frustum: R, r, h, l = √(h² + (R−r)²)"], formula: "V(cone) = ⅓πr²h  •  V(sphere) = 4/3 πr³" },
+    { kicker: "Formula Family", title: "Every Solid You Need",
+      points: ["Cylinder: 2πrh, πr²h", "Cone: πrl, ⅓πr²h (l² = r² + h²)", "Sphere: 4πr², 4/3πr³ • Hemisphere: 3πr², ⅔πr³", "Frustum: π(R+r)l, ⅓πh(R² + r² + Rr)"], formula: "Frustum volume = πh/3 (R² + r² + Rr)" },
+    { kicker: "Conversion Problems", title: "Melt • Pour • Recast",
+      points: ["Sphere → wire (cylinder): equate volumes, solve for length", "Cone + hemisphere toys: CSA = πrl + 2πr²", "Water in a tank → cones: count how many fill"], formula: "Volume constant — only shape changes" },
+    { kicker: "Exam Corner", title: "Scoring Strategy",
+      points: ["Write the formula BEFORE substituting — step marks", "Keep π symbolic until the end", "Units: cm² vs cm³ — check twice"], formula: "CSA vs TSA: 'hollow vs solid' decides" },
+  ],
+  formulas: [
+    { name: "Cylinder", expr: "CSA 2πrh • TSA 2πr(r+h) • V πr²h" },
+    { name: "Cone", expr: "CSA πrl • V ⅓πr²h • l = √(r²+h²)" },
+    { name: "Sphere", expr: "SA 4πr² • V 4/3·πr³" },
+    { name: "Hemisphere", expr: "CSA 2πr² • TSA 3πr² • V ⅔πr³" },
+    { name: "Frustum", expr: "CSA π(R+r)l • V πh/3(R²+r²+Rr)" },
+  ],
+  examples: [
+    { title: "How many bullets (r = 1 cm) can be made from a sphere of radius 3 cm?", steps: ["V(sphere) = 4/3·π·27 = 36π", "V(bullet) = 4/3·π·1 = 4π/3", "36π ÷ 4π/3"], answer: "27 bullets" },
+    { title: "A toy: cone (r = 3.5, h = 6) on a hemisphere (r = 3.5). Total surface area?", steps: ["l = √(3.5² + 6²) = 6.5 (7-24-25 family: 3.5-6-6.5)", "Cone CSA = 22/7 × 3.5 × 6.5 = 71.5", "Hemisphere CSA = 2 × 22/7 × 12.25 = 77", "71.5 + 77"], answer: "148.5 cm²" },
+    { title: "A solid metallic sphere (d = 4.2 cm) is melted into a cylinder (d = 4.2? no — r of cylinder = 0.7? style) — recast length", steps: ["Equate: 4/3π(2.1)³ = π(0.7)² × h", "h = (4 × 9.261)/(3 × 0.49) = 25.2"], answer: "h ≈ 25.2 cm" },
+  ],
+  notes: [
+    "<b>Conversion = volume equality</b> — write it as the first line.",
+    "Toy problems: TSA = cone CSA + hemisphere CSA (no common circle).",
+    "Frustum slant: <b>l = √(h² + (R − r)²)</b> — not r + R!",
+    "Tent = CSA only (no base); capsule/cylinder closed = TSA.",
+    "1 litre = <b>1000 cm³</b> — convert before comparing.",
+  ],
+  quiz: [
+    { q: "Volume of a cone is… of the cylinder on the same base and height.", options: ["½", "⅓", "⅔", "equal"], answer: 1, why: "V(cone) = ⅓ of cylinder." },
+    { q: "Two solid spheres of radii 1 cm and 2 cm are melted into one. Its radius is…", options: ["3 cm", "∛9 cm", "2.5 cm", "∛8 cm"], answer: 1, why: "4/3πr³ = 4/3π(1+8) → r³ = 9." },
+    { q: "In melting-recasting problems, what stays constant?", options: ["Surface area", "Volume", "Height", "Radius"], answer: 1, why: "Material amount = volume." },
+  ],
+  pyq: ["A drinking glass is a frustum of height 14 cm; radii 4 cm and 2 cm? find capacity. (CBSE 2023, 3m)", "A solid cone is melted into a hemisphere? find the ratio of heights. (CBSE 2022, 3m)"],
+},
+
+"maths-0-12": {
+  slides: [
+    { kicker: "Chapter 13 • Statistics", title: "Mean, Median, Mode of Grouped Data",
+      points: ["Data in class intervals → use fi, xi (class mark)", "Mean: Direct, Assumed-mean, Step-deviation — 3 methods", "Mode & median: formulas with l, h, f₁, f₀, f₂ / cf"], formula: "Mean = Σfx / Σf" },
+    { kicker: "Mean", title: "Three Ways to the Average",
+      points: ["Direct: x̄ = Σfᵢxᵢ / Σfᵢ", "Assumed mean: x̄ = a + Σfd/Σf", "Step deviation: x̄ = a + h(Σfu/Σf), u = (x−a)/h"], formula: "x̄ = a + h·Σfu/Σf" },
+    { kicker: "Mode & Median", title: "The Formula Pair",
+      points: ["Mode = l + ((f₁−f₀)/(2f₁−f₀−f₂))·h — modal class first", "Median: find cumulative frequency, locate n/2 class", "Median = l + ((n/2 − cf)/f)·h"], formula: "Median = l + (n/2 − cf)/f × h" },
+    { kicker: "Ogive", title: "Graphs That Give Marks",
+      points: ["Less-than ogive: plot (upper limit, cf) — rising curve", "More-than ogive: falling curve", "Median = x-coordinate of their intersection"], formula: "Draw less-than & more-than → intersection = median" },
+  ],
+  formulas: [
+    { name: "Mean (direct)", expr: "x̄ = Σfᵢxᵢ/Σfᵢ" },
+    { name: "Mean (step dev.)", expr: "x̄ = a + h(Σfᵢuᵢ/Σfᵢ)" },
+    { name: "Mode", expr: "l + (f₁−f₀)/(2f₁−f₀−f₂) × h" },
+    { name: "Median", expr: "l + (n/2 − cf)/f × h" },
+  ],
+  examples: [
+    { title: "Find the mean of first 10 natural numbers", steps: ["Sum = 55, count = 10", "55/10"], answer: "5.5" },
+    { title: "Modal class is 20−30, f₁ = 18, f₀ = 10, f₂ = 6. Find mode (h = 10).", steps: ["Mode = 20 + (18−10)/(36−10−6) × 10", "= 20 + 8/20 × 10"], answer: "Mode = 24" },
+    { title: "n = 40, median class 10−20 (cf before = 12, f = 16). Median?", steps: ["Median = 10 + (20 − 12)/16 × 10", "= 10 + 5"], answer: "Median = 15" },
+  ],
+  notes: [
+    "Class mark <b>xi = (lower + upper)/2</b> — needed in every mean method.",
+    "Modal class = <b>maximum frequency</b> class.",
+    "Median class = first class where <b>cf ≥ n/2</b>.",
+    "Step deviation is fastest when class size h is uniform.",
+    "Empirical relation: <b>3 Median = 2 Mean + Mode</b>.",
+  ],
+  quiz: [
+    { q: "The class mark of 10−20 is…", options: ["10", "15", "20", "30"], answer: 1, why: "(10+20)/2 = 15." },
+    { q: "Which method uses uᵢ = (xᵢ − a)/h?", options: ["Direct", "Assumed mean", "Step deviation", "Median"], answer: 2, why: "Step-deviation shortens the arithmetic." },
+    { q: "The empirical relation is…", options: ["Mode = 3 Median − 2 Mean", "3 Median = 2 Mean + Mode", "Mean = Mode + Median", "2 Mode = 3 Mean"], answer: 1, why: "3 Median = 2 Mean + Mode." },
+  ],
+  pyq: ["Find the missing frequency when mean is given (table). (CBSE 2023, 3m)", "Draw less-than and more-than ogives; find the median. (CBSE 2022, 5m)"],
+},
+
+"maths-0-13": {
+  slides: [
+    { kicker: "Chapter 14 • Probability", title: "Probability — Classical Approach",
+      points: ["P(E) = favourable outcomes / total outcomes (equally likely)", "0 ≤ P(E) ≤ 1", "P(not E) = 1 − P(E) — complementary events"], formula: "P(E) + P(Ē) = 1" },
+    { kicker: "Sample Spaces", title: "Dice, Coins and Cards",
+      points: ["1 die → 6 outcomes; 2 dice → 36; 2 coins → 4; 3 coins → 8", "Cards: 52 total, 4 suits × 13; red 26, black 26; face cards 12", "Leap year → 366 days: P(53 Sundays) = 2/7"], formula: "2 dice = 6 × 6 = 36 outcomes" },
+    { kicker: "Techniques", title: "Smart Counting",
+      points: ["List outcomes when small; count pairs when many", "'At least one' → 1 − P(none)", "'Prime on die' = {2,3,5} → 3/6"], formula: "At least one = 1 − P(none)" },
+    { kicker: "Exam Corner", title: "Board Favourites",
+      points: ["Two dice: sum 8 = 5/36; doublet = 6/36", "Red king / black face card / neither", "Defective bulbs, marble draws — same logic", "Write sample space for full marks in 2-markers"], formula: "Dice sums: 7 is most likely" },
+  ],
+  formulas: [
+    { name: "Probability of E", expr: "P(E) = n(E)/n(S)" },
+    { name: "Complement", expr: "P(Ē) = 1 − P(E)" },
+    { name: "Sure / impossible", expr: "P(sure) = 1, P(impossible) = 0" },
+  ],
+  examples: [
+    { title: "One card is drawn from a well-shuffled deck. P(a king of red)?", steps: ["Favourable: 2 (K♥, K♦)", "Total = 52"], answer: "2/52 = 1/26" },
+    { title: "Two dice are thrown. P(sum = 8)?", steps: ["Outcomes: (2,6),(3,5),(4,4),(5,3),(6,2) → 5", "Total = 36"], answer: "5/36" },
+    { title: "A bag: 3 red, 5 black balls. P(not red)?", steps: ["P(red) = 3/8", "P(not red) = 1 − 3/8"], answer: "5/8" },
+  ],
+  notes: [
+    "Probability is always a <b>fraction between 0 and 1</b>.",
+    "All outcomes must be <b>equally likely</b> for the classical formula.",
+    "Cards: king/queen/jack = <b>face cards (12)</b>; ace is not a face card.",
+    "Two dice sums: 7 → 6 ways, 8 → 5 ways, 12 → 1 way.",
+    "P(at least one) problems: <b>1 − P(none)</b> is fastest.",
+  ],
+  quiz: [
+    { q: "P(a prime) on one throw of a die is…", options: ["1/2", "1/3", "2/3", "1/6"], answer: 0, why: "{2,3,5} → 3/6 = 1/2." },
+    { q: "P(sum 12) with two dice is…", options: ["1/36", "1/18", "1/12", "1/6"], answer: 0, why: "Only (6,6)." },
+    { q: "A die is rolled once; P(Ā) where A = 'getting 4' is…", options: ["1/6", "5/6", "1", "0"], answer: 1, why: "1 − 1/6 = 5/6." },
+  ],
+  pyq: ["Two dice are thrown together; find P(same number on both). (CBSE 2023, 2m)", "A card is drawn at random; find P(a black king) and P(neither king nor queen). (CBSE 2022, 3m)"],
+},
+};
