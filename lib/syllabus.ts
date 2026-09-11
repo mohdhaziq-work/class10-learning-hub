@@ -240,6 +240,18 @@ export const SUBJECTS: Subject[] = [
         { n: 4, title: "Python for AI", hi: "Why Python rules machine learning" },
         { n: 5, title: "No-code AI Tools", hi: "Teachable Machine & PictoBlox" },
       ]},
+      { label: "Part C — Practical Work", chapters: [
+        { n: 1, title: "Python Programming Practice", hi: "Programs for the practical file" },
+        { n: 2, title: "Data Science with Orange", hi: "Full workflow: load → model → score" },
+        { n: 3, title: "Computer Vision Lab", hi: "Teachable Machine + OpenCV basics" },
+        { n: 4, title: "NLP Lab: Chatbot & Sentiment", hi: "Rule-based chatbot + sentiment list" },
+        { n: 5, title: "Practical Exam & Viva Tips", hi: "File, performance, viva strategy" },
+      ]},
+      { label: "Part D — Project Work & Portfolio", chapters: [
+        { n: 1, title: "AI Project (Any Domain)", hi: "Full project cycle + report" },
+        { n: 2, title: "Practical File & Student Portfolio", hi: "Evidence + your learning story" },
+        { n: 3, title: "Viva Voce Preparation", hi: "Top questions & 60-second pitch" },
+      ]},
     ]
   },
 ];
