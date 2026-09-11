@@ -6,10 +6,11 @@ import { ENGLISH } from "./content/english";
 import { FOOTPRINTS } from "./content/footprints";
 import { HINDI } from "./content/hindi";
 import { MATHS } from "./content/maths";
+import { SCIENCE } from "./content/science";
 
 export type { Slide, MindmapBranch, Mindmap, FlowNode, Formula, Example, Diagram, TimelineItem, Word, QuizQ, ChapterDetail } from "./content/types";
 
-const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS];
+const FILES: Record<string, ChapterDetail>[] = [ENGLISH, FOOTPRINTS, HINDI, MATHS, SCIENCE];
 
 export const CHAPTER_DETAILS: Record<string, ChapterDetail> = Object.assign({}, ...FILES, BUILTIN);
 
