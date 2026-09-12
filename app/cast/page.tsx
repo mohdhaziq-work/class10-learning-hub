@@ -18,10 +18,14 @@ export default function CastReceiver() {
   const [joinUrl, setJoinUrl] = useState("");
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState("");
+  const [tapHint, setTapHint] = useState(false);
+  const [blackWarn, setBlackWarn] = useState(false);
+  const blackN = useRef(0);
   const [err, setErr] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
+  const probeRef = useRef<HTMLCanvasElement | null>(null);
   const sidRef = useRef("");
   const stopRef = useRef(false);
 
@@ -34,6 +38,14 @@ export default function CastReceiver() {
     if (!msgs.length || !sidRef.current) return;
     await post({ a: "sig", sid: sidRef.current, from: "viewer", msgs });
   }, [post]);
+
+  /* mobile browsers block autoplay without a tap — retry forever + show a hint */
+  const playVideo = useCallback(() => {
+    const v = videoRef.current;
+    if (!v || !v.srcObject) return;
+    v.muted = true;
+    v.play().catch(() => { setTapHint(true); });
+  }, []);
 
   const teardown = useCallback(() => {
     pcRef.current?.close();
@@ -55,7 +67,7 @@ export default function CastReceiver() {
     pc.ontrack = (e) => {
       if (videoRef.current && e.streams[0]) {
         videoRef.current.srcObject = e.streams[0];
-        videoRef.current.play().catch(() => { /* autoplay retry on interaction */ });
+        playVideo();
       }
     };
     pc.onconnectionstatechange = () => {
@@ -125,10 +137,39 @@ export default function CastReceiver() {
           }
         });
         setStats([res, fps].filter(Boolean).join(" · "));
+        /* black-screen watchdog: playing + decoding but picture pure black for ~4s */
+        const v = videoRef.current;
+        if (v && !v.paused && v.videoWidth > 0) {
+          try {
+            if (!probeRef.current) { const c = document.createElement("canvas"); c.width = 16; c.height = 9; probeRef.current = c; }
+            const px = probeRef.current.getContext("2d")!;
+            px.drawImage(v, 0, 0, 16, 9);
+            const d = px.getImageData(0, 0, 16, 9).data;
+            let sum = 0;
+            for (let i = 0; i < d.length; i += 4) sum += d[i] + d[i + 1] + d[i + 2];
+            if (sum < 40) { blackN.current++; if (blackN.current >= 3) setBlackWarn(true); }
+            else { blackN.current = 0; setBlackWarn(false); }
+          } catch { /* not decodable yet */ }
+        } else blackN.current = 0;
       } catch { /* stats not ready */ }
     }, 1500);
     return () => clearInterval(iv);
   }, []);
+
+  /* keep retrying play + keep the receiving device awake while live */
+  useEffect(() => {
+    if (status !== "live" && status !== "lost") { setTapHint(false); return; }
+    const iv = setInterval(() => {
+      const v = videoRef.current;
+      if (v && v.srcObject) { if (v.paused) { playVideo(); } else setTapHint(false); }
+    }, 700);
+    let wl: any = null;
+    const reqWl = () => { if ((navigator as any).wakeLock && document.visibilityState === "visible") (navigator as any).wakeLock.request("screen").then((w: any) => { wl = w; }).catch(() => { /* denied */ }); };
+    reqWl();
+    const vis = () => { if (document.visibilityState === "visible") { playVideo(); reqWl(); } };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearInterval(iv); document.removeEventListener("visibilitychange", vis); try { wl?.release?.(); } catch { /* gone */ } };
+  }, [status, playVideo]);
 
   const stopCasting = async () => {
     stopRef.current = true;
@@ -145,7 +186,10 @@ export default function CastReceiver() {
     const el = stageRef.current;
     if (!el) return;
     if (document.fullscreenElement) document.exitFullscreen();
-    else el.requestFullscreen().catch(() => { /* denied */ });
+    else el.requestFullscreen().then(() => {
+      playVideo();
+      try { (screen.orientation as any)?.lock?.("landscape").catch(() => { /* not allowed — fine */ }); } catch { /* unsupported */ }
+    }).catch(() => { /* denied */ });
   };
 
   const badge = {
@@ -167,8 +211,8 @@ export default function CastReceiver() {
       </header>
 
       <main className="cast-main">
-        <div className={`cast-stage ${status === "live" || status === "lost" ? "showing" : ""}`} ref={stageRef}>
-          <video ref={videoRef} autoPlay playsInline muted />
+        <div className={`cast-stage ${status === "live" || status === "lost" ? "showing" : ""}`} ref={stageRef} onClick={playVideo}>
+          <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setTapHint(false)} onLoadedMetadata={playVideo} onCanPlay={playVideo} />
           {status !== "live" && status !== "lost" && (
             <div className="cast-placeholder">
               {status === "waiting" || status === "init" ? <><Icon name="cast" size={54} /><p>The big screen is ready.<br />Scan the QR from your phone to start casting.</p></> : null}
@@ -177,6 +221,15 @@ export default function CastReceiver() {
                 <button className="cast-btn light" onClick={() => location.reload()}><Icon name="refreshCw" size={17} /> New QR</button></> : null}
               {status === "error" ? <><Icon name="alertTriangle" size={54} /><p>{err}</p></> : null}
             </div>
+          )}
+          {blackWarn && status === "live" && (
+            <div className="cast-black-warn" onClick={() => setBlackWarn(false)}>
+              <Icon name="alertTriangle" size={20} />
+              <span>Picture is coming in black — the app being shared may block recording. If it stays black, press Stop on the phone and try <b>Camera&nbsp;Cast</b> instead. <u>Dismiss</u></span>
+            </div>
+          )}
+          {tapHint && (status === "live" || status === "lost") && (
+            <div className="cast-tap-hint" onClick={playVideo}><Icon name="play" size={20} /> Tap to show video</div>
           )}
           {(status === "live" || status === "lost") && (
             <div className="cast-live-bar">
