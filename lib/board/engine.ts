@@ -287,9 +287,9 @@ export class BoardEngine {
 
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
-    this.bctx = this.boardCanvas.getContext("2d", { alpha: false, desynchronized: true })!;
+    this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
-    this.lctx = this.boardLive.getContext("2d", { desynchronized: true })!;
+    this.lctx = this.boardLive.getContext("2d")!;
     this.laserDot = this.$("#laser");
     this.trailCv = document.createElement("canvas");
     this.trailCv.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:149";
@@ -631,6 +631,8 @@ export class BoardEngine {
       this.boardDraft = null;
       if (replaced) this.renderBoard(); else this.paintIncremental();
       this.scheduleSave();
+      /* belt & braces: one guaranteed paint on the next frame */
+      requestAnimationFrame(() => { if (!this.destroyed && !this.boardDraft) this.paintIncremental(); });
     }
   }
 
@@ -833,7 +835,7 @@ export class BoardEngine {
     annot.className = "annot";
     wrap.appendChild(base); wrap.appendChild(annot);
     (this.$("#docScroll") as HTMLElement).appendChild(wrap);
-    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d", { desynchronized: true })!, rendered: false, dirty: true, rendering: false, scale: 1 };
+    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1 };
     this.pages.push(pg);
     this.pageObserver?.observe(wrap);
     this.wireAnnotCanvas(annot, n, () => pg.scale, null);
@@ -1198,7 +1200,7 @@ export class BoardEngine {
     (this.$("#docScroll") as HTMLElement).appendChild(box);
     if (!annot) { this.htmlAnnot = null; requestAnimationFrame(() => this.applyHtmlZoom()); return; }
     box.appendChild(cv);
-    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d", { desynchronized: true })! };
+    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d")! };
     requestAnimationFrame(() => { this.sizeHtmlAnnot(); this.applyHtmlZoom(); });
     const ro = new ResizeObserver(() => this.sizeHtmlAnnot());
     ro.observe(box.querySelector(".doc-html-inner") as HTMLElement);
