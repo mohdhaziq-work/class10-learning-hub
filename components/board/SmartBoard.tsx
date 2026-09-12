@@ -201,13 +201,8 @@ export default function SmartBoard() {
           <button data-kind="ball" title="Ballpoint — smooth everyday pen"><Icon name="penLine" size={16} />Ball</button>
           <button data-kind="marker" title="Marker — broad, softly translucent"><Icon name="squarePen" size={16} />Marker</button>
           <button data-kind="ink" title="Ink — calligraphy, pressure-aware"><Icon name="penTool" size={16} />Ink</button>
-          <button data-kind="pencil" title="Pencil — grainy graphite"><Icon name="pencil" size={16} />Pencil</button>
-          <button data-kind="chalk" title="Chalk — dusty, for the blackboard"><Icon name="chalk" size={16} />Chalk</button>
-          <button data-kind="crayon" title="Crayon — waxy texture"><Icon name="crayon" size={16} />Crayon</button>
-          <button data-kind="neon" title="Neon — glowing ink"><Icon name="sparkles" size={16} />Neon</button>
-          <button data-kind="brush" title="Brush — soft watercolor"><Icon name="brush" size={16} />Brush</button>
-          <button data-kind="spray" title="Airbrush — spray paint"><Icon name="spray" size={16} />Spray</button>
-          <button data-kind="fade" title="Magic pen — fades away in seconds"><Icon name="zap" size={16} />Magic</button>
+          <button data-kind="text" title="Text pen — your handwriting becomes typed computer text"><Icon name="type" size={16} />Text</button>
+          <button data-kind="shape" title="Shape pen — rough drawings snap into perfect shapes"><Icon name="shapes" size={16} />Shape</button>
         </div>
         <p className="tp-hint" id="penKindHint" />
         <h5>Color</h5>

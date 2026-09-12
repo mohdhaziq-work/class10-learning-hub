@@ -430,7 +430,8 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .tp-inline{display:flex;align-items:center;gap:10px;margin-top:8px}
 .tp-inline input[type=range]{flex:1;min-width:60px}
 #brushRing{position:absolute;left:-200px;top:-200px;width:28px;height:28px;border:1.6px dashed rgba(20,20,20,.6);
-  border-radius:99px;pointer-events:none;display:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.55)}
+  border-radius:99px;pointer-events:none;display:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.55);
+  transform:translate(-50%,-50%)}
 .tool-dot{position:absolute;right:5px;bottom:12px;width:9px;height:9px;border-radius:99px;
   box-shadow:0 0 0 2px rgba(255,255,255,.9);pointer-events:none}
 @media(max-width:900px){

@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  experimental: { serverComponentsExternalPackages: ['tesseract.js'] },
   poweredByHeader: false,
   images: { unoptimized: true },
   eslint: { ignoreDuringBuilds: true }, // build tez + clean; lint alag se `npm run lint`
