@@ -185,6 +185,38 @@ export default function HomePage() {
  </div>
  </section>
 
+ {/* ---------- SCREEN CAST ---------- */}
+ <section className="mt-16 rounded-3xl overflow-hidden bg-slate-900 text-white">
+ <div className="grid gap-10 lg:grid-cols-2 p-8 sm:p-12 items-center">
+ <div>
+ <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-slate-400">New · for teachers</p>
+ <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-tight mt-3">Cast your phone to the big screen.</h2>
+ <p className="text-slate-400 mt-3 text-[15.5px] leading-relaxed max-w-md">
+ Open Screen Cast on the TV or projector, scan the QR from your phone — and the phone&apos;s screen appears live. Peer-to-peer, encrypted, no delay, no app install.
+ </p>
+ <div className="flex gap-3 mt-7 flex-wrap">
+ <Link href="/cast" className="btn-g bg-white text-slate-900 hover:bg-slate-200 text-[15px]">
+ <Icon name="cast" size={18} /> Open Screen Cast
+ </Link>
+ </div>
+ </div>
+ <div className="grid grid-cols-2 gap-3.5">
+ {[
+ { icon: "devices", t: "Any devices", d: "Android phone → TV, laptop, projector" },
+ { icon: "zap", t: "No delay", d: "WebRTC peer-to-peer, live in seconds" },
+ { icon: "shieldCheck", t: "Private & secure", d: "End-to-end encrypted — screen never touches a server" },
+ { icon: "scan", t: "No app needed", d: "Scan a QR — nothing to install" },
+ ].map((c) => (
+ <div key={c.t} className="rounded-2xl bg-white/[.06] border border-white/10 p-5">
+ <Icon name={c.icon} size={22} className="text-slate-300" />
+ <p className="font-bold text-[14.5px] mt-3">{c.t}</p>
+ <p className="text-[13px] text-slate-400 mt-0.5">{c.d}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ </section>
+
  {/* ---------- CTA ---------- */}
  <section className="my-16 rounded-3xl bg-slate-900 text-white p-8 sm:p-12 text-center">
  <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-slate-400 ">Get started</p>

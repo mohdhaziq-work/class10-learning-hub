@@ -27,6 +27,7 @@ const ICONS: Record<string, React.ReactNode> = {
  chalk: (<><path d="m15 3 6 6L9 21H3v-6L15 3z" /><path d="m11 7 6 6" /></>),
  crayon: (<><path d="M12 2l3.5 3.5v11a3.5 3.5 0 0 1-7 0v-11L12 2z" /><path d="M8.5 9h7" /></>),
  brush: (<><path d="m9.06 11.9 8.07-8.06a2.85 2.85 0 1 1 4.03 4.03l-8.06 8.08" /><path d="M7.07 14.94c-1.66 0-3 1.35-3 3.02 0 1.33-2.5 1.52-2 2.02 1.08 1.1 2.49 2.02 4 2.02 2.2 0 4-1.8 4-4.04a3.01 3.01 0 0 0-3-3.02z" /></>),
+ cast: (<><path d="M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" /><path d="M2 12a9 9 0 0 1 8 8" /><path d="M2 16a5 5 0 0 1 4 4" /><path d="M2 20h.01" /></>),
  spray: (<><path d="M3 3h.01" /><path d="M7 5h.01" /><path d="M11 7h.01" /><path d="M3 7h.01" /><path d="M7 9h.01" /><path d="M3 11h.01" /><rect width="4" height="4" x="15" y="5" rx="1" /><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1V11l2-2" /><path d="M17 5V3" /></>),
  info: (<><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></>),
  alertTriangle: (<><path d="M12 3 2.5 20h19L12 3Z" /><path d="M12 9.5V14" /><path d="M12 17h.01" /></>),
