@@ -79,9 +79,12 @@ export default function SmartBoard() {
           {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
           {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
           <div className="rail-sep" />
-          {tool("pen", "pencil", "PEN", "Pen (P)")}
-          {tool("highlighter", "highlighter", "HIGH", "Highlighter (M)")}
-          {tool("eraser", "eraser", "ERASE", "Eraser — tap an object to delete (E)")}
+          <button className="tool on" data-tool="pen" title="Pen — 3 tip types, any color, any size (P)">
+            <Icon name="pencil" size={21} /><small>PEN</small>
+            <span className="tool-dot" id="penColorDot" style={{ background: "#dc2626" }} />
+          </button>
+          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
+          {tool("eraser", "eraser", "ERASE", "Eraser — stroke / pixel / area (E)")}
           <div className="rail-sep" />
           <button className="tool" id="toolShapes" title="Shapes (L/R/C...)"><Icon name="shapes" size={21} /><small>SHAPE</small></button>
           {tool("text", "type", "TEXT", "Text (T)")}
@@ -145,7 +148,7 @@ export default function SmartBoard() {
           <section className="pane" id="paneBoard">
             <div className="pane-head"><span className="dot" style={{ background: "#1a73e8" }} /> Whiteboard <span className="pane-sub">write / solve here</span></div>
             <div className="pane-body">
-              <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /></div>
+              <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><div id="brushRing" /></div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
               <div id="protractor" className="measure"><svg id="protractorSvg" width="260" height="150" /></div>
             </div>
@@ -163,13 +166,6 @@ export default function SmartBoard() {
 
       {/* ================= BOTTOM BAR ================= */}
       <footer className="sb-bottom">
-        <div className="swatches" id="swatches" title="Color" />
-        <div className="bb-sep" />
-        <div className="bb-group">Size <input type="range" id="penSize" min={1} max={40} defaultValue={4} style={{ width: 90 }} /><b id="penSizeLbl">4</b></div>
-        <div className="bb-group">Opacity <input type="range" id="penOpacity" min={10} max={100} defaultValue={100} style={{ width: 70 }} /></div>
-        <div className="bb-group"><label className="chk"><input type="checkbox" id="fillChk" /> Fill</label></div>
-        <div className="bb-group"><label className="chk"><input type="checkbox" id="dashChk" /> Dashed</label></div>
-        <div className="bb-sep" />
         <div className="bb-group">Board&nbsp;
           <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
             <option value="white">White</option>
@@ -199,6 +195,63 @@ export default function SmartBoard() {
       </footer>
 
       {/* ================= POPOVERS ================= */}
+      <div className="pop tool-pop" id="penPop">
+        <div className="tp-head"><h5>Pen</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
+        <div className="seg-row" id="penKindSeg">
+          <button data-kind="ball" title="Ballpoint — smooth everyday pen"><Icon name="pencil" size={17} />Ballpoint</button>
+          <button data-kind="marker" title="Marker — broad, softly translucent"><Icon name="penLine" size={17} />Marker</button>
+          <button data-kind="ink" title="Ink — calligraphy: thin when fast, thick when slow"><Icon name="penTool" size={17} />Ink</button>
+        </div>
+        <h5>Color</h5>
+        <div className="color-grid" id="penColorGrid" />
+        <div className="custom-row">
+          <label className="custom-sw" title="Pick any custom color"><input type="color" id="penCustom" defaultValue="#dc2626" /><Icon name="plus" size={13} /></label>
+          <input type="text" id="penHex" defaultValue="#dc2626" maxLength={7} spellCheck={false} />
+        </div>
+        <div className="recent-row" id="penRecents" style={{ display: "none" }} />
+        <h5>Size <b id="penSizeVal">4</b></h5>
+        <div className="size-row" id="penSizes">
+          <button data-s={2} title="Hairline"><span style={{ width: 4, height: 4 }} /></button>
+          <button data-s={5} title="Fine"><span style={{ width: 7, height: 7 }} /></button>
+          <button data-s={9} title="Medium"><span style={{ width: 11, height: 11 }} /></button>
+          <button data-s={16} title="Bold"><span style={{ width: 16, height: 16 }} /></button>
+          <button data-s={28} title="Chalk"><span style={{ width: 22, height: 22 }} /></button>
+        </div>
+        <input type="range" id="penSizeRange" min={1} max={40} defaultValue={4} />
+        <canvas id="penPreview" width={472} height={76} />
+      </div>
+
+      <div className="pop tool-pop" id="hlPop">
+        <div className="tp-head"><h5>Highlighter</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
+        <h5>Color</h5>
+        <div className="color-grid" id="hlColorGrid" />
+        <h5>Width</h5>
+        <div className="size-row" id="hlSizes">
+          <button data-s={12} title="Thin"><span style={{ width: 6, height: 6 }} /></button>
+          <button data-s={20} title="Medium"><span style={{ width: 10, height: 10 }} /></button>
+          <button data-s={30} title="Wide"><span style={{ width: 15, height: 15 }} /></button>
+          <button data-s={44} title="Extra wide"><span style={{ width: 21, height: 21 }} /></button>
+        </div>
+        <canvas id="hlPreview" width={472} height={76} />
+      </div>
+
+      <div className="pop tool-pop" id="eraserPop">
+        <div className="tp-head"><h5>Eraser</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
+        <div className="seg-row" id="eraserModeSeg">
+          <button data-mode="stroke" title="Tap an object — the whole thing is deleted"><Icon name="slash" size={17} />Stroke</button>
+          <button data-mode="pixel" title="Rub to erase exactly where you touch"><Icon name="eraser" size={17} />Pixel</button>
+          <button data-mode="area" title="Drag a box — everything inside is deleted"><Icon name="square" size={17} />Area</button>
+        </div>
+        <h5>Size</h5>
+        <div className="size-row" id="eraserSizes">
+          <button data-s={12} title="Small"><span style={{ width: 6, height: 6 }} /></button>
+          <button data-s={28} title="Medium"><span style={{ width: 11, height: 11 }} /></button>
+          <button data-s={56} title="Large"><span style={{ width: 17, height: 17 }} /></button>
+          <button data-s={100} title="Huge"><span style={{ width: 23, height: 23 }} /></button>
+        </div>
+        <p className="tp-hint" id="eraserHint" />
+      </div>
+
       <div className="pop" id="shapePop">
         <h5>Choose a shape</h5>
         <div className="shape-grid" id="shapeGrid">
@@ -214,6 +267,13 @@ export default function SmartBoard() {
           <button data-shape="tick" title="Tick"><Icon name="check" size={20} /></button>
           <button data-shape="cross" title="Cross"><Icon name="x" size={20} /></button>
           <button data-shape="bracket" title="Curly bracket" style={{ fontWeight: 800 }}>{"{}"}</button>
+        </div>
+        <h5 style={{ marginTop: 12 }}>Color &amp; style</h5>
+        <div className="color-grid ten" id="shapeColorGrid" />
+        <div className="tp-inline">
+          <input type="range" id="shapeSize" min={1} max={20} defaultValue={4} title="Thickness" />
+          <label className="chk"><input type="checkbox" id="fillChk" /> Fill</label>
+          <label className="chk"><input type="checkbox" id="dashChk" /> Dash</label>
         </div>
       </div>
 
@@ -386,7 +446,8 @@ export default function SmartBoard() {
         <div style={{ display: "grid", gap: 10, fontSize: 14 }}>
           <p><b>Files</b> on the left rail — open from device or phone, or pick a <b>saved file</b> (no re-uploading)</p>
           <p>In <b>Split</b>, PDF on one side and board on the other — drag the divider</p>
-          <p>Write with pen / highlighter • <b>Shapes</b> has line, arrow, circle, star, tick</p>
+          <p><b>Pen</b>: 3 tip types, any color, any size — tap the PEN tool to open its options • <b>Eraser</b>: stroke, pixel or area</p>
+          <p><b>Shapes</b>: line, arrow, circle, star, tick — color &amp; thickness inside the shape menu</p>
           <p><b>Maths</b> button: symbols + graph plotter</p>
           <p>Everything <b>auto-saves</b> — open tomorrow and it is still there</p>
         </div>

@@ -385,3 +385,51 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .sc-btns button{flex:1;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 0;
   font-weight:800;font-size:14px;cursor:pointer;color:var(--ink-soft);transition:border-color .13s ease,color .13s ease}
 .sc-btns button:hover{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ================= TOOL FLYOUTS (pen / highlighter / eraser) ================= */
+.tool-pop{padding:12px 14px;width:264px}
+.tp-head{display:flex;align-items:center;justify-content:space-between;margin:-2px -4px 8px}
+.tp-head h5{margin:0;flex:1}
+.tp-x{border:none;background:transparent;color:var(--muted);width:26px;height:26px;border-radius:8px;
+  display:grid;place-items:center;cursor:pointer;transition:background .13s ease,color .13s ease}
+.tp-x:hover{background:var(--panel3);color:var(--ink)}
+.seg-row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:5px;margin-bottom:10px}
+.seg-row button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px 8px;border-radius:11px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink-soft);font-size:10.5px;font-weight:800;
+  cursor:pointer;font-family:inherit;letter-spacing:.02em;transition:background .13s ease,color .13s ease,border-color .13s ease}
+.seg-row button:hover{background:#fff;color:var(--ink)}
+.seg-row button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.color-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin:6px 0}
+.color-grid.ten{grid-template-columns:repeat(10,1fr)}
+.color-grid .sw{width:100%;height:auto;aspect-ratio:1/1;min-width:0}
+.color-grid.ten .sw{width:100%;height:auto}
+.sw.sm{width:22px;height:22px}
+.custom-row{display:flex;gap:7px;align-items:center;margin:2px 0 4px}
+.custom-sw{position:relative;width:30px;height:30px;border-radius:99px;flex:none;cursor:pointer;display:grid;place-items:center;
+  color:#fff;box-shadow:inset 0 0 0 1px rgba(16,24,40,.2),0 1px 3px rgba(16,24,40,.22);
+  background:conic-gradient(#f43f5e,#f59e0b,#84cc16,#06b6d4,#6366f1,#d946ef,#f43f5e)}
+.custom-sw input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.custom-row input[type=text]{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+  padding:7px 10px;font:600 12.5px/1 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);
+  transition:border-color .15s ease}
+.custom-row input[type=text]:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft);background:#fff}
+.recent-row{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
+.size-row{display:flex;align-items:center;gap:6px;margin:4px 0 6px}
+.size-row button{width:38px;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);
+  display:grid;place-items:center;cursor:pointer;padding:0;color:var(--ink-soft);transition:background .13s ease,border-color .13s ease}
+.size-row button:hover{background:#fff}
+.size-row button.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+.size-row button span{border-radius:99px;background:currentColor;display:block}
+.pop h5 b{color:var(--accent-ink);font-variant-numeric:tabular-nums}
+.tool-pop canvas{width:100%;height:38px;border-radius:10px;background:#fff;box-shadow:inset 0 0 0 1px var(--line);
+  display:block;margin-top:8px}
+.tp-hint{font-size:11.5px;color:var(--muted);line-height:1.55;margin:8px 2px 0}
+.tp-inline{display:flex;align-items:center;gap:10px;margin-top:8px}
+.tp-inline input[type=range]{flex:1;min-width:60px}
+#brushRing{position:absolute;left:-200px;top:-200px;width:28px;height:28px;border:1.6px dashed rgba(20,20,20,.6);
+  border-radius:99px;pointer-events:none;display:none;z-index:4;box-shadow:0 0 0 1px rgba(255,255,255,.55)}
+.tool-dot{position:absolute;right:5px;bottom:12px;width:9px;height:9px;border-radius:99px;
+  box-shadow:0 0 0 2px rgba(255,255,255,.9);pointer-events:none}
+@media(max-width:900px){
+  .tool-pop{width:248px}
+}
