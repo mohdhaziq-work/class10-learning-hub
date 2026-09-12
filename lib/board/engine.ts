@@ -251,7 +251,7 @@ export class BoardEngine {
 
   /* board canvas */
   private boardScroll!: HTMLElement; private boardCanvas!: HTMLCanvasElement; private bctx!: CanvasRenderingContext2D;
-  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0;
+  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0; private boardRectC: DOMRect | null = null; private dirtySave = false;
   private boardW = 800; private boardH = 600; private DPR = 1;
   private replayN: number | null = null; private replayTimer: ReturnType<typeof setInterval> | null = null;
   private shapeAI = true; private funWired = false;
@@ -287,9 +287,9 @@ export class BoardEngine {
 
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
-    this.bctx = this.boardCanvas.getContext("2d")!;
+    this.bctx = this.boardCanvas.getContext("2d", { alpha: false, desynchronized: true })!;
     this.boardLive = this.$("#boardLive");
-    this.lctx = this.boardLive.getContext("2d")!;
+    this.lctx = this.boardLive.getContext("2d", { desynchronized: true })!;
     this.laserDot = this.$("#laser");
     this.trailCv = document.createElement("canvas");
     this.trailCv.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:149";
@@ -332,6 +332,8 @@ export class BoardEngine {
     let rzT: ReturnType<typeof setTimeout>;
     this.on(window, "resize", () => { this.sizeTrail(); clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
     this.on(window, "sb-board-dirty", () => this.renderBoard());
+    this.on(window, "pagehide", () => this.flushSave());
+    this.on(document, "visibilitychange", () => { if (document.visibilityState === "hidden") this.flushSave(); });
     if (!localStorage.getItem("sb-help-seen")) {
       setTimeout(() => { if (!this.destroyed) { this.openModal("mHelp"); localStorage.setItem("sb-help-seen", "1"); } }, 500);
     }
@@ -392,6 +394,7 @@ export class BoardEngine {
     const r = this.boardScroll.getBoundingClientRect();
     this.boardW = Math.max(300, r.width); this.boardH = Math.max(300, r.height);
     this.DPR = Math.min(2, window.devicePixelRatio || 1);
+    this.boardRectC = null;
     this.boardCanvas.width = this.boardW * this.DPR;
     this.boardCanvas.height = this.boardH * this.DPR;
     this.boardCanvas.style.width = this.boardW + "px";
@@ -497,6 +500,7 @@ export class BoardEngine {
     const cv = this.boardCanvas;
     this.on(cv, "pointerdown", (e: PointerEvent) => {
       try { cv.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      this.boardRectC = cv.getBoundingClientRect(); /* cache for the whole stroke — no layout thrash on move */
       this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (this.pointers.size === 2) {
         const p = [...this.pointers.values()];
@@ -522,7 +526,7 @@ export class BoardEngine {
         this.renderBoard(); return;
       }
       if (!this.pointers.has(e.pointerId)) return;
-      const r = cv.getBoundingClientRect();
+      const r = this.boardRectC || cv.getBoundingClientRect();
       /* high-frequency pens/tablets: use every coalesced point for a silky, lag-free stroke */
       const gce = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() as PointerEvent[] : [];
       const evs = (gce && gce.length && (this.tool === "pen" || this.tool === "highlighter")) ? gce : [e];
@@ -829,7 +833,7 @@ export class BoardEngine {
     annot.className = "annot";
     wrap.appendChild(base); wrap.appendChild(annot);
     (this.$("#docScroll") as HTMLElement).appendChild(wrap);
-    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1 };
+    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d", { desynchronized: true })!, rendered: false, dirty: true, rendering: false, scale: 1 };
     this.pages.push(pg);
     this.pageObserver?.observe(wrap);
     this.wireAnnotCanvas(annot, n, () => pg.scale, null);
@@ -883,17 +887,21 @@ export class BoardEngine {
     this.drawLive();
   }
 
-  private annotPos(canvas: HTMLCanvasElement, e: PointerEvent | MouseEvent, scale: number, zoomCss: number) {
-    const r = canvas.getBoundingClientRect();
+  private annotPos(canvas: HTMLCanvasElement, e: PointerEvent | MouseEvent, scale: number, zoomCss: number, rect?: DOMRect | null) {
+    const r = rect || canvas.getBoundingClientRect();
     return { x: (e.clientX - r.left) / zoomCss / scale, y: (e.clientY - r.top) / zoomCss / scale };
   }
 
   private wireAnnotCanvas(canvas: HTMLCanvasElement, pageNum: number, scaleFn: (() => number) | null, zoomCssFn: (() => number) | null) {
     let drawing = false, selDrag: { sx: number; sy: number } | null = null;
     let erasing = false;
+    let rect: DOMRect | null = null;
+    let raf = 0;
+    const sched = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; this.refreshAnnot(pageNum); }); };
     this.on(canvas, "pointerdown", (e: PointerEvent) => {
       e.preventDefault();
       try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      rect = canvas.getBoundingClientRect(); /* cached for the whole stroke */
       this.setActive("doc", pageNum);
       const sc = scaleFn ? scaleFn() : 1, zc = zoomCssFn ? zoomCssFn() : 1;
       const p = this.annotPos(canvas, e, sc, zc);
@@ -939,25 +947,37 @@ export class BoardEngine {
     });
     this.on(canvas, "pointermove", (e: PointerEvent) => {
       const sc = scaleFn ? scaleFn() : 1, zc = zoomCssFn ? zoomCssFn() : 1;
-      const p = this.annotPos(canvas, e, sc, zc);
+      const rc = rect || (rect = canvas.getBoundingClientRect());
       const store = this.docStore(pageNum);
-      if (erasing) {
-        const hit = hitTest(store.objects, p.x, p.y);
-        if (hit) { store.objects.splice(hit.idx, 1); this.refreshAnnot(pageNum); this.scheduleSave(); }
-        return;
+      const posOf = (ev: PointerEvent) => this.annotPos(canvas, ev, sc, zc, rc);
+      /* high-frequency pens: every coalesced point, batched to one repaint per frame */
+      const gce = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() as PointerEvent[] : [];
+      const stroking = drawing && this.annotDraft && this.annotDraft.page === pageNum && this.annotDraft.obj.type === "stroke";
+      const evs = (gce && gce.length && stroking) ? gce : [e];
+      for (const ev of evs) {
+        const p = posOf(ev);
+        if (erasing) {
+          const hit = hitTest(store.objects, p.x, p.y);
+          if (hit) { store.objects.splice(hit.idx, 1); sched(); this.scheduleSave(); }
+          continue;
+        }
+        if (selDrag && this.selected) {
+          moveObject(this.selected.obj, p.x - selDrag.sx, p.y - selDrag.sy);
+          selDrag.sx = p.x; selDrag.sy = p.y; sched(); continue;
+        }
+        if (!drawing || !this.annotDraft || this.annotDraft.page !== pageNum) continue;
+        const o = this.annotDraft.obj;
+        if (o.type === "stroke") {
+          const pts = o.points!;
+          const last = pts[pts.length - 1];
+          if (Math.hypot(p.x - last.x, p.y - last.y) >= 0.75 / (sc * zc)) pts.push(p);
+        } else { o.x2 = p.x; o.y2 = p.y; }
+        sched();
       }
-      if (selDrag && this.selected) {
-        moveObject(this.selected.obj, p.x - selDrag.sx, p.y - selDrag.sy);
-        selDrag.sx = p.x; selDrag.sy = p.y; this.refreshAnnot(pageNum); return;
-      }
-      if (!drawing || !this.annotDraft || this.annotDraft.page !== pageNum) return;
-      const o = this.annotDraft.obj;
-      if (o.type === "stroke") o.points!.push(p);
-      else { o.x2 = p.x; o.y2 = p.y; }
-      this.refreshAnnot(pageNum);
     });
     const up = () => {
       drawing = false; erasing = false;
+      if (raf) { cancelAnimationFrame(raf); raf = 0; }
       if (this.annotDraft && this.annotDraft.page === pageNum) {
         const o = this.annotDraft.obj;
         const tiny = o.type === "shape" && Math.abs((o.x2 || 0) - (o.x1 || 0)) < 3 && Math.abs((o.y2 || 0) - (o.y1 || 0)) < 3;
@@ -1178,7 +1198,7 @@ export class BoardEngine {
     (this.$("#docScroll") as HTMLElement).appendChild(box);
     if (!annot) { this.htmlAnnot = null; requestAnimationFrame(() => this.applyHtmlZoom()); return; }
     box.appendChild(cv);
-    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d")! };
+    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d", { desynchronized: true })! };
     requestAnimationFrame(() => { this.sizeHtmlAnnot(); this.applyHtmlZoom(); });
     const ro = new ResizeObserver(() => this.sizeHtmlAnnot());
     ro.observe(box.querySelector(".doc-html-inner") as HTMLElement);
@@ -1447,6 +1467,8 @@ export class BoardEngine {
   private sizeTrail() { this.trailCv.width = window.innerWidth; this.trailCv.height = window.innerHeight; }
   private laserLoop() {
     if (this.destroyed) return;
+    /* sleep when nothing to draw — a permanent full-screen clear at 60fps costs real GPU */
+    if (!this.trail.length) { setTimeout(() => this.laserLoop(), 100); return; }
     this.trailCtx.clearRect(0, 0, this.trailCv.width, this.trailCv.height);
     const now = performance.now();
     this.trail = this.trail.filter((p) => now - p.t < 700);
@@ -1862,10 +1884,22 @@ export class BoardEngine {
     };
   }
   private scheduleSave() {
+    this.dirtySave = true;
     if (this.saveT) clearTimeout(this.saveT);
     this.saveT = setTimeout(() => {
-      try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); } catch { /* quota full */ }
-    }, 800);
+      this.saveT = null;
+      const run = () => {
+        try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.dirtySave = false; } catch { /* quota full */ }
+      };
+      /* stringify off the interaction path — never stutters a stroke */
+      if (typeof (window as any).requestIdleCallback === "function") (window as any).requestIdleCallback(run, { timeout: 2000 });
+      else run();
+    }, 1400);
+  }
+  private flushSave() {
+    if (!this.dirtySave) return;
+    if (this.saveT) { clearTimeout(this.saveT); this.saveT = null; }
+    try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.dirtySave = false; } catch { /* quota full */ }
   }
   private applySession(d: any) {
     if (!d) return;
