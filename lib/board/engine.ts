@@ -152,9 +152,15 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
     if (o.tool === "highlighter") ctx.globalAlpha = Math.min(ctx.globalAlpha, 0.45);
     const p = o.points || [];
     if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0].x, p[0].y, (o.size || 3) / 2, 0, 7); ctx.fill(); }
+    else if (p.length === 2) { ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y); ctx.lineTo(p[1].x, p[1].y); ctx.stroke(); }
     else if (p.length > 1) {
+      /* quadratic midpoint smoothing — silky curves, no angular corners */
       ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y);
-      for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x, p[i].y);
+      for (let i = 1; i < p.length - 1; i++) {
+        const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
+        ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
+      }
+      ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
       ctx.stroke();
     }
   }
@@ -245,6 +251,7 @@ export class BoardEngine {
 
   /* board canvas */
   private boardScroll!: HTMLElement; private boardCanvas!: HTMLCanvasElement; private bctx!: CanvasRenderingContext2D;
+  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0;
   private boardW = 800; private boardH = 600; private DPR = 1;
   private replayN: number | null = null; private replayTimer: ReturnType<typeof setInterval> | null = null;
   private shapeAI = true; private funWired = false;
@@ -281,6 +288,8 @@ export class BoardEngine {
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
     this.bctx = this.boardCanvas.getContext("2d")!;
+    this.boardLive = this.$("#boardLive");
+    this.lctx = this.boardLive.getContext("2d")!;
     this.laserDot = this.$("#laser");
     this.trailCv = document.createElement("canvas");
     this.trailCv.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:149";
@@ -333,6 +342,7 @@ export class BoardEngine {
     if (this.timerInt) clearInterval(this.timerInt);
     if (this.saveT) clearTimeout(this.saveT);
     if (this.toastH) clearTimeout(this.toastH);
+    if (this.liveRaf) cancelAnimationFrame(this.liveRaf);
     this.pageObserver?.disconnect();
     this.cleanups.forEach((fn) => { try { fn(); } catch { /* noop */ } });
     this.cleanups = [];
@@ -349,6 +359,7 @@ export class BoardEngine {
     const el = this.$("#sbToast");
     el.textContent = msg; el.classList.add("show");
     if (this.toastH) clearTimeout(this.toastH);
+    if (this.liveRaf) cancelAnimationFrame(this.liveRaf);
     this.toastH = setTimeout(() => el.classList.remove("show"), 2200);
   }
 
@@ -385,6 +396,10 @@ export class BoardEngine {
     this.boardCanvas.height = this.boardH * this.DPR;
     this.boardCanvas.style.width = this.boardW + "px";
     this.boardCanvas.style.height = this.boardH + "px";
+    this.boardLive.width = this.boardCanvas.width;
+    this.boardLive.height = this.boardCanvas.height;
+    this.boardLive.style.width = this.boardW + "px";
+    this.boardLive.style.height = this.boardH + "px";
     this.renderBoard();
   }
   private renderBoard() {
@@ -399,7 +414,6 @@ export class BoardEngine {
     ctx.save();
     ctx.translate(px, py); ctx.scale(z, z);
     (this.replayN === null ? this.boardStore.objects : this.boardStore.objects.slice(0, this.replayN)).forEach((o) => drawObject(ctx, o));
-    if (this.boardDraft) drawObject(ctx, this.boardDraft);
     ctx.restore();
     if (this.selected && this.selected.surface === "board") {
       const b = bbox(this.selected.obj);
@@ -409,6 +423,42 @@ export class BoardEngine {
       ctx.strokeRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
       ctx.restore();
     }
+    this.drawLive();
+  }
+
+  /* ---------- LIVE STROKE LAYER — zero-lag drawing ----------
+     Static canvas: committed objects, redrawn only on real changes.
+     Live canvas: ONLY the stroke being drawn — cleared + 1 object per frame.
+     Pen moves NEVER trigger a full-board redraw, so speed stays constant
+     no matter how full the board is. */
+  private scheduleLive() {
+    if (this.liveRaf || this.destroyed) return;
+    this.liveRaf = requestAnimationFrame(() => { this.liveRaf = 0; this.drawLive(); });
+  }
+  private drawLive() {
+    const ctx = this.lctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    if (!this.boardDraft) return;
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    ctx.save();
+    ctx.translate(this.boardPan.x, this.boardPan.y);
+    ctx.scale(this.boardZoom, this.boardZoom);
+    drawObject(ctx, this.boardDraft);
+    ctx.restore();
+  }
+  /* paint just the newest object straight onto the static canvas — no full redraw */
+  private paintIncremental() {
+    this.drawLive(); /* clears the live layer */
+    const o = this.boardStore.objects[this.boardStore.objects.length - 1];
+    if (!o) return;
+    const ctx = this.bctx;
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    ctx.save();
+    ctx.translate(this.boardPan.x, this.boardPan.y);
+    ctx.scale(this.boardZoom, this.boardZoom);
+    drawObject(ctx, o);
+    ctx.restore();
   }
   private drawBoardPattern(ctx: CanvasRenderingContext2D, z: number, px: number, py: number) {
     ctx.save(); ctx.lineWidth = 1;
@@ -473,7 +523,10 @@ export class BoardEngine {
       }
       if (!this.pointers.has(e.pointerId)) return;
       const r = cv.getBoundingClientRect();
-      this.boardStroke(e, this.toWorld(e.clientX - r.left, e.clientY - r.top), "move");
+      /* high-frequency pens/tablets: use every coalesced point for a silky, lag-free stroke */
+      const gce = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() as PointerEvent[] : [];
+      const evs = (gce && gce.length && (this.tool === "pen" || this.tool === "highlighter")) ? gce : [e];
+      for (const ev of evs) this.boardStroke(ev, this.toWorld(ev.clientX - r.left, ev.clientY - r.top), "move");
     });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
@@ -550,24 +603,30 @@ export class BoardEngine {
         };
       }
     } else if (phase === "move" && w && this.boardDraft) {
-      if (this.boardDraft.type === "stroke") this.boardDraft.points!.push({ x: w.x, y: w.y });
-      else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
-      this.renderBoard();
+      if (this.boardDraft.type === "stroke") {
+        const pts = this.boardDraft.points!;
+        const last = pts[pts.length - 1];
+        if (Math.hypot(w.x - last.x, w.y - last.y) >= 0.75) pts.push({ x: w.x, y: w.y }); /* drop near-duplicate points */
+      } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
+      this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
     } else if (phase === "up" && this.boardDraft) {
+      let replaced = false;
       if (this.boardDraft.type === "shape" && Math.abs((this.boardDraft.x2 || 0) - (this.boardDraft.x1 || 0)) < 4 && Math.abs((this.boardDraft.y2 || 0) - (this.boardDraft.y1 || 0)) < 4) {
         this.boardStore.undo.pop();
       } else {
         this.boardStore.objects.push(this.boardDraft);
         if (this.shapeAI && this.boardDraft.type === "stroke" && this.boardDraft.tool === "pen" && (this.boardDraft.points?.length || 0) > 12) {
           const rec = recognizeShape(this.boardDraft.points!);
-          if (rec) this.boardStore.objects[this.boardStore.objects.length - 1] = {
+          if (rec) { this.boardStore.objects[this.boardStore.objects.length - 1] = {
             id: this.boardDraft.id, type: "shape", shape: rec.shape,
             x1: rec.x1, y1: rec.y1, x2: rec.x2, y2: rec.y2,
             color: this.boardDraft.color, size: Math.max(this.boardDraft.size || 4, 3), opacity: this.boardDraft.opacity,
-          };
+          }; replaced = true; }
         }
       }
-      this.boardDraft = null; this.renderBoard(); this.scheduleSave();
+      this.boardDraft = null;
+      if (replaced) this.renderBoard(); else this.paintIncremental();
+      this.scheduleSave();
     }
   }
 
@@ -821,6 +880,7 @@ export class BoardEngine {
       ctx.strokeRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
       ctx.restore();
     }
+    this.drawLive();
   }
 
   private annotPos(canvas: HTMLCanvasElement, e: PointerEvent | MouseEvent, scale: number, zoomCss: number) {

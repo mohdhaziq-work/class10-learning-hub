@@ -145,7 +145,7 @@ export default function SmartBoard() {
           <section className="pane" id="paneBoard">
             <div className="pane-head"><span className="dot" style={{ background: "#1a73e8" }} /> Whiteboard <span className="pane-sub">write / solve here</span></div>
             <div className="pane-body">
-              <div id="boardScroll"><canvas id="boardCanvas" /></div>
+              <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /></div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
               <div id="protractor" className="measure"><svg id="protractorSvg" width="260" height="150" /></div>
             </div>
