@@ -197,11 +197,19 @@ export default function SmartBoard() {
       {/* ================= POPOVERS ================= */}
       <div className="pop tool-pop" id="penPop">
         <div className="tp-head"><h5>Pen</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
-        <div className="seg-row" id="penKindSeg">
-          <button data-kind="ball" title="Ballpoint — smooth everyday pen"><Icon name="pencil" size={17} />Ballpoint</button>
-          <button data-kind="marker" title="Marker — broad, softly translucent"><Icon name="penLine" size={17} />Marker</button>
-          <button data-kind="ink" title="Ink — calligraphy: thin when fast, thick when slow"><Icon name="penTool" size={17} />Ink</button>
+        <div className="seg-row five" id="penKindSeg">
+          <button data-kind="ball" title="Ballpoint — smooth everyday pen"><Icon name="penLine" size={16} />Ball</button>
+          <button data-kind="marker" title="Marker — broad, softly translucent"><Icon name="squarePen" size={16} />Marker</button>
+          <button data-kind="ink" title="Ink — calligraphy, pressure-aware"><Icon name="penTool" size={16} />Ink</button>
+          <button data-kind="pencil" title="Pencil — grainy graphite"><Icon name="pencil" size={16} />Pencil</button>
+          <button data-kind="chalk" title="Chalk — dusty, for the blackboard"><Icon name="chalk" size={16} />Chalk</button>
+          <button data-kind="crayon" title="Crayon — waxy texture"><Icon name="crayon" size={16} />Crayon</button>
+          <button data-kind="neon" title="Neon — glowing ink"><Icon name="sparkles" size={16} />Neon</button>
+          <button data-kind="brush" title="Brush — soft watercolor"><Icon name="brush" size={16} />Brush</button>
+          <button data-kind="spray" title="Airbrush — spray paint"><Icon name="spray" size={16} />Spray</button>
+          <button data-kind="fade" title="Magic pen — fades away in seconds"><Icon name="zap" size={16} />Magic</button>
         </div>
+        <p className="tp-hint" id="penKindHint" />
         <h5>Color</h5>
         <div className="color-grid" id="penColorGrid" />
         <div className="custom-row">
@@ -240,7 +248,7 @@ export default function SmartBoard() {
         <div className="seg-row" id="eraserModeSeg">
           <button data-mode="stroke" title="Tap an object — the whole thing is deleted"><Icon name="slash" size={17} />Stroke</button>
           <button data-mode="pixel" title="Rub to erase exactly where you touch"><Icon name="eraser" size={17} />Pixel</button>
-          <button data-mode="area" title="Drag a box — everything inside is deleted"><Icon name="square" size={17} />Area</button>
+          <button data-mode="area" title="Draw any loop — circle, square, any shape — everything inside is erased"><Icon name="circle" size={17} />Lasso</button>
         </div>
         <h5>Size</h5>
         <div className="size-row" id="eraserSizes">

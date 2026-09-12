@@ -17,7 +17,7 @@ function uid(): string { return "o" + Math.random().toString(36).slice(2, 9); }
 /* ---------- vector object model ---------- */
 export interface BoardObject {
   id: string; type: "stroke" | "shape" | "text" | "sticky" | "image" | "erase";
-  tool?: string; kind?: "ball" | "marker" | "ink"; points?: { x: number; y: number }[];
+  tool?: string; kind?: string; points?: { x: number; y: number; w?: number }[];
   shape?: string; x1?: number; y1?: number; x2?: number; y2?: number;
   x?: number; y?: number; w?: number; h?: number;
   text?: string; fontSize?: number; bg?: string; src?: string; img?: HTMLImageElement;
@@ -148,7 +148,10 @@ function drawShape(ctx: CanvasRenderingContext2D, o: BoardObject) {
 /* ink pen: velocity-shaped width — fast = thin, slow = thick (deterministic from points) */
 function inkWidths(o: BoardObject): number[] {
   const p = o.points || [], base = Math.max(o.size || 4, 1.6);
-  const ws = p.map((pt, i) => (i === 0 ? base : base * (1 - 0.62 * Math.min(Math.hypot(pt.x - p[i - 1].x, pt.y - p[i - 1].y) / 26, 1))));
+  const ws = p.map((pt, i) => {
+    if (pt.w != null) return base * (0.3 + 0.7 * Math.min(1, pt.w * 1.5)); /* stylus pressure */
+    return i === 0 ? base : base * (1 - 0.62 * Math.min(Math.hypot(pt.x - p[i - 1].x, pt.y - p[i - 1].y) / 26, 1));
+  });
   for (let k = 0; k < 2; k++) for (let i = 1; i < ws.length - 1; i++) ws[i] = (ws[i - 1] + ws[i] * 2 + ws[i + 1]) / 4;
   return ws;
 }
@@ -162,6 +165,96 @@ function drawInkStroke(ctx: CanvasRenderingContext2D, o: BoardObject) {
     ctx.quadraticCurveTo(p[i].x, p[i].y, (p[i].x + p[i + 1].x) / 2, (p[i].y + p[i + 1].y) / 2);
     ctx.stroke();
   }
+}
+/* deterministic PRNG — grain/dust looks identical on every redraw (save, reload, replay) */
+function rng(seed: string): () => number {
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) { h = Math.imul(h ^ seed.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); }
+  return () => { h = Math.imul(h ^ (h >>> 16), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); h ^= h >>> 16; return (h >>> 0) / 4294967296; };
+}
+function pathSmooth(ctx: CanvasRenderingContext2D, p: { x: number; y: number }[]) {
+  ctx.beginPath();
+  ctx.moveTo(p[0].x, p[0].y);
+  for (let i = 1; i < p.length - 1; i++) {
+    const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
+    ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
+  }
+  ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
+}
+/* pencil / chalk / crayon / spray — grainy textured inks (SMART-style pen types) */
+function drawTextured(ctx: CanvasRenderingContext2D, o: BoardObject, kind: "pencil" | "chalk" | "crayon" | "spray") {
+  const p = o.points || [];
+  if (!p.length) return;
+  const base = Math.max(o.size || 4, 1.2);
+  const alpha = (o.opacity ?? 100) / 100;
+  const r = rng(o.id + kind[0]);
+  if (kind === "spray") {
+    ctx.fillStyle = o.color || "#111";
+    for (let i = 0; i < p.length; i++) {
+      for (let k = 0; k < 3; k++) {
+        const ang = r() * 6.2832, rad = Math.sqrt(r()) * base;
+        ctx.globalAlpha = alpha * (0.18 + r() * 0.5);
+        ctx.beginPath();
+        ctx.arc(p[i].x + Math.cos(ang) * rad, p[i].y + Math.sin(ang) * rad, Math.max(0.5, base * 0.045 + r() * base * 0.05), 0, 7);
+        ctx.fill();
+      }
+    }
+    return;
+  }
+  /* readable core line */
+  ctx.globalAlpha = alpha * (kind === "pencil" ? 0.55 : kind === "chalk" ? 0.5 : 0.72);
+  ctx.lineWidth = kind === "pencil" ? base * 0.8 : base;
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (p.length > 1) { pathSmooth(ctx, p); ctx.stroke(); }
+  else { ctx.beginPath(); ctx.arc(p[0].x, p[0].y, base / 2, 0, 7); ctx.fill(); }
+  /* grain / dust / wax speckles */
+  ctx.fillStyle = o.color || "#111";
+  const n = Math.min(Math.max(p.length * 4, 8), 900);
+  for (let i = 0; i < n; i++) {
+    const t = r() * Math.max(p.length - 1, 0.0001), i0 = Math.min(Math.floor(t), p.length - 1), fr = t - i0;
+    const a = p[i0], b = p[Math.min(i0 + 1, p.length - 1)];
+    const x = a.x + (b.x - a.x) * fr + (r() - 0.5) * base * 1.3;
+    const y = a.y + (b.y - a.y) * fr + (r() - 0.5) * base * 1.3;
+    ctx.globalAlpha = alpha * (kind === "crayon" ? 0.28 + r() * 0.45 : 0.14 + r() * 0.35);
+    const d = base * (kind === "crayon" ? 0.1 + r() * 0.17 : 0.06 + r() * 0.12);
+    ctx.beginPath(); ctx.arc(x, y, d, 0, 7); ctx.fill();
+  }
+}
+/* neon — glowing ink: colored halo + bright core */
+function drawNeon(ctx: CanvasRenderingContext2D, o: BoardObject) {
+  const p = o.points || [], base = Math.max(o.size || 4, 2);
+  if (!p.length) return;
+  ctx.save();
+  ctx.shadowColor = o.color || "#22d3ee";
+  ctx.strokeStyle = o.color || "#22d3ee"; ctx.fillStyle = o.color || "#22d3ee";
+  ctx.lineCap = "round"; ctx.lineJoin = "round";
+  if (p.length === 1) {
+    ctx.shadowBlur = base * 2;
+    ctx.beginPath(); ctx.arc(p[0].x, p[0].y, base / 2, 0, 7); ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.beginPath(); ctx.arc(p[0].x, p[0].y, Math.max(base * 0.3, 1), 0, 7); ctx.fill();
+  } else {
+    ctx.lineWidth = base; ctx.shadowBlur = base * 2.4; pathSmooth(ctx, p); ctx.stroke();
+    ctx.lineWidth = base * 0.66; ctx.shadowBlur = base * 1.2; pathSmooth(ctx, p); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.strokeStyle = "rgba(255,255,255,.85)"; ctx.lineWidth = Math.max(base * 0.28, 1);
+    pathSmooth(ctx, p); ctx.stroke();
+  }
+  ctx.restore();
+}
+/* brush — soft translucent watercolor with tapered ends */
+function drawBrush(ctx: CanvasRenderingContext2D, o: BoardObject) {
+  const base = Math.max(o.size || 4, 4);
+  ctx.save();
+  ctx.globalAlpha *= 0.34;
+  ctx.shadowColor = o.color || "#333"; ctx.shadowBlur = Math.max(base * 0.6, 4);
+  drawInkStroke(ctx, o);
+  ctx.restore();
+}
+/* size multiplier per pen kind */
+function penSizeFor(kind: string, size: number): number {
+  const m: Record<string, number> = { ball: 1, marker: 2.2, ink: 1, pencil: 1.1, chalk: 1.7, crayon: 1.9, neon: 1.5, brush: 2.8, spray: 3.2, fade: 1 };
+  const k = m[kind] || 1;
+  return k > 1.3 ? Math.max(Math.round(size * k), 6) : Math.round(size * k);
 }
 function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.save();
@@ -185,19 +278,13 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
     if (kind === "highlighter") ctx.globalAlpha = Math.min(ctx.globalAlpha, 0.45);
     else if (kind === "marker") ctx.globalAlpha = Math.min(ctx.globalAlpha, 0.55);
     const p = o.points || [];
-    if (kind === "ink" && p.length > 2) drawInkStroke(ctx, o);
+    if (kind === "pencil" || kind === "chalk" || kind === "crayon" || kind === "spray") drawTextured(ctx, o, kind);
+    else if (kind === "neon") drawNeon(ctx, o);
+    else if (kind === "ink" && p.length > 2) drawInkStroke(ctx, o);
+    else if (kind === "brush" && p.length > 2) drawBrush(ctx, o);
     else if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0].x, p[0].y, (o.size || 3) / 2, 0, 7); ctx.fill(); }
     else if (p.length === 2) { ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y); ctx.lineTo(p[1].x, p[1].y); ctx.stroke(); }
-    else if (p.length > 1) {
-      /* quadratic midpoint smoothing — silky curves, no angular corners */
-      ctx.beginPath(); ctx.moveTo(p[0].x, p[0].y);
-      for (let i = 1; i < p.length - 1; i++) {
-        const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
-        ctx.quadraticCurveTo(p[i].x, p[i].y, mx, my);
-      }
-      ctx.lineTo(p[p.length - 1].x, p[p.length - 1].y);
-      ctx.stroke();
-    }
+    else if (p.length > 1) { pathSmooth(ctx, p); ctx.stroke(); } /* silky quadratic smoothing */
   }
   else if (o.type === "shape") drawShape(ctx, o);
   else if (o.type === "text") {
@@ -258,9 +345,20 @@ function hitErase(objects: BoardObject[], x: number, y: number, r: number): { ob
   }
   return null;
 }
-function rectHitsObject(o: BoardObject, x1: number, y1: number, x2: number, y2: number): boolean {
+/* point-in-polygon (ray casting) */
+function pip(poly: { x: number; y: number }[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+/* an object is "inside the lasso" when ALL of it (every stroke point / every bbox corner) is inside */
+function objectInsidePoly(o: BoardObject, poly: { x: number; y: number }[]): boolean {
+  if (o.type === "stroke") return (o.points || []).every((q) => pip(poly, q.x, q.y));
   const b = bbox(o);
-  return b.x < Math.max(x1, x2) && b.x + b.w > Math.min(x1, x2) && b.y < Math.max(y1, y2) && b.y + b.h > Math.min(y1, y2);
+  return pip(poly, b.x, b.y) && pip(poly, b.x + b.w, b.y) && pip(poly, b.x, b.y + b.h) && pip(poly, b.x + b.w, b.y + b.h);
 }
 function moveObject(o: BoardObject, dx: number, dy: number) {
   if (o.type === "stroke") (o.points || []).forEach((p) => { p.x += dx; p.y += dy; });
@@ -296,7 +394,7 @@ export class BoardEngine {
   private tool = "pen"; private shape = "rect";
   private color = "#dc2626"; private size = 4; private opacity = 100;
   private fill = false; private dashed = false; private hlColor = "#facc15";
-  private penKind: "ball" | "marker" | "ink" = "ball";
+  private penKind: "ball" | "marker" | "ink" | "pencil" | "chalk" | "crayon" | "neon" | "brush" | "spray" | "fade" = "ball";
   private hlSize = 24;
   private eraserMode: "stroke" | "pixel" | "area" = "stroke";
   private eraserSize = 28;
@@ -327,8 +425,8 @@ export class BoardEngine {
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
   private bgC: HTMLCanvasElement | null = null; private bgX: CanvasRenderingContext2D | null = null;
   private compRaf = 0;
-  private eraseRect: { x1: number; y1: number; x2: number; y2: number } | null = null;
-  private docErasePreview: { page: number; x1: number; y1: number; x2: number; y2: number } | null = null;
+  private lasso: { x: number; y: number }[] | null = null;
+  private docErasePreview: { page: number; pts: { x: number; y: number }[] } | null = null;
   private brushRing: HTMLElement | null = null;
   private replayN: number | null = null; private replayTimer: ReturnType<typeof setInterval> | null = null;
   private shapeAI = true; private funWired = false;
@@ -566,17 +664,20 @@ export class BoardEngine {
     const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
-    if (this.eraseRect) { /* area-eraser selection box */
-      const er = this.eraseRect;
+    if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       ctx.save();
       ctx.translate(this.boardPan.x, this.boardPan.y);
       ctx.scale(this.boardZoom, this.boardZoom);
-      const ex = Math.min(er.x1, er.x2), ey = Math.min(er.y1, er.y2), ew = Math.abs(er.x2 - er.x1), eh = Math.abs(er.y2 - er.y1);
-      ctx.globalAlpha = 0.14; ctx.fillStyle = "#dc2626"; ctx.fillRect(ex, ey, ew, eh);
-      ctx.globalAlpha = 1; ctx.setLineDash([7 / this.boardZoom, 5 / this.boardZoom]);
-      ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5 / this.boardZoom;
-      ctx.strokeRect(ex, ey, ew, eh);
+      const z = this.boardZoom;
+      ctx.beginPath();
+      ctx.moveTo(this.lasso[0].x, this.lasso[0].y);
+      for (let i = 1; i < this.lasso.length; i++) ctx.lineTo(this.lasso[i].x, this.lasso[i].y);
+      ctx.closePath();
+      ctx.globalAlpha = 0.12; ctx.fillStyle = "#dc2626"; ctx.fill();
+      ctx.globalAlpha = 1; ctx.setLineDash([7 / z, 5 / z]);
+      ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5 / z;
+      ctx.stroke();
       ctx.restore();
       return;
     }
@@ -744,16 +845,20 @@ export class BoardEngine {
         return;
       }
       if (this.eraserMode === "area") {
-        /* drag a box — everything inside goes in one undo step */
-        if (phase === "down" && w) { this.eraseRect = { x1: w.x, y1: w.y, x2: w.x, y2: w.y }; this.scheduleLive(); }
-        else if (phase === "move" && w && this.eraseRect) { this.eraseRect.x2 = w.x; this.eraseRect.y2 = w.y; this.scheduleLive(); }
-        else if (phase === "up" && this.eraseRect) {
-          const r = this.eraseRect; this.eraseRect = null; this.scheduleLive();
-          const victims = this.boardStore.objects.filter((o) => o.type !== "erase" && rectHitsObject(o, r.x1, r.y1, r.x2, r.y2));
-          if (victims.length) {
-            this.boardStore.pushHistory();
-            this.boardStore.objects = this.boardStore.objects.filter((o) => o.type === "erase" || !rectHitsObject(o, r.x1, r.y1, r.x2, r.y2));
-            this.renderBoard(); this.scheduleSave();
+        /* LASSO — draw any loop (circle, square, free shape); everything fully inside is erased in one undo step */
+        if (phase === "down" && w) { this.lasso = [{ x: w.x, y: w.y }]; this.scheduleLive(); }
+        else if (phase === "move" && w && this.lasso) {
+          const lp = this.lasso, lastP = lp[lp.length - 1];
+          if (Math.hypot(w.x - lastP.x, w.y - lastP.y) >= 2) { lp.push({ x: w.x, y: w.y }); this.scheduleLive(); }
+        } else if (phase === "up" && this.lasso) {
+          const poly = this.lasso; this.lasso = null; this.scheduleLive();
+          if (poly.length > 2) {
+            const victims = this.boardStore.objects.filter((o) => o.type !== "erase" && objectInsidePoly(o, poly));
+            if (victims.length) {
+              this.boardStore.pushHistory();
+              this.boardStore.objects = this.boardStore.objects.filter((o) => o.type === "erase" || !objectInsidePoly(o, poly));
+              this.renderBoard(); this.scheduleSave();
+            }
           }
         }
         return;
@@ -776,12 +881,12 @@ export class BoardEngine {
       return;
     }
     if (phase === "down" && w) {
-      this.boardStore.pushHistory();
+      if (!(tool === "pen" && this.penKind === "fade")) this.boardStore.pushHistory(); /* magic pen is not undoable */
       if (tool === "pen" || tool === "highlighter") {
         this.boardDraft = {
           id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined, points: [{ x: w.x, y: w.y }],
           color: tool === "highlighter" ? this.hlColor : this.color,
-          size: tool === "highlighter" ? this.hlSize : (this.penKind === "marker" ? Math.max(Math.round(this.size * 2.2), 8) : this.size), opacity: this.opacity,
+          size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
         };
       } else {
         this.boardDraft = {
@@ -793,7 +898,11 @@ export class BoardEngine {
       if (this.boardDraft.type === "stroke") {
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
-        if (Math.hypot(w.x - last.x, w.y - last.y) >= 0.75) pts.push({ x: w.x, y: w.y }); /* drop near-duplicate points */
+        if (Math.hypot(w.x - last.x, w.y - last.y) >= 0.75) {
+          /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
+          const pr = (e as PointerEvent).pressure;
+          pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
+        }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
       this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
     } else if (phase === "up" && this.boardDraft) {
@@ -811,8 +920,13 @@ export class BoardEngine {
           }; replaced = true; }
         }
       }
+      const fadeObj = this.boardDraft && this.boardDraft.type === "stroke" && this.boardDraft.kind === "fade" ? this.boardDraft : null;
       this.boardDraft = null;
       if (replaced) this.renderBoard(); else this.paintIncremental();
+      if (fadeObj) setTimeout(() => { /* magic ink melts away */
+        const i = this.boardStore.objects.indexOf(fadeObj);
+        if (!this.destroyed && i >= 0) { this.boardStore.objects.splice(i, 1); this.renderBoard(); }
+      }, 2600);
       this.scheduleSave();
       /* belt & braces: one guaranteed paint on the next frame */
       requestAnimationFrame(() => { if (!this.destroyed && !this.boardDraft) this.paintIncremental(); });
@@ -1061,12 +1175,13 @@ export class BoardEngine {
     ctx.save(); ctx.scale(sc, sc);
     this.docStore(pg.num).objects.forEach((o) => drawObject(ctx, o));
     if (this.annotDraft && this.annotDraft.page === pg.num) drawObject(ctx, this.annotDraft.obj);
-    if (this.docErasePreview && this.docErasePreview.page === pg.num) {
-      const d = this.docErasePreview;
-      ctx.globalAlpha = 0.14; ctx.fillStyle = "#dc2626"; ctx.setLineDash([]);
-      ctx.fillRect(Math.min(d.x1, d.x2), Math.min(d.y1, d.y2), Math.abs(d.x2 - d.x1), Math.abs(d.y2 - d.y1));
-      ctx.globalAlpha = 1; ctx.setLineDash([7, 5]); ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5;
-      ctx.strokeRect(Math.min(d.x1, d.x2), Math.min(d.y1, d.y2), Math.abs(d.x2 - d.x1), Math.abs(d.y2 - d.y1));
+    if (this.docErasePreview && this.docErasePreview.page === pg.num && this.docErasePreview.pts.length > 1) {
+      const d = this.docErasePreview.pts;
+      ctx.beginPath(); ctx.moveTo(d[0].x, d[0].y);
+      for (let i = 1; i < d.length; i++) ctx.lineTo(d[i].x, d[i].y);
+      ctx.closePath();
+      ctx.globalAlpha = 0.12; ctx.fillStyle = "#dc2626"; ctx.setLineDash([]); ctx.fill();
+      ctx.globalAlpha = 1; ctx.setLineDash([7, 5]); ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.setLineDash([]);
     }
     ctx.restore();
@@ -1088,7 +1203,7 @@ export class BoardEngine {
   private wireAnnotCanvas(canvas: HTMLCanvasElement, pageNum: number, scaleFn: (() => number) | null, zoomCssFn: (() => number) | null) {
     let drawing = false, selDrag: { sx: number; sy: number } | null = null;
     let erasing = false, erasedAny = false;
-    let areaRect: { x1: number; y1: number; x2: number; y2: number } | null = null;
+    let lasso: { x: number; y: number }[] | null = null;
     let rect: DOMRect | null = null;
     let raf = 0;
     const sched = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; this.refreshAnnot(pageNum); }); };
@@ -1116,8 +1231,8 @@ export class BoardEngine {
           drawing = true; return;
         }
         if (this.eraserMode === "area") {
-          areaRect = { x1: p.x, y1: p.y, x2: p.x, y2: p.y };
-          this.docErasePreview = { page: pageNum, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+          lasso = [{ x: p.x, y: p.y }];
+          this.docErasePreview = { page: pageNum, pts: [{ x: p.x, y: p.y }] };
           sched(); return;
         }
         const hit = hitErase(store.objects, p.x, p.y, Math.max(this.eraserSize * 0.5, 6) / (sc * zc));
@@ -1128,9 +1243,9 @@ export class BoardEngine {
         this.pendingAnchor = { surface: "doc", page: pageNum, x: p.x, y: p.y };
         this.openModal(this.tool === "text" ? "mText" : "mSticky"); return;
       }
-      store.pushHistory();
+      if (!(this.tool === "pen" && this.penKind === "fade")) store.pushHistory(); /* magic pen is not undoable */
       if (this.tool === "pen" || this.tool === "highlighter") {
-        const rawSize = this.tool === "highlighter" ? this.hlSize / sc : (this.penKind === "marker" ? Math.max(Math.round(this.size * 2.2), 8) / sc : this.size / sc);
+        const rawSize = this.tool === "highlighter" ? this.hlSize / sc : penSizeFor(this.penKind, this.size) / sc;
         this.annotDraft = {
           page: pageNum,
           obj: {
@@ -1161,9 +1276,12 @@ export class BoardEngine {
       const evs = (gce && gce.length && stroking) ? gce : [e];
       for (const ev of evs) {
         const p = posOf(ev);
-        if (areaRect) {
-          areaRect.x2 = p.x; areaRect.y2 = p.y;
-          if (this.docErasePreview) { this.docErasePreview.x2 = p.x; this.docErasePreview.y2 = p.y; }
+        if (lasso) {
+          const lp = lasso, lastP = lp[lp.length - 1];
+          if (Math.hypot(p.x - lastP.x, p.y - lastP.y) >= 2 / (sc * zc)) {
+            lp.push({ x: p.x, y: p.y });
+            if (this.docErasePreview) this.docErasePreview.pts.push({ x: p.x, y: p.y });
+          }
           sched(); continue;
         }
         if (erasing) {
@@ -1180,21 +1298,26 @@ export class BoardEngine {
         if (o.type === "stroke" || o.type === "erase") {
           const pts = o.points!;
           const last = pts[pts.length - 1];
-          if (Math.hypot(p.x - last.x, p.y - last.y) >= (o.type === "erase" ? 1.5 : 0.75) / (sc * zc)) pts.push(p);
+          if (Math.hypot(p.x - last.x, p.y - last.y) >= (o.type === "erase" ? 1.5 : 0.75) / (sc * zc)) {
+            const pr = ev.pressure;
+            pts.push(pr && pr > 0 && pr !== 0.5 ? { x: p.x, y: p.y, w: pr } : { x: p.x, y: p.y });
+          }
         } else { o.x2 = p.x; o.y2 = p.y; }
         sched();
       }
     });
     const up = () => {
       drawing = false; erasing = false; erasedAny = false;
-      if (areaRect) {
-        const rc = areaRect; areaRect = null; this.docErasePreview = null;
+      if (lasso) {
+        const poly = lasso; lasso = null; this.docErasePreview = null;
         const st = this.docStore(pageNum);
-        const victims = st.objects.filter((o) => o.type !== "erase" && rectHitsObject(o, rc.x1, rc.y1, rc.x2, rc.y2));
-        if (victims.length) {
-          st.pushHistory();
-          st.objects = st.objects.filter((o) => o.type === "erase" || !rectHitsObject(o, rc.x1, rc.y1, rc.x2, rc.y2));
-          this.scheduleSave();
+        if (poly.length > 2) {
+          const victims = st.objects.filter((o) => o.type !== "erase" && objectInsidePoly(o, poly));
+          if (victims.length) {
+            st.pushHistory();
+            st.objects = st.objects.filter((o) => o.type === "erase" || !objectInsidePoly(o, poly));
+            this.scheduleSave();
+          }
         }
         this.refreshAnnot(pageNum);
       }
@@ -1203,7 +1326,14 @@ export class BoardEngine {
         const o = this.annotDraft.obj;
         const tiny = o.type === "shape" && Math.abs((o.x2 || 0) - (o.x1 || 0)) < 3 && Math.abs((o.y2 || 0) - (o.y1 || 0)) < 3;
         if (tiny) this.docStore(pageNum).undo.pop();
-        else this.docStore(pageNum).objects.push(o);
+        else {
+          this.docStore(pageNum).objects.push(o);
+          if (o.type === "stroke" && o.kind === "fade") setTimeout(() => { /* magic ink melts away */
+            const st = this.docStore(pageNum);
+            const i = st.objects.indexOf(o);
+            if (!this.destroyed && i >= 0) { st.objects.splice(i, 1); this.refreshAnnot(pageNum); }
+          }, 2600);
+        }
         this.annotDraft = null; this.refreshAnnot(pageNum); this.scheduleSave();
       }
       if (selDrag) this.scheduleSave();
@@ -1446,13 +1576,14 @@ export class BoardEngine {
     ctx.clearRect(0, 0, this.htmlAnnot.cv.width, this.htmlAnnot.cv.height);
     this.docStore(1).objects.forEach((o) => drawObject(ctx, o));
     if (this.annotDraft && this.annotDraft.page === 1) drawObject(ctx, this.annotDraft.obj);
-    if (this.docErasePreview && this.docErasePreview.page === 1) {
-      const d = this.docErasePreview;
+    if (this.docErasePreview && this.docErasePreview.page === 1 && this.docErasePreview.pts.length > 1) {
+      const d = this.docErasePreview.pts;
       ctx.save();
-      ctx.globalAlpha = 0.14; ctx.fillStyle = "#dc2626"; ctx.setLineDash([]);
-      ctx.fillRect(Math.min(d.x1, d.x2), Math.min(d.y1, d.y2), Math.abs(d.x2 - d.x1), Math.abs(d.y2 - d.y1));
-      ctx.globalAlpha = 1; ctx.setLineDash([7, 5]); ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5;
-      ctx.strokeRect(Math.min(d.x1, d.x2), Math.min(d.y1, d.y2), Math.abs(d.x2 - d.x1), Math.abs(d.y2 - d.y1));
+      ctx.beginPath(); ctx.moveTo(d[0].x, d[0].y);
+      for (let i = 1; i < d.length; i++) ctx.lineTo(d[i].x, d[i].y);
+      ctx.closePath();
+      ctx.globalAlpha = 0.12; ctx.fillStyle = "#dc2626"; ctx.setLineDash([]); ctx.fill();
+      ctx.globalAlpha = 1; ctx.setLineDash([7, 5]); ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5; ctx.stroke();
       ctx.restore();
     }
     if (this.selected && this.selected.surface === "doc") {
@@ -1485,7 +1616,7 @@ export class BoardEngine {
   private loadTools() {
     try {
       const j = JSON.parse(localStorage.getItem(TOOLS_KEY) || "{}");
-      if (j.penKind === "ball" || j.penKind === "marker" || j.penKind === "ink") this.penKind = j.penKind;
+      if (["ball", "marker", "ink", "pencil", "chalk", "crayon", "neon", "brush", "spray", "fade"].includes(j.penKind)) this.penKind = j.penKind;
       if (typeof j.color === "string") this.color = j.color;
       if (typeof j.size === "number") this.size = Math.min(40, Math.max(1, j.size));
       if (Array.isArray(j.customColors)) this.customColors = j.customColors.filter((c: unknown) => typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c as string)).slice(0, 8);
@@ -1553,6 +1684,19 @@ export class BoardEngine {
   }
   private syncPenPop() {
     this.$all("#penKindSeg button").forEach((b: HTMLElement) => b.classList.toggle("on", (b as HTMLButtonElement).dataset.kind === this.penKind));
+    const kh = this.$("#penKindHint") as HTMLElement | null;
+    if (kh) kh.textContent = ({
+      ball: "Ballpoint — smooth everyday pen, fast and clean.",
+      marker: "Marker — broad tip, softly translucent. Great over PDFs.",
+      ink: "Ink — calligraphy: slow = thick, fast = thin. Stylus pressure works too.",
+      pencil: "Pencil — grainy graphite for rough work and sketches.",
+      chalk: "Chalk — dusty strokes, made for the blackboard background.",
+      crayon: "Crayon — waxy, sketchy and colorful.",
+      neon: "Neon — glowing ink that pops, even on dark boards.",
+      brush: "Brush — soft watercolor, wide and painterly.",
+      spray: "Airbrush — hold still to build up paint.",
+      fade: "Magic — your writing melts away after a few seconds. Perfect for quick pointing.",
+    } as Record<string, string>)[this.penKind] || "";
     this.$all("#penColorGrid .sw").forEach((x: HTMLElement) => x.classList.toggle("on", (x as HTMLButtonElement).title === this.color));
     const cust = this.$("#penCustom") as HTMLInputElement | null;
     if (cust) cust.value = this.color;
@@ -1586,7 +1730,7 @@ export class BoardEngine {
     const hints: Record<string, string> = {
       stroke: "Tap or rub over any stroke, shape, text or note — the whole object is deleted in one tap. Bigger size = easier tapping.",
       pixel: "Rub like a real eraser — only the part you touch is erased. Works on the board and on PDF pages.",
-      area: "Drag a box around anything — everything inside the box is deleted in one go.",
+      area: "Lasso — draw any loop (circle, square, any shape). Everything fully inside the loop is erased in one go.",
     };
     const h = this.$("#eraserHint") as HTMLElement | null;
     if (h) h.textContent = hints[this.eraserMode] || "";
@@ -1600,7 +1744,7 @@ export class BoardEngine {
     const ss = this.$("#shapeSize") as HTMLInputElement | null;
     if (ss) ss.value = String(this.size);
   }
-  private drawToolPreview(sel: string, size: number, color: string, kind: "ball" | "marker" | "ink" | "highlighter") {
+  private drawToolPreview(sel: string, size: number, color: string, kind: string) {
     const cv = this.$(sel) as HTMLCanvasElement | null;
     if (!cv) return;
     const ctx = cv.getContext("2d")!;
@@ -1613,6 +1757,7 @@ export class BoardEngine {
       pts.push({ x: 12 + t * (w - 24), y: h / 2 + Math.sin(t * Math.PI * 2) * Math.max(2, h / 2 - Math.max(size, 10) / 2 - 5) });
     }
     drawObject(ctx, { id: "preview", type: "stroke", tool: kind === "highlighter" ? "highlighter" : "pen", kind: kind === "highlighter" ? undefined : kind, points: pts, color, size, opacity: 100 });
+    /* preview uses its own seed so grain looks stable while switching kinds */
   }
 
   private buildMathSyms() {
@@ -2269,10 +2414,10 @@ export class BoardEngine {
     const docs: Record<string, Record<string, unknown[]>> = {};
     Object.keys(this.docStores).forEach((k) => {
       docs[k] = {};
-      Object.keys(this.docStores[k]).forEach((p) => { docs[k][p] = this.docStores[k][Number(p)].objects.map(strip); });
+      Object.keys(this.docStores[k]).forEach((p) => { docs[k][p] = this.docStores[k][Number(p)].objects.filter((o) => !(o.type === "stroke" && o.kind === "fade")).map(strip); });
     });
     return {
-      v: 3, bg: this.bg, boards: this.boardPages.map((s) => s.objects.map(strip)), boardPage: this.boardPage, docs,
+      v: 3, bg: this.bg, boards: this.boardPages.map((s) => s.objects.filter((o) => !(o.type === "stroke" && o.kind === "fade")).map(strip)), boardPage: this.boardPage, docs,
       names: (this.$("#pickerList") as HTMLTextAreaElement).value,
       attendance: this.attendance, timerMin: (this.$("#timerMin") as HTMLInputElement).value,
     };
