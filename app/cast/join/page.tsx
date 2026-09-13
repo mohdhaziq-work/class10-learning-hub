@@ -1,9 +1,10 @@
 "use client";
-/* SCREEN CAST — SENDER (phone or laptop).
-   • Laptop/PC (Chrome/Edge): cast your entire screen — full WebRTC screen share.
-   • Phone: browsers are not allowed to capture the phone screen (Android/iOS both
-     block it) — so phones get CAMERA CAST instead: the camera goes live on the
-     big screen, front/back switchable. Peer-to-peer + encrypted either way. */
+/* SCREEN CAST — SENDER page.
+   • Laptop/PC (Chrome/Edge): cast the entire screen right from the browser.
+   • Android phone: browsers are not allowed to capture the phone screen (Android
+     blocks it for every website) — the free Screen Cast app does the real screen
+     cast. This page hands off: install the app once, open it with the TV code.
+   • iPhone: app not available yet — honest message. */
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -13,7 +14,6 @@ import "../cast.css";
 const ICE: RTCConfiguration = { iceServers: [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }] };
 
 type Status = "init" | "ready" | "starting" | "live" | "lost" | "ended" | "error";
-type Mode = "screen" | "camera";
 
 export default function CastSender() {
   return (
@@ -27,11 +27,9 @@ function CastSenderInner() {
   const params = useSearchParams();
   const sid = (params.get("sid") || "").toLowerCase();
   const [status, setStatus] = useState<Status>("init");
-  const [mode, setMode] = useState<Mode>("screen");
   const [canScreen, setCanScreen] = useState(true);
-  const [canCamera, setCanCamera] = useState(true);
-  const [facing, setFacing] = useState<"user" | "environment">("environment");
-  const [flipMsg, setFlipMsg] = useState("");
+  const [hasMedia, setHasMedia] = useState(true);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [err, setErr] = useState("");
   const [secs, setSecs] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -39,20 +37,20 @@ function CastSenderInner() {
   const streamRef = useRef<MediaStream | null>(null);
   const wakeRef = useRef<any>(null);
   const stopRef = useRef(false);
-  const modeRef = useRef<Mode>("screen");
 
   useEffect(() => {
-    const scr = !!navigator.mediaDevices?.getDisplayMedia;
-    const cam = !!navigator.mediaDevices?.getUserMedia && (window.isSecureContext !== false);
-    setCanScreen(scr);
-    setCanCamera(cam);
-    setMode(scr ? "screen" : "camera"); /* phones fall back to camera automatically */
-    modeRef.current = scr ? "screen" : "camera";
+    setCanScreen(typeof navigator.mediaDevices?.getDisplayMedia === "function");
+    setHasMedia(!!navigator.mediaDevices);
+    setIsAndroid(/Android/i.test(navigator.userAgent));
     if (!sid) { setErr("No cast code in this link — scan the QR code on the TV screen."); setStatus("error"); return; }
-    fetch("/api/cast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: "join", sid }) })
-      .then((r) => r.json())
-      .then((j) => { if (!j.ok) { setErr(j.error === "session not found" ? "This cast session is over — ask the TV to show a new QR." : String(j.error || "could not join")); setStatus("error"); } else setStatus("ready"); })
-      .catch(() => { setErr("Network problem — check your internet and rescan."); setStatus("error"); });
+    if (typeof navigator.mediaDevices?.getDisplayMedia === "function") {
+      fetch("/api/cast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: "join", sid }) })
+        .then((r) => r.json())
+        .then((j) => { if (!j.ok) { setErr(j.error === "session not found" ? "This cast session is over — ask the TV to show a new QR." : String(j.error || "could not join")); setStatus("error"); } else setStatus("ready"); })
+        .catch(() => { setErr("Network problem — check your internet and rescan."); setStatus("error"); });
+    } else {
+      setStatus("ready"); /* phone: no join needed — the app does the talking */
+    }
   }, [sid]);
 
   useEffect(() => () => { cleanup(); }, []);
@@ -74,11 +72,27 @@ function CastSenderInner() {
 
   const post = (body: any) => fetch("/api/cast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 
-  /* ---------- shared: wire the stream to the viewer over WebRTC ---------- */
-  async function beginSession(stream: MediaStream) {
+  async function startCast() {
+    if (typeof navigator.mediaDevices?.getDisplayMedia !== "function") return;
+    setStatus("starting");
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({
+        video: { frameRate: { ideal: 30, max: 60 } },
+        audio: true,
+      });
+    } catch {
+      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 60 } } }); }
+      catch (e: any) {
+        if (e?.name === "NotAllowedError") setErr("Permission denied — allow screen recording when asked, then try again.");
+        else setErr("Could not start screen sharing. Try Chrome or Edge on a computer.");
+        setStatus("error");
+        return;
+      }
+    }
     streamRef.current = stream;
     if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => { /* muted autoplay */ }); }
-    if ((navigator as any).wakeLock) wakeRef.current = await (navigator as any).wakeLock.request("screen").catch(() => null); /* keep the phone awake */
+    if ((navigator as any).wakeLock) wakeRef.current = await (navigator as any).wakeLock.request("screen").catch(() => null);
 
     const pc = new RTCPeerConnection(ICE);
     pcRef.current = pc;
@@ -93,7 +107,7 @@ function CastSenderInner() {
       if (pc.connectionState === "connected") setStatus("live");
       else if (pc.connectionState === "failed" || pc.connectionState === "disconnected") setStatus((s) => (s === "ended" ? s : "lost"));
     };
-    stream.getVideoTracks()[0].addEventListener("ended", () => endCasting()); /* system stop (screen cast) */
+    stream.getVideoTracks()[0].addEventListener("ended", () => endCasting());
 
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -121,90 +135,6 @@ function CastSenderInner() {
     poll();
   }
 
-  /* ---------- mode 1: screen cast (laptop / desktop browsers) ---------- */
-  async function startCast() {
-    if (!navigator.mediaDevices?.getDisplayMedia) { setMode("camera"); return; }
-    setStatus("starting");
-    modeRef.current = "screen";
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 30, max: 60 } },
-        audio: true, /* screen audio when the device allows it */
-      });
-    } catch {
-      try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 60 } } }); }
-      catch (e: any) {
-        if (e?.name === "NotAllowedError") setErr("Permission denied — allow screen recording when asked, then try again.");
-        else setErr("Could not start screen sharing. Try Chrome or Edge on a computer.");
-        setStatus("error");
-        return;
-      }
-    }
-    beginSession(stream).catch(() => { setErr("Could not connect to the TV — reload both pages and try again."); setStatus("error"); });
-  }
-
-  /* ---------- mode 2: camera cast (phones — browsers can't capture the phone screen) ---------- */
-  async function startCameraCast() {
-    setStatus("starting");
-    modeRef.current = "camera";
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: facing }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: false,
-      });
-      beginSession(stream).catch(() => { setErr("Could not connect to the TV — reload both pages and try again."); setStatus("error"); });
-    } catch (e: any) {
-      if (e?.name === "NotAllowedError") setErr("Camera permission denied — allow camera access when asked, then try again.");
-      else setErr("Could not open the camera on this device. Open the link directly in Chrome (not inside another app).");
-      setStatus("error");
-    }
-  }
-
-  /* flip front/back camera without breaking the live connection.
-     'ideal' facingMode silently returns the SAME camera on many phones —
-     so we ask 'exact' first, then fall back to a different deviceId, and
-     tell the user honestly if this phone has only one camera. */
-  async function flipCamera() {
-    const pc = pcRef.current;
-    const old = streamRef.current;
-    if (!pc || !old) return;
-    const next = facing === "environment" ? "user" : "environment";
-    const base = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
-    const flash = (m: string) => { setFlipMsg(m); setTimeout(() => setFlipMsg(""), 3000); };
-    try {
-      let ns: MediaStream | null = null;
-      try {
-        ns = await navigator.mediaDevices.getUserMedia({ video: { ...base, facingMode: { exact: next } }, audio: false });
-      } catch {
-        /* exact failed — try picking a different physical camera by deviceId */
-        try {
-          const devs = await navigator.mediaDevices.enumerateDevices();
-          const cams = devs.filter((d) => d.kind === "videoinput");
-          const curId = old.getVideoTracks()[0]?.getSettings().deviceId;
-          const other = cams.find((c) => c.deviceId && c.deviceId !== curId);
-          if (!other) throw new Error("single camera");
-          ns = await navigator.mediaDevices.getUserMedia({ video: { ...base, deviceId: { exact: other.deviceId } }, audio: false });
-        } catch {
-          flash("Could not switch — this device has only one usable camera");
-          return;
-        }
-      }
-      if (!ns) return;
-      const nt = ns.getVideoTracks()[0];
-      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
-      if (sender) await sender.replaceTrack(nt); /* seamless — no re-negotiation */
-      else pc.addTrack(nt, ns);
-      streamRef.current = ns;
-      if (videoRef.current) { videoRef.current.srcObject = ns; videoRef.current.play().catch(() => { /* muted autoplay */ }); }
-      old.getTracks().forEach((t) => t.stop());
-      setFacing(next);
-      flash(next === "user" ? "Front camera" : "Back camera");
-    } catch {
-      flash("Could not switch camera — try stopping and starting again");
-    }
-  }
-
   useEffect(() => {
     if (status !== "live") return;
     setSecs(0);
@@ -214,19 +144,28 @@ function CastSenderInner() {
 
   const mm = String(Math.floor(secs / 60)).padStart(2, "0");
   const ss = String(secs % 60).padStart(2, "0");
-  const liveLabel = status === "live" ? `● LIVE ${mm}:${ss}` : status === "lost" ? "Connection lost" : status === "ready" ? "Ready" : status === "starting" ? "Starting…" : status === "ended" ? "Ended" : "…";
-  const liveColor = status === "live" ? "green" : status === "lost" || status === "error" ? "red" : "gray";
+  const badgeText = status === "live" ? `● LIVE ${mm}:${ss}` : status === "lost" ? "Connection lost" : status === "ready" ? "Ready" : status === "starting" ? "Starting…" : status === "ended" ? "Ended" : "…";
+  const badgeColor = status === "live" ? "green" : status === "lost" || status === "error" ? "red" : "gray";
+
+  /* hand the code to the installed app — intent link (Android) */
+  const openInApp = () => {
+    const url = `intent://${location.host}/cast/join?sid=${sid}#Intent;scheme=https;package=com.class10hub.caster;S.browser_fallback_url=${encodeURIComponent(location.href)};end`;
+    location.href = url;
+  };
+
+  const phoneApp = isAndroid && !canScreen && hasMedia;
 
   return (
     <div className="cast-root sender">
       <header className="cast-head">
         <div className="cast-brand"><Icon name="cast" size={22} /><b>Screen Cast</b></div>
-        <span className={`cast-badge c-${liveColor}`}>{liveLabel}</span>
+        <span className={`cast-badge c-${badgeColor}`}>{badgeText}</span>
       </header>
 
       <main className="cast-sender-main">
         {status === "init" && <div className="cast-spin" />}
 
+        {/* ---------- laptop / desktop: real screen cast from the browser ---------- */}
         {status === "ready" && canScreen && (
           <div className="cast-start-card">
             <div className="cast-start-ico"><Icon name="cast" size={44} /></div>
@@ -237,38 +176,51 @@ function CastSenderInner() {
           </div>
         )}
 
-        {status === "ready" && !canScreen && canCamera && (
+        {/* ---------- Android phone: hand off to the Screen Cast app ---------- */}
+        {status === "ready" && phoneApp && (
           <div className="cast-start-card">
-            <div className="cast-start-ico"><Icon name="image" size={44} /></div>
-            <h2>Camera Cast to the TV</h2>
-            <p><b>Why not screen cast?</b> No phone browser is allowed to capture the phone screen — Android &amp; iPhone both block it for every website (a native app is needed for that, and it is coming). What phones <b>can</b> do live on the big screen: the <b>camera</b> — perfect for a notebook, diagram, or experiment.</p>
-            <p className="cast-want-screen"><Icon name="info" size={15} /> Want full <b>screen</b> cast? Open this same link on a <b>laptop / PC</b> (Chrome or Edge) — there you get the real screen cast.</p>
-            <button className="cast-btn big" onClick={startCameraCast}><Icon name="image" size={22} /> Start Camera Cast</button>
-            <small>Camera permission will be asked — that is normal. Starts with the back camera; flip it while live.</small>
+            <div className="cast-start-ico"><Icon name="cast" size={44} /></div>
+            <h2>Cast this phone&apos;s screen</h2>
+            <p>No browser is allowed to capture a phone&apos;s screen — that&apos;s an Android rule for every website. The free <b>Screen Cast app</b> does it. Install once, then every cast is one tap.</p>
+            <div className="cast-steps">
+              <div className="cast-step"><b>1</b><span>Install the app (~10 MB) — Chrome may ask to allow installs, allow it once</span></div>
+              <div className="cast-step"><b>2</b><span>Open the app — it fills this code automatically, or type it:</span></div>
+              <div className="cast-code-big">{sid}</div>
+              <div className="cast-step"><b>3</b><span>Press <b>Start Casting</b> in the app — allow screen recording</span></div>
+            </div>
+            <a className="cast-btn big" href="/caster.apk" download><Icon name="download" size={20} /> Install Screen Cast app</a>
+            <button className="cast-btn light sm" onClick={openInApp}><Icon name="cast" size={17} /> App installed? Open it with this code</button>
+            <small>Everything is peer-to-peer and encrypted — your screen never touches any server.</small>
           </div>
         )}
 
-        {status === "ready" && !canScreen && !canCamera && (
+        {/* ---------- iPhone: honest message ---------- */}
+        {status === "ready" && !canScreen && hasMedia && !isAndroid && (
+          <div className="cast-start-card">
+            <div className="cast-start-ico bad"><Icon name="alertTriangle" size={44} /></div>
+            <h2>iPhone screen cast — coming soon</h2>
+            <p>iPhone does not allow any website to capture its screen, and the cast app is Android-only for now. Cast from an <b>Android phone</b> or any <b>laptop / PC</b> instead.</p>
+          </div>
+        )}
+
+        {/* ---------- in-app browser ---------- */}
+        {status === "ready" && !hasMedia && (
           <div className="cast-start-card">
             <div className="cast-start-ico bad"><Icon name="alertTriangle" size={44} /></div>
             <h2>Open this link in a real browser</h2>
-            <p>It looks like this page opened inside another app&apos;s mini-browser, which blocks camera and screen access. Open it in <b>Chrome</b> and try again.</p>
-            <button className="cast-btn light" onClick={() => location.reload()}><Icon name="refreshCw" size={17} /> Reload in browser</button>
-            <small>Tip: tap the ⋮ menu → <b>Open in Chrome</b>, or copy the link and paste it in Chrome.</small>
+            <p>This page opened inside another app&apos;s mini-browser. Copy the link and open it in <b>Chrome</b>.</p>
+            <div className="cast-code-big">{sid}</div>
+            <button className="cast-btn light" onClick={() => location.reload()}><Icon name="refreshCw" size={17} /> Reload</button>
           </div>
         )}
 
-        {status === "starting" && <div className="cast-start-card"><div className="cast-spin" /><h2>Starting…</h2><p>{modeRef.current === "camera" ? "Allow the camera when the phone asks." : "Allow screen recording when asked."}</p></div>}
+        {status === "starting" && <div className="cast-start-card"><div className="cast-spin" /><h2>Starting…</h2><p>Allow screen recording when asked.</p></div>}
 
         {(status === "live" || status === "lost") && (
           <div className="cast-sender-live">
-            <video ref={videoRef} autoPlay playsInline muted className={modeRef.current === "camera" ? "cam" : ""} />
-            <p>{status === "live" ? (modeRef.current === "camera" ? `Camera (${facing === "user" ? "front" : "back"}) is on the big screen` : "Your screen is on the big screen") : "Reconnecting…"}</p>
-            {flipMsg && <p className="cast-flip-msg">{flipMsg}</p>}
+            <video ref={videoRef} autoPlay playsInline muted />
+            <p>{status === "live" ? "Your screen is on the big screen" : "Reconnecting…"}</p>
             <div className="cast-live-row">
-              {modeRef.current === "camera" && (
-                <button className="cast-btn light sm" onClick={flipCamera}><Icon name="refreshCw" size={17} /> Flip camera</button>
-              )}
               <button className="cast-btn danger sm" onClick={() => endCasting()}><Icon name="x" size={18} /> Stop</button>
             </div>
           </div>

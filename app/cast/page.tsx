@@ -244,9 +244,9 @@ export default function CastReceiver() {
           <div className="cast-qr-card">
             <h3>Cast from your phone</h3>
             <ol>
-              <li>Scan this QR with your <b>phone camera</b></li>
-              <li>Tap the link that appears</li>
-              <li>Press <b>Start</b> — phones cast their camera, laptops cast their whole screen</li>
+              <li>Scan this QR with the <b>casting phone</b></li>
+              <li>Android: install the tiny <b>Cast app</b> (one time) and press Start</li>
+              <li>Laptop / PC: press <b>Start Casting</b> right in the browser</li>
             </ol>
             <div className="cast-qr-wrap"><canvas id="castQr" width={232} height={232} /></div>
             <div className="cast-code">Code <b>{sid || "…"}</b></div>

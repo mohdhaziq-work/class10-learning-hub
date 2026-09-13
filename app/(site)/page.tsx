@@ -202,7 +202,7 @@ export default function HomePage() {
  </div>
  <div className="grid grid-cols-2 gap-3.5">
  {[
- { icon: "devices", t: "Any devices", d: "Android phone → TV, laptop, projector" },
+ { icon: "devices", t: "Any devices", d: "Android phone (free app) or laptop → TV / projector" },
  { icon: "zap", t: "No delay", d: "WebRTC peer-to-peer, live in seconds" },
  { icon: "shieldCheck", t: "Private & secure", d: "End-to-end encrypted — screen never touches a server" },
  { icon: "scan", t: "No app needed", d: "Scan a QR — nothing to install" },
