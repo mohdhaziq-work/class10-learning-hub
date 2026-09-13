@@ -111,6 +111,9 @@ export default function SmartBoard() {
               <button className="tool half" id="btnReplay" title="Replay — watch the board build itself like a video"><Icon name="rotateCcw" size={18} /></button>
               <button className="tool half" id="btnWidgets" title="Class tools — timer, picker, attendance, dice, spinner"><Icon name="timer" size={18} /></button>
             </div>
+            <div className="rail-pair">
+              <button className="tool half" id="btnPad" title="Phone Pad — use your phone as a writing tablet & touchpad for this board"><Icon name="smartphone" size={18} /></button>
+            </div>
           </div>
           <div className="rail-foot">
             <button id="btnSettings" title="Settings"><Icon name="settings" size={16} /></button>
@@ -372,6 +375,26 @@ export default function SmartBoard() {
         <div className="mrow"><button className="mbtn" id="exJson"><Icon name="save" size={17} /> Download session (JSON)</button><button className="mbtn" id="exImportBtn"><Icon name="upload" size={17} /> Open session (JSON)</button><input type="file" id="exImport" accept=".json" hidden /></div>
         <div className="mrow"><button className="mbtn" id="exPrint"><Icon name="printer" size={17} /> Print</button><button className="mbtn danger" id="exWipe"><Icon name="trash2" size={17} /> Delete everything</button></div>
         <div className="mrow"><button className="mbtn" data-close="1">Close</button></div>
+      </div></div>
+
+      <div className="modal" id="mPad"><div className="modal-card" style={{ maxWidth: 520 }}>
+        <h2><Icon name="smartphone" size={22} /> Phone Pad</h2>
+        <p>Make your phone a <b>wireless writing tablet + touchpad</b> for this board — scan the QR with the phone. No app, no delay (peer-to-peer).</p>
+        <div className="up-flex">
+          <canvas id="padQr" width={220} height={220} style={{ background: "#fff", borderRadius: 14, padding: 8, border: "1px solid var(--line)" }} />
+          <div className="up-side">
+            <div className="up-status" id="padStatus">Waiting for phone — scan the QR…</div>
+            <div className="up-code" id="padCode">…</div>
+            <p style={{ fontSize: 12.5, color: "#6b7280", lineHeight: 1.7, marginTop: 10, marginBottom: 0 }}>
+              <b>Draw</b> — the phone pad becomes the board: likho, highlight karo, erase karo, pages palto.<br />
+              <b>Cursor</b> — full touchpad: tap = click, 2 fingers = scroll, hold = drag.
+            </p>
+          </div>
+        </div>
+        <div className="mrow">
+          <button className="mbtn" data-close="1">Close</button>
+          <button className="mbtn danger" id="padStop">Disconnect phone</button>
+        </div>
       </div></div>
 
       <div className="modal" id="mFiles"><div className="modal-card">

@@ -8,6 +8,7 @@ import QRCode from "qrcode";
 
 export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
 import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
+import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
@@ -362,6 +363,8 @@ export class BoardEngine {
   private ocrBusy = false;
   private replayN: number | null = null; private replayTimer: ReturnType<typeof setInterval> | null = null;
   private shapeAI = true; private funWired = false;
+  private pad: RemotePad | null = null;
+  private padCursorEl: HTMLElement | null = null;
   private boardDraft: BoardObject | null = null;
   private selected: { surface: "board" | "doc"; page?: number; obj: BoardObject } | null = null;
   private dragSel: any = null; private pinch: { d: number; z: number } | null = null;
@@ -419,6 +422,7 @@ export class BoardEngine {
     this.wireExport();
     this.wirePages();
     this.wireUpload();
+    this.wirePad();
     this.wireFiles();
     this.wireShade();
     this.wireMeasure();
@@ -446,6 +450,107 @@ export class BoardEngine {
     if (!localStorage.getItem("sb-help-seen")) {
       setTimeout(() => { if (!this.destroyed) { this.openModal("mHelp"); localStorage.setItem("sb-help-seen", "1"); } }, 500);
     }
+  }
+
+  /* ==========================================================================
+     REMOTE PHONE PAD — phone as a writing tablet + touchpad (WebRTC DataChannel)
+     ========================================================================== */
+  private wirePad() {
+    const btn = this.$("#btnPad") as HTMLElement | null;
+    if (!btn) return;
+    btn.onclick = () => { this.openModal("mPad"); this.padStart(); };
+    const stop = this.$("#padStop") as HTMLElement | null;
+    if (stop) stop.onclick = () => { this.padStop(); this.toast("Phone pad disconnected"); };
+    this.cleanups.push(() => this.padStop());
+  }
+  private padStart() {
+    if (this.pad) return;
+    const qr = this.$("#padQr") as HTMLCanvasElement | null;
+    if (!qr) return;
+    this.pad = new RemotePad({
+      pointer: (ph, x, y) => this.padPointer(ph, x, y),
+      command: (c, v) => this.padCommand(c, v),
+      cursorMove: (dx, dy) => this.padCursorMove(dx, dy),
+      cursorClick: (b, ph) => this.padCursorClick(b, ph),
+      cursorScroll: (dx, dy) => window.scrollBy(dx, dy),
+      status: (st) => {
+        const el = this.$("#padStatus") as HTMLElement | null;
+        if (!el) return;
+        el.textContent = st === "live" ? "● Connected — the phone is your pad now" : st === "waiting" ? "Waiting for phone — scan the QR…" : st === "lost" ? "Phone disconnected" : "Off";
+        el.style.color = st === "live" ? "#188038" : st === "lost" ? "#b3261e" : "";
+      },
+    }, qr, (code) => { const el = this.$("#padCode"); if (el) el.textContent = code; });
+    this.pad.open();
+  }
+  private padStop() {
+    if (this.pad) { this.pad.close(); this.pad = null; }
+    if (this.padCursorEl) { this.padCursorEl.remove(); this.padCursorEl = null; }
+  }
+  /* phone draw-tablet events -> synthetic pointer events straight into the board engine */
+  private padPointer(ph: "down" | "move" | "up", nx: number, ny: number) {
+    if (ph === "down" && this.layout === "doc") this.setLayout("split"); /* board must be visible */
+    const cv = this.boardCanvas;
+    const r = cv.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const x = r.left + Math.min(1, Math.max(0, nx)) * r.width;
+    const y = r.top + Math.min(1, Math.max(0, ny)) * r.height;
+    const t = ph === "down" ? "pointerdown" : ph === "move" ? "pointermove" : "pointerup";
+    cv.dispatchEvent(new PointerEvent(t, {
+      pointerId: 990099, pointerType: "touch", isPrimary: true,
+      buttons: ph === "up" ? 0 : 1, clientX: x, clientY: y, bubbles: true, cancelable: true,
+    }));
+  }
+  private padCommand(c: string, v?: any) {
+    if (["pen", "highlighter", "eraser", "select", "pan", "laser"].includes(c)) { this.setTool(c); this.toast("Phone pad: " + c); }
+    else if (c === "color") { this.color = String(v); this.syncPenPop(); this.saveTools(); }
+    else if (c === "size") { this.size = Math.min(40, Math.max(1, +v || 4)); this.syncPenPop(); this.saveTools(); }
+    else if (c === "undo") this.doUndo();
+    else if (c === "redo") this.doRedo();
+    else if (c === "page") {
+      const target = this.boardPage + (+v || 0);
+      if (target >= this.boardPages.length) this.addBoardPage(); /* forward past the end = new page, like the + button */
+      else this.gotoBoardPage(target);
+    }
+  }
+  private padCursorPos = { x: -1, y: -1 };
+  private padCursorMove(dx: number, dy: number) {
+    if (!this.padCursorEl) {
+      this.padCursorEl = document.createElement("div");
+      this.padCursorEl.id = "padCursor";
+      this.padCursorEl.style.cssText = "position:fixed;z-index:9999;pointer-events:none;width:22px;height:22px;transform:translate(-2px,-2px);display:none";
+      this.padCursorEl.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 2l16 8.5-7 1.5L9.5 20z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+      this.root.appendChild(this.padCursorEl);
+      this.cleanups.push(() => this.padCursorEl?.remove());
+    }
+    if (this.padCursorPos.x < 0) { const w = window.innerWidth, h = window.innerHeight; this.padCursorPos = { x: w / 2, y: h / 2 }; }
+    this.padCursorPos.x = Math.min(window.innerWidth - 2, Math.max(2, this.padCursorPos.x + dx));
+    this.padCursorPos.y = Math.min(window.innerHeight - 2, Math.max(2, this.padCursorPos.y + dy));
+    const el = this.padCursorEl;
+    el.style.display = "block";
+    el.style.left = this.padCursorPos.x + "px";
+    el.style.top = this.padCursorPos.y + "px";
+  }
+  private padCursorClick(btn: number, phase: number) {
+    const { x, y } = this.padCursorPos;
+    if (x < 0) return;
+    const target = document.elementFromPoint(x, y) as HTMLElement | null;
+    if (!target) return;
+    const base = { clientX: x, clientY: y, bubbles: true, cancelable: true, view: window };
+    const down = () => {
+      target.dispatchEvent(new PointerEvent("pointerdown", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: 1 }));
+      target.dispatchEvent(new MouseEvent("mousedown", { ...base, buttons: 1 }));
+    };
+    const up = (click: boolean) => {
+      target.dispatchEvent(new PointerEvent("pointerup", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: 0 }));
+      target.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0 }));
+      if (click) {
+        if (btn === 2) target.dispatchEvent(new MouseEvent("contextmenu", base));
+        else target.dispatchEvent(new MouseEvent("click", base));
+      }
+    };
+    if (phase === 1) down();
+    else if (phase === 2) up(true);
+    else { down(); up(true); }
   }
 
   destroy() {
