@@ -472,7 +472,7 @@ export class BoardEngine {
       command: (c, v) => this.padCommand(c, v),
       cursorMove: (dx, dy) => this.padCursorMove(dx, dy),
       cursorClick: (b, ph) => this.padCursorClick(b, ph),
-      cursorScroll: (dx, dy) => window.scrollBy(dx, dy),
+      cursorScroll: (dx, dy) => this.padCursorScroll(dx, dy),
       status: (st) => {
         const el = this.$("#padStatus") as HTMLElement | null;
         if (!el) return;
@@ -484,6 +484,8 @@ export class BoardEngine {
   }
   private padStop() {
     if (this.pad) { this.pad.close(); this.pad = null; }
+    if (this.padCursorRaf) { cancelAnimationFrame(this.padCursorRaf); this.padCursorRaf = 0; }
+    this.padHeldBtns = []; this.padCursorPend = { dx: 0, dy: 0 }; this.padCursorPos = { x: -1, y: -1 };
     if (this.padCursorEl) { this.padCursorEl.remove(); this.padCursorEl = null; }
   }
   /* phone draw-tablet events -> synthetic pointer events straight into the board engine */
@@ -504,6 +506,12 @@ export class BoardEngine {
     if (["pen", "highlighter", "eraser", "select", "pan", "laser"].includes(c)) { this.setTool(c); this.toast("Phone pad: " + c); }
     else if (c === "color") { this.color = String(v); this.syncPenPop(); this.saveTools(); }
     else if (c === "size") { this.size = Math.min(40, Math.max(1, +v || 4)); this.syncPenPop(); this.saveTools(); }
+    else if (c === "key") {
+      const kk = String(v?.key || "");
+      const init: any = { key: kk, ctrlKey: !!v?.ctrl, shiftKey: !!v?.shift, altKey: !!v?.alt, metaKey: false, bubbles: true, cancelable: true };
+      window.dispatchEvent(new KeyboardEvent("keydown", init));
+      window.dispatchEvent(new KeyboardEvent("keyup", init));
+    }
     else if (c === "undo") this.doUndo();
     else if (c === "redo") this.doRedo();
     else if (c === "page") {
@@ -513,44 +521,103 @@ export class BoardEngine {
     }
   }
   private padCursorPos = { x: -1, y: -1 };
+  private padCursorRaf = 0;
+  private padCursorPend = { dx: 0, dy: 0 };
+  private padHeldBtns: number[] = [];
+  private padDownAt = { x: 0, y: 0 };
+  /* moves are folded into ONE animation frame and painted with a GPU
+     transform (no left/top layout writes) — buttery smooth even at 120 Hz input */
   private padCursorMove(dx: number, dy: number) {
+    this.padCursorPend.dx += dx; this.padCursorPend.dy += dy;
+    if (this.padCursorPos.x < 0) this.padCursorPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     if (!this.padCursorEl) {
       this.padCursorEl = document.createElement("div");
       this.padCursorEl.id = "padCursor";
-      this.padCursorEl.style.cssText = "position:fixed;z-index:9999;pointer-events:none;width:22px;height:22px;transform:translate(-2px,-2px);display:none";
+      this.padCursorEl.style.cssText = "position:fixed;left:0;top:0;z-index:9999;pointer-events:none;width:22px;height:22px;will-change:transform;display:none";
       this.padCursorEl.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 2l16 8.5-7 1.5L9.5 20z" fill="#111" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
       this.root.appendChild(this.padCursorEl);
       this.cleanups.push(() => this.padCursorEl?.remove());
     }
-    if (this.padCursorPos.x < 0) { const w = window.innerWidth, h = window.innerHeight; this.padCursorPos = { x: w / 2, y: h / 2 }; }
+    if (!this.padCursorRaf) this.padCursorRaf = requestAnimationFrame(this.padCursorFrame);
+  }
+  private padCursorFrame = () => {
+    this.padCursorRaf = 0;
+    const { dx, dy } = this.padCursorPend; this.padCursorPend.dx = 0; this.padCursorPend.dy = 0;
+    const el = this.padCursorEl;
+    if (!el) return;
     this.padCursorPos.x = Math.min(window.innerWidth - 2, Math.max(2, this.padCursorPos.x + dx));
     this.padCursorPos.y = Math.min(window.innerHeight - 2, Math.max(2, this.padCursorPos.y + dy));
-    const el = this.padCursorEl;
     el.style.display = "block";
-    el.style.left = this.padCursorPos.x + "px";
-    el.style.top = this.padCursorPos.y + "px";
-  }
-  private padCursorClick(btn: number, phase: number) {
+    el.style.transform = "translate3d(" + (this.padCursorPos.x - 2).toFixed(1) + "px," + (this.padCursorPos.y - 2).toFixed(1) + "px,0)";
+    /* a phone mouse button is held -> the page sees real pointermove too:
+       dragging, board-pen drawing, text selection — everything works */
+    if (this.padHeldBtns.length) this.padCursorDispatch("move");
+  };
+  private padBtnMask() { return this.padHeldBtns.reduce((a, b) => a + (1 << b), 0); }
+  private padCursorDispatch(kind: "move" | "down" | "up", btn = 0) {
     const { x, y } = this.padCursorPos;
     if (x < 0) return;
     const target = document.elementFromPoint(x, y) as HTMLElement | null;
     if (!target) return;
     const base = { clientX: x, clientY: y, bubbles: true, cancelable: true, view: window };
-    const down = () => {
-      target.dispatchEvent(new PointerEvent("pointerdown", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: 1 }));
-      target.dispatchEvent(new MouseEvent("mousedown", { ...base, buttons: 1 }));
-    };
-    const up = (click: boolean) => {
-      target.dispatchEvent(new PointerEvent("pointerup", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: 0 }));
-      target.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: 0 }));
-      if (click) {
-        if (btn === 2) target.dispatchEvent(new MouseEvent("contextmenu", base));
-        else target.dispatchEvent(new MouseEvent("click", base));
+    const mask = this.padBtnMask();
+    if (kind === "move") {
+      target.dispatchEvent(new PointerEvent("pointermove", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: mask }));
+      target.dispatchEvent(new MouseEvent("mousemove", { ...base, buttons: mask }));
+    } else if (kind === "down") {
+      target.dispatchEvent(new PointerEvent("pointerdown", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: mask, button: btn }));
+      target.dispatchEvent(new MouseEvent("mousedown", { ...base, buttons: mask, button: btn }));
+    } else {
+      target.dispatchEvent(new PointerEvent("pointerup", { ...base, pointerId: 990100, pointerType: "mouse", isPrimary: true, buttons: mask, button: btn }));
+      target.dispatchEvent(new MouseEvent("mouseup", { ...base, buttons: mask, button: btn }));
+    }
+  }
+  /* FULL MOUSE — btn 0=left 1=middle 2=right; phase 1=press 2=release 0=full click */
+  private padCursorClick(btn: number, phase: number) {
+    if (this.padCursorPos.x < 0) this.padCursorMove(0, 0);
+    if (phase === 1) {
+      if (!this.padHeldBtns.includes(btn)) this.padHeldBtns.push(btn);
+      this.padDownAt = { ...this.padCursorPos };
+      this.padCursorDispatch("down", btn);
+    } else if (phase === 2) {
+      this.padHeldBtns = this.padHeldBtns.filter((b) => b !== btn);
+      const moved = Math.hypot(this.padCursorPos.x - this.padDownAt.x, this.padCursorPos.y - this.padDownAt.y);
+      this.padCursorDispatch("up", btn);
+      if (moved < 9) {
+        const { x, y } = this.padCursorPos;
+        const target = document.elementFromPoint(x, y) as HTMLElement | null;
+        if (target) {
+          const base = { clientX: x, clientY: y, bubbles: true, cancelable: true, view: window, button: btn };
+          if (btn === 2) target.dispatchEvent(new MouseEvent("contextmenu", base));
+          if (btn === 1) target.dispatchEvent(new MouseEvent("auxclick", base));
+          target.dispatchEvent(new MouseEvent("click", base));
+        }
       }
-    };
-    if (phase === 1) down();
-    else if (phase === 2) up(true);
-    else { down(); up(true); }
+    } else { this.padCursorClick(btn, 1); this.padCursorClick(btn, 2); }
+  }
+  /* real wheel: the page gets a wheel event first (zoom/custom handlers),
+     then the nearest scrollable thing under the cursor scrolls */
+  private padCursorScroll(dx: number, dy: number) {
+    if (!dx && !dy) return;
+    const { x, y } = this.padCursorPos;
+    let target: any = x >= 0 ? document.elementFromPoint(x, y) : document.body;
+    if (target) {
+      const wv = new WheelEvent("wheel", { deltaX: dx, deltaY: dy, clientX: x, clientY: y, bubbles: true, cancelable: true, view: window });
+      target.dispatchEvent(wv);
+      if (wv.defaultPrevented) return;
+    }
+    let node: any = target;
+    while (node && node !== document.body && node !== document.documentElement) {
+      const st = getComputedStyle(node);
+      if ((dy && /(auto|scroll|overlay)/.test(st.overflowY) && node.scrollHeight > node.clientHeight) ||
+          (dx && /(auto|scroll|overlay)/.test(st.overflowX) && node.scrollWidth > node.clientWidth)) {
+        if (dy) node.scrollTop += dy;
+        if (dx) node.scrollLeft += dx;
+        return;
+      }
+      node = node.parentElement;
+    }
+    window.scrollBy(dx, dy);
   }
 
   destroy() {

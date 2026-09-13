@@ -1,9 +1,11 @@
 "use client";
-/* PHONE PAD — the phone becomes a wireless writing tablet + touchpad
-   for the Smart Board on the laptop/TV. Input events go over a
-   peer-to-peer WebRTC DataChannel (no server hop) — that's the no-delay part.
+/* PHONE PAD — the phone becomes a wireless writing tablet + FULL MOUSE
+   for the Smart Board on the laptop/TV. Input goes over a peer-to-peer
+   WebRTC DataChannel (no server hop) — that's the no-delay part.
    Draw mode: the whole pad IS the board (absolute, like a graphics tablet).
-   Cursor mode: classic touchpad — move, tap to click, two fingers to scroll. */
+   Cursor mode: full touchpad+mouse — move (adjustable speed + pointer
+   acceleration), Left/Mid/Right buttons, drag lock, 2-finger scroll with
+   momentum, 2-finger tap = right click, hold = drag, shortcuts. */
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -28,21 +30,41 @@ function PadInner() {
   const [tool, setTool] = useState("pen");
   const [color, setColor] = useState("#dc2626");
   const [size, setSize] = useState(4);
+  const [sens, setSens] = useState(1);          /* cursor speed 0.4–3× */
+  const [accel, setAccel] = useState(true);     /* pointer acceleration */
+  const [dragLock, setDragLock] = useState(false);
   const ctrlRef = useRef<RTCDataChannel | null>(null);
   const inputRef = useRef<RTCDataChannel | null>(null);
   const modeRef = useRef<"draw" | "cursor">("draw");
-  const pointers = useRef<Map<number, { x: number; y: number; t: number; moved: number }>>(new Map());
-  const lastCursor = useRef<{ x: number; y: number } | null>(null);
+  const sensRef = useRef(1);
+  const accelRef = useRef(true);
+  const dragLockRef = useRef(false);
+  const carry = useRef({ x: 0, y: 0 });          /* sub-pixel remainder — nothing is lost, slow moves stay smooth */
+  const scrollT = useRef(0);
+  const scrollV = useRef(0);
+  const momRaf = useRef(0);
+  const pointers = useRef<Map<number, { x: number; y: number; t: number; lt: number; moved: number }>>(new Map());
   const longPress = useRef<any>(0);
   const dragging = useRef(false);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
+  useEffect(() => {
+    try {
+      const s = +(localStorage.getItem("padSens") || 1);
+      if (s >= 0.4 && s <= 3) { setSens(s); sensRef.current = s; }
+      const a = localStorage.getItem("padAccel") !== "0";
+      setAccel(a); accelRef.current = a;
+    } catch { /* private mode */ }
+  }, []);
+  useEffect(() => { try { localStorage.setItem("padSens", String(sens)); } catch { /* noop */ } }, [sens]);
+  useEffect(() => { try { localStorage.setItem("padAccel", accel ? "1" : "0"); } catch { /* noop */ } }, [accel]);
 
   const send = (o: any, chan: "input" | "ctrl" = "input") => {
     const dc = (chan === "ctrl" ? ctrlRef.current : inputRef.current) || ctrlRef.current;
     if (dc && dc.readyState === "open") { try { dc.send(JSON.stringify(o)); } catch { /* full */ } }
   };
   const sendCmd = (c: string, v?: any) => send({ c, v }, "ctrl");
+  const buzz = (ms: number) => { try { (navigator as any).vibrate?.(ms); } catch { /* no haptics */ } };
 
   useEffect(() => {
     if (!sid) { setErr("No pad code in this link — scan the QR from the board page."); setStatus("error"); return; }
@@ -56,7 +78,7 @@ function PadInner() {
         if (!j.ok) { setErr(j.error === "session not found" ? "This pad session is over — open the Phone Pad on the board again." : String(j.error || "join failed")); setStatus("error"); return; }
         const pc = new RTCPeerConnection(ICE);
         const ctrl = pc.createDataChannel("ctrl", { ordered: true });
-        const input = pc.createDataChannel("input", { ordered: false, maxRetransmits: 0 }); /* moves must never queue */
+        const input = pc.createDataChannel("input", { ordered: false, maxRetransmits: 0 }); /* cursor moves must never queue */
         ctrlRef.current = ctrl;
         inputRef.current = input;
         const alive = () => { if (!stopped) setStatus("live"); };
@@ -105,16 +127,22 @@ function PadInner() {
   }, [sid]);
 
   /* ---------------- pad event handling ---------------- */
+  /* full-rate samples: browsers coalesce pointer moves — we take every one */
+  const coalesced = (e: React.PointerEvent): PointerEvent[] => {
+    const ne = e.nativeEvent as any;
+    const evs: any[] = ne.getCoalescedEvents ? ne.getCoalescedEvents() : [];
+    return evs && evs.length ? evs : [ne];
+  };
+
   const onPointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, t: Date.now(), moved: 0 });
+    cancelAnimationFrame(momRaf.current); scrollV.current = 0; /* new touch stops scroll momentum */
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, t: Date.now(), lt: e.timeStamp || performance.now(), moved: 0 });
     if (modeRef.current === "draw") {
       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
       send({ p: [0, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height] }, "ctrl");
-      lastCursor.current = null;
     } else {
-      lastCursor.current = { x: e.clientX, y: e.clientY };
       if (pointers.current.size === 1) {
         /* long-press = drag (press and hold) */
         clearTimeout(longPress.current);
@@ -131,18 +159,42 @@ function PadInner() {
   const onPointerMove = (e: React.PointerEvent) => {
     const p = pointers.current.get(e.pointerId);
     if (!p) return;
-    const dx = e.clientX - p.x, dy = e.clientY - p.y;
-    p.moved += Math.hypot(dx, dy);
-    p.x = e.clientX; p.y = e.clientY;
+    const list = coalesced(e);
     if (modeRef.current === "draw" && pointers.current.size === 1) {
       const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      send({ p: [1, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height] }); /* unreliable channel — zero queue */
+      const pts: [number, number][] = [];
+      for (const ev of list) {
+        p.x = ev.clientX; p.y = ev.clientY;
+        pts.push([(ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height]);
+      }
+      send({ P: pts }, "ctrl"); /* ordered+reliable: ink points must never drop — that was the choppiness */
     } else if (modeRef.current === "cursor") {
       if (pointers.current.size === 1) {
         if (p.moved > 14) clearTimeout(longPress.current);
-        send({ m: [Math.round(dx * 2.1), Math.round(dy * 2.1)] }); /* touchpad speed */
+        const dxs: number[] = [], dys: number[] = [];
+        for (const ev of list) {
+          const dx = ev.clientX - p.x, dy = ev.clientY - p.y;
+          const t = ev.timeStamp || performance.now();
+          const dt = Math.max(4, t - p.lt); p.lt = t;
+          p.moved += Math.hypot(dx, dy); p.x = ev.clientX; p.y = ev.clientY;
+          if (!dx && !dy) continue;
+          /* pointer acceleration: slow = surgical precision, fast flick = full speed */
+          const speed = Math.hypot(dx, dy) / dt; /* px per ms */
+          const gain = sensRef.current * (accelRef.current ? 1 + 0.8 * Math.min(1, Math.max(0, (speed - 0.25) / 1.5)) : 1);
+          carry.current.x += dx * gain; carry.current.y += dy * gain;
+          const ix = Math.trunc(carry.current.x), iy = Math.trunc(carry.current.y);
+          if (ix || iy) { carry.current.x -= ix; carry.current.y -= iy; dxs.push(ix); dys.push(iy); }
+        }
+        if (dxs.length) send(dxs.length === 1 ? { m: [dxs[0], dys[0]] } : { M: dxs.map((v, i) => [v, dys[i]]) });
       } else if (pointers.current.size === 2) {
-        send({ s: [Math.round(-dx * 1.4), Math.round(-dy * 1.4)] }); /* two-finger scroll */
+        /* two-finger scroll, natural direction */
+        const t = e.timeStamp || performance.now();
+        const dt = Math.max(4, t - (scrollT.current || t - 8)); scrollT.current = t;
+        let sdx = 0, sdy = 0;
+        for (const ev of list) { sdx += ev.clientX - p.x; sdy += ev.clientY - p.y; p.x = ev.clientX; p.y = ev.clientY; }
+        const ex = -sdx * 1.15, ey = -sdy * 1.15;
+        if (Math.round(ex) || Math.round(ey)) send({ s: [Math.round(ex), Math.round(ey)] });
+        scrollV.current = 0.75 * scrollV.current + 0.25 * (ey / dt);
       }
     }
   };
@@ -159,13 +211,60 @@ function PadInner() {
       if (dragging.current) { dragging.current = false; send({ k: [0, 2] }, "ctrl"); return; }
       if (pointers.current.size === 1 && quick) {
         /* second finger still down → two-finger tap = right click */
-        send({ k: [2, 0] }, "ctrl");
+        send({ k: [2, 0] }, "ctrl"); buzz(12);
         pointers.current.clear();
         return;
       }
-      if (pointers.current.size === 0 && quick) send({ k: [0, 0] }, "ctrl"); /* tap = left click */
+      if (pointers.current.size === 0) {
+        /* flick = momentum scroll keeps gliding */
+        if (Math.abs(scrollV.current) > 0.18) {
+          let v = scrollV.current; let last = performance.now();
+          const step = (now: number) => {
+            const dt = now - last; last = now;
+            v *= Math.pow(0.994, dt);
+            if (Math.abs(v) < 0.05) return;
+            const dy = v * dt;
+            if (dy) send({ s: [0, Math.round(dy)] });
+            momRaf.current = requestAnimationFrame(step);
+          };
+          momRaf.current = requestAnimationFrame(step);
+          scrollV.current = 0;
+          return;
+        }
+        scrollV.current = 0;
+        if (quick) { send({ k: [0, 0] }, "ctrl"); buzz(8); } /* tap = left click */
+      }
     }
   };
+
+  /* ---------------- full-mouse buttons ---------------- */
+  const mouseBtn = (btn: number) => ({
+    onPointerDown: (e: React.PointerEvent) => {
+      e.preventDefault();
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      buzz(btn === 0 ? 10 : 14);
+      send({ k: [btn, 1] }, "ctrl"); /* hold Left + move finger on the pad = REAL drag */
+    },
+    onPointerUp: (e: React.PointerEvent) => { e.preventDefault(); send({ k: [btn, 2] }, "ctrl"); },
+    onPointerCancel: () => send({ k: [btn, 2] }, "ctrl"),
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+  });
+  const toggleDrag = () => {
+    const nd = !dragLockRef.current;
+    dragLockRef.current = nd; setDragLock(nd);
+    send({ k: [0, nd ? 1 : 2] }, "ctrl");
+    buzz(nd ? 20 : 8);
+  };
+  const switchMode = (m: "draw" | "cursor") => {
+    if (mode === m) return;
+    if (dragLockRef.current) { dragLockRef.current = false; setDragLock(false); send({ k: [0, 2] }, "ctrl"); }
+    carry.current = { x: 0, y: 0 }; scrollV.current = 0;
+    setMode(m);
+  };
+
+  /* ---------------- shortcuts (board keyboard shortcuts, fired from the phone) ---------------- */
+  const scKey = (key: string, ctrl = false) => { buzz(8); sendCmd("key", { key, ctrl }); };
+  const scTool = (t: string, key: string) => { setTool(t); scKey(key); };
 
   const pickTool = (t: string) => { setTool(t); sendCmd(t); };
   const pickColor = (c: string) => { setColor(c); sendCmd("color", c); };
@@ -178,8 +277,8 @@ function PadInner() {
     <div className="pad-root">
       <header className="pad-head">
         <div className="pad-brand">Phone Pad</div>
-        <div className={`pad-mode ${mode === "draw" ? "on" : ""}`} onClick={() => setMode("draw")}>✏️ Draw</div>
-        <div className={`pad-mode ${mode === "cursor" ? "on" : ""}`} onClick={() => setMode("cursor")}>🖱 Cursor</div>
+        <div className={`pad-mode ${mode === "draw" ? "on" : ""}`} onClick={() => switchMode("draw")}>✏️ Draw</div>
+        <div className={`pad-mode ${mode === "cursor" ? "on" : ""}`} onClick={() => switchMode("cursor")}>🖱 Mouse</div>
         <span className={`pad-badge ${connected ? "ok" : ""}`}>{badge}</span>
       </header>
 
@@ -206,8 +305,8 @@ function PadInner() {
               </div>
             ) : (
               <div className="pad-hint">
-                <b>Touchpad</b>
-                <span>Tap = click · hold + move = drag · 2 fingers = scroll · 2-finger tap = right click</span>
+                <b>Touchpad + Mouse</b>
+                <span>Tap = click · hold Left + move = drag · 2-finger scroll · 2-finger tap = right click · Speed neeche</span>
               </div>
             )}
             {status === "lost" && <div className="pad-overlay">Disconnected — board par Phone Pad dobara kholo</div>}
@@ -234,6 +333,30 @@ function PadInner() {
                 <button className="pad-t" onClick={() => sendCmd("redo")}>↷</button>
                 <button className="pad-t" onClick={() => sendCmd("page", -1)}>◀</button>
                 <button className="pad-t" onClick={() => sendCmd("page", 1)}>▶</button>
+              </div>
+            </footer>
+          )}
+
+          {mode === "cursor" && (
+            <footer className="pad-tools">
+              <div className="pad-row pad-mouse">
+                <button id="padBtnL" className="pad-m" {...mouseBtn(0)}>Left</button>
+                <button id="padBtnM" className="pad-m" {...mouseBtn(1)}>Mid</button>
+                <button id="padBtnR" className="pad-m" {...mouseBtn(2)}>Right</button>
+                <button id="padBtnDrag" className={`pad-m ${dragLock ? "on" : ""}`} onClick={toggleDrag}>{dragLock ? "Drag ✓" : "Drag"}</button>
+              </div>
+              <div className="pad-row">
+                <button id="padScUndo" className="pad-t" onClick={() => scKey("z", true)}>↶ Undo</button>
+                <button id="padScRedo" className="pad-t" onClick={() => scKey("y", true)}>↷ Redo</button>
+                <button id="padScPen" className={`pad-t ${tool === "pen" ? "on" : ""}`} onClick={() => scTool("pen", "p")}>✏️ Pen</button>
+                <button id="padScErase" className={`pad-t ${tool === "eraser" ? "on" : ""}`} onClick={() => scTool("eraser", "e")}>🧽 Erase</button>
+              </div>
+              <div className="pad-row pad-set">
+                <span className="pad-lab">SPEED</span>
+                <input id="padSens" className="pad-slider" type="range" min="0.4" max="3" step="0.05" value={sens}
+                  onChange={(e) => { const v = +e.target.value; sensRef.current = v; setSens(v); }} />
+                <span className="pad-val">{sens.toFixed(2)}×</span>
+                <button id="padAccel" className={`pad-chip ${accel ? "on" : ""}`} onClick={() => setAccel(!accel)} title="Pointer acceleration — slow = precise, flick = fast">⚡</button>
               </div>
             </footer>
           )}

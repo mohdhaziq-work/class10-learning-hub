@@ -116,8 +116,12 @@ export class RemotePad {
       /* pointer: p:[phase, x, y] — phase 0=down 1=move 2=up */
       const ph = m.p[0] === 0 ? "down" : m.p[0] === 1 ? "move" : "up";
       this.hooks.pointer(ph, +m.p[1], +m.p[2]);
+    } else if (m.P) {
+      /* batched draw points (all coalesced 120 Hz samples in one message): P:[[x,y],…] */
+      for (const q of m.P) this.hooks.pointer("move", +q[0], +q[1]);
     } else if (m.c) this.hooks.command(m.c, m.v);
     else if (m.m) this.hooks.cursorMove(+m.m[0], +m.m[1]);
+    else if (m.M) { for (const q of m.M) this.hooks.cursorMove(+q[0], +q[1]); }
     else if (m.k) this.hooks.cursorClick(+m.k[0], +m.k[1]);
     else if (m.s) this.hooks.cursorScroll(+m.s[0], +m.s[1]);
   }
