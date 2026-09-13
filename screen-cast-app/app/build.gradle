@@ -1,0 +1,38 @@
+plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+
+android {
+  namespace 'com.class10hub.caster'
+  compileSdk 34
+  defaultConfig {
+    applicationId "com.class10hub.caster"
+    minSdk 21
+    targetSdk 33
+    versionCode 1
+    versionName "1.0"
+    ndk { abiFilters 'armeabi-v7a', 'arm64-v8a' }
+  }
+  signingConfigs {
+    release {
+      storeFile file('../caster.keystore')
+      storePassword 'caster202627'
+      keyAlias 'caster'
+      keyPassword 'caster202627'
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.release
+    }
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+  implementation 'io.getstream:stream-webrtc-android:1.3.10'
+  implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+}
