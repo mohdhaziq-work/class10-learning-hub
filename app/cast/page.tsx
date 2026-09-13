@@ -19,6 +19,8 @@ export default function CastReceiver() {
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState("");
   const [tapHint, setTapHint] = useState(false);
+  const [rotated, setRotated] = useState(false); /* landscape video on a portrait screen -> rotate to fill */
+  const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
   const [blackWarn, setBlackWarn] = useState(false);
   const blackN = useRef(0);
   const [err, setErr] = useState("");
@@ -159,6 +161,21 @@ export default function CastReceiver() {
     return () => clearInterval(iv);
   }, []);
 
+  /* PERFECT FIT: landscape cast on a portrait screen (e.g. phone receiver) —
+     rotate the video so it fills the whole screen with zero cropping */
+  useEffect(() => {
+    const check = () => {
+      const v = videoRef.current;
+      if (!v || !v.videoWidth) return;
+      const videoLandscape = v.videoWidth / v.videoHeight > 1.2;
+      setRotated(videoLandscape && window.innerHeight > window.innerWidth * 1.05);
+    };
+    check();
+    window.addEventListener("resize", check);
+    const iv = setInterval(check, 1200); /* catches metadata load + orientation changes */
+    return () => { window.removeEventListener("resize", check); clearInterval(iv); };
+  }, [status]);
+
   /* keep retrying play + keep the receiving device awake while live */
   useEffect(() => {
     if (status !== "live" && status !== "lost") { setTapHint(false); return; }
@@ -215,7 +232,7 @@ export default function CastReceiver() {
 
       <main className="cast-main">
         <div className={`cast-stage ${status === "live" || status === "lost" ? "showing" : ""}`} ref={stageRef} onClick={playVideo}>
-          <video ref={videoRef} autoPlay playsInline muted onPlaying={() => setTapHint(false)} onLoadedMetadata={playVideo} onCanPlay={playVideo} />
+          <video ref={videoRef} autoPlay playsInline muted className={rotated ? "rot" : ""} style={{ objectFit: fitMode }} onPlaying={() => setTapHint(false)} onLoadedMetadata={playVideo} onCanPlay={playVideo} />
           {status !== "live" && status !== "lost" && (
             <div className="cast-placeholder">
               {status === "waiting" || status === "init" ? <><Icon name="cast" size={54} /><p>The big screen is ready.<br />Scan the QR from your phone to start casting.</p></> : null}
@@ -237,6 +254,7 @@ export default function CastReceiver() {
           {(status === "live" || status === "lost") && (
             <div className="cast-live-bar">
               <span className="cast-stats">{stats}</span>
+              <button className="cast-iconbtn" onClick={() => setFitMode((f) => (f === "contain" ? "cover" : "contain"))} title={fitMode === "contain" ? "Fit — whole picture visible (tap for Fill)" : "Fill — crop to edges (tap for Fit)"}>{fitMode === "contain" ? <Icon name="scan" size={18} /> : <Icon name="maximize" size={18} />}</button>
               <button className="cast-iconbtn" onClick={goFull} title="Fullscreen (double-tap video also works)"><Icon name="maximize" size={18} /></button>
               <button className="cast-iconbtn danger" onClick={stopCasting} title="Stop casting"><Icon name="x" size={18} /></button>
             </div>

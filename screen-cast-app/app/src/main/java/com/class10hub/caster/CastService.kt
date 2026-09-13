@@ -194,9 +194,9 @@ class CastService : Service() {
           if (params.encodings.isEmpty()) {
             params.encodings.add(org.webrtc.RtpParameters.Encoding(null, true, null))
           }
-          params.encodings[0].maxBitrateBps = 12_000_000
-          params.encodings[0].minBitrateBps = 4_000_000
-          params.encodings[0].maxFramerate = 30
+          params.encodings[0].maxBitrateBps = 30_000_000 /* 4K-class: keeps native screen res crisp */
+          params.encodings[0].minBitrateBps = 6_000_000
+          params.encodings[0].maxFramerate = 60
           try {
             params.degradationPreference = org.webrtc.RtpParameters.DegradationPreference.MAINTAIN_RESOLUTION
           } catch (e: Exception) { /* older webrtc build */ }
@@ -205,14 +205,18 @@ class CastService : Service() {
       } catch (e: Exception) { /* fall back to defaults */ }
 
       val dm = resources.displayMetrics
-      capturer!!.startCapture(dm.widthPixels, dm.heightPixels, 30)
+      capturer!!.startCapture(dm.widthPixels, dm.heightPixels, 60) /* 60fps = the phone's real refresh — this is what makes it feel zero-delay */
 
       status("Connecting…")
       post("/api/cast", JSONObject().put("a", "join").put("sid", s))
 
       /* offer -> server */
       val w1 = SdpWait()
-      pc!!.createOffer(w1, MediaConstraints())
+      pc!!.createOffer(w1, MediaConstraints().apply {
+        /* no cpu-overuse downscaling — lag/judder killer */
+        mandatory.add(org.webrtc.MediaConstraints.KeyValuePair("OfferToReceiveAudio", "false"))
+        mandatory.add(org.webrtc.MediaConstraints.KeyValuePair("OfferToReceiveVideo", "false"))
+      })
       if (!w1.latch.await(10, TimeUnit.SECONDS) || w1.sd == null) throw IllegalStateException("createOffer failed")
       val offer = w1.sd!!
       val w2 = SdpWait()
