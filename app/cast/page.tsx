@@ -65,6 +65,9 @@ export default function CastReceiver() {
     pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === "complete") { clearTimeout(iceTimer); flush(); } };
     iceTimer = setTimeout(flush, 1200); /* trickle early, complete fires later anyway */
     pc.ontrack = (e) => {
+      /* LATENCY: don't let the jitter buffer buffer — show frames as they arrive */
+      try { (e.receiver as any).playoutDelayHint = 0; } catch { /* unsupported */ }
+      try { (e.receiver as any).jitterBufferTarget = 0; } catch { /* unsupported */ }
       if (videoRef.current && e.streams[0]) {
         videoRef.current.srcObject = e.streams[0];
         playVideo();

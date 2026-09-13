@@ -107,6 +107,19 @@ function CastSenderInner() {
     const pc = new RTCPeerConnection(ICE);
     pcRef.current = pc;
     stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+    /* QUALITY: lock bitrate high — crisp 1080p text, never blur (drop fps instead) */
+    try {
+      const vs = pc.getSenders().find((x) => x.track?.kind === "video");
+      if (vs) {
+        const prm = vs.getParameters();
+        if (!prm.encodings?.length) prm.encodings = [{}];
+        prm.encodings[0].maxBitrate = 12_000_000;
+        (prm.encodings[0] as any).minBitrate = 4_000_000; /* chromium-only in the typings */
+        (prm.encodings[0] as any).maxFramerate = 60;
+        try { (prm as any).degradationPreference = "maintain-resolution"; } catch { /* unsupported */ }
+        await vs.setParameters(prm).catch(() => { /* keep defaults */ });
+      }
+    } catch { /* older browser */ }
     const cands: any[] = [];
     pc.onicecandidate = (e) => { if (e.candidate) cands.push({ type: "cand", cand: e.candidate.toJSON() }); };
     let iceTimer: any = 0;

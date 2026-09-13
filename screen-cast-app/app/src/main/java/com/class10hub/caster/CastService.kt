@@ -184,8 +184,28 @@ class CastService : Service() {
       val track = factory!!.createVideoTrack("screen0", videoSource)
       pc!!.addTrack(track, listOf("screen"))
 
+      /* QUALITY: lock the encoder to crisp 1080p+ screen sharing —
+         12 Mbps ceiling, 4 Mbps floor, never blur the text (drop fps instead) */
+      try {
+        for (s in pc!!.senders) {
+          val t = s.track() ?: continue
+          if (t.kind() != "video") continue
+          val params = s.parameters
+          if (params.encodings.isEmpty()) {
+            params.encodings.add(org.webrtc.RtpParameters.Encoding(null, true, null))
+          }
+          params.encodings[0].maxBitrateBps = 12_000_000
+          params.encodings[0].minBitrateBps = 4_000_000
+          params.encodings[0].maxFramerate = 30
+          try {
+            params.degradationPreference = org.webrtc.RtpParameters.DegradationPreference.MAINTAIN_RESOLUTION
+          } catch (e: Exception) { /* older webrtc build */ }
+          s.setParameters(params)
+        }
+      } catch (e: Exception) { /* fall back to defaults */ }
+
       val dm = resources.displayMetrics
-      capturer!!.startCapture(dm.widthPixels, dm.heightPixels, 24)
+      capturer!!.startCapture(dm.widthPixels, dm.heightPixels, 30)
 
       status("Connecting…")
       post("/api/cast", JSONObject().put("a", "join").put("sid", s))
