@@ -29,7 +29,7 @@ function CastSenderInner() {
   const [status, setStatus] = useState<Status>("init");
   const [canScreen, setCanScreen] = useState(true);
   const [hasMedia, setHasMedia] = useState(true);
-  const [isAndroid, setIsAndroid] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   const [err, setErr] = useState("");
   const [secs, setSecs] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,7 +41,17 @@ function CastSenderInner() {
   useEffect(() => {
     setCanScreen(typeof navigator.mediaDevices?.getDisplayMedia === "function");
     setHasMedia(!!navigator.mediaDevices);
-    setIsAndroid(/Android/i.test(navigator.userAgent));
+    const ua = navigator.userAgent || "";
+    const uad = (navigator as any).userAgentData;
+    const isIosUa = /iPhone|iPad|iPod/i.test(ua)
+      || (navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 0)
+      || uad?.platform === "iOS";
+    /* Chrome Android in 'Desktop site' mode sends a Linux UA with no 'Android' —
+       treat any touch device that is not iOS (and can't screen-share in-browser)
+       as Android, so the app-install card still shows */
+    const looksAndroid = /Android/i.test(ua) || uad?.platform === "Android"
+      || ((navigator.maxTouchPoints || 0) > 0 && !isIosUa);
+    setIsIOS(!looksAndroid);
     if (!sid) { setErr("No cast code in this link — scan the QR code on the TV screen."); setStatus("error"); return; }
     if (typeof navigator.mediaDevices?.getDisplayMedia === "function") {
       fetch("/api/cast", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: "join", sid }) })
@@ -153,7 +163,7 @@ function CastSenderInner() {
     location.href = url;
   };
 
-  const phoneApp = isAndroid && !canScreen && hasMedia;
+  const phoneApp = !canScreen && hasMedia && !isIOS;
 
   return (
     <div className="cast-root sender">
@@ -195,7 +205,7 @@ function CastSenderInner() {
         )}
 
         {/* ---------- iPhone: honest message ---------- */}
-        {status === "ready" && !canScreen && hasMedia && !isAndroid && (
+        {status === "ready" && !canScreen && hasMedia && isIOS && (
           <div className="cast-start-card">
             <div className="cast-start-ico bad"><Icon name="alertTriangle" size={44} /></div>
             <h2>iPhone screen cast — coming soon</h2>
