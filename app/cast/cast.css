@@ -99,3 +99,7 @@
 .cast-live-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .cast-btn.sm{padding:11px 18px;font-size:14px;border-radius:12px}
 .cast-sender-live video.cam{aspect-ratio:3/4;object-fit:cover;max-width:340px}
+.cast-want-screen{display:flex;gap:8px;align-items:flex-start;background:var(--cast-panel);border:1px solid var(--cast-line);
+  border-radius:12px;padding:11px 13px;text-align:left;font-size:12.5px!important;line-height:1.6!important}
+.cast-want-screen svg{flex:none;margin-top:2px;color:#7ab0ff}
+.cast-flip-msg{font-size:12.5px!important;color:#fbbf24!important;font-weight:700;margin:0!important}

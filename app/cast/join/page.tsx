@@ -31,6 +31,7 @@ function CastSenderInner() {
   const [canScreen, setCanScreen] = useState(true);
   const [canCamera, setCanCamera] = useState(true);
   const [facing, setFacing] = useState<"user" | "environment">("environment");
+  const [flipMsg, setFlipMsg] = useState("");
   const [err, setErr] = useState("");
   const [secs, setSecs] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -160,16 +161,36 @@ function CastSenderInner() {
     }
   }
 
-  /* flip front/back camera without breaking the live connection */
+  /* flip front/back camera without breaking the live connection.
+     'ideal' facingMode silently returns the SAME camera on many phones —
+     so we ask 'exact' first, then fall back to a different deviceId, and
+     tell the user honestly if this phone has only one camera. */
   async function flipCamera() {
     const pc = pcRef.current;
     const old = streamRef.current;
     if (!pc || !old) return;
     const next = facing === "environment" ? "user" : "environment";
+    const base = { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } };
+    const flash = (m: string) => { setFlipMsg(m); setTimeout(() => setFlipMsg(""), 3000); };
     try {
-      const ns = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: next }, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false,
-      });
+      let ns: MediaStream | null = null;
+      try {
+        ns = await navigator.mediaDevices.getUserMedia({ video: { ...base, facingMode: { exact: next } }, audio: false });
+      } catch {
+        /* exact failed — try picking a different physical camera by deviceId */
+        try {
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          const cams = devs.filter((d) => d.kind === "videoinput");
+          const curId = old.getVideoTracks()[0]?.getSettings().deviceId;
+          const other = cams.find((c) => c.deviceId && c.deviceId !== curId);
+          if (!other) throw new Error("single camera");
+          ns = await navigator.mediaDevices.getUserMedia({ video: { ...base, deviceId: { exact: other.deviceId } }, audio: false });
+        } catch {
+          flash("Could not switch — this device has only one usable camera");
+          return;
+        }
+      }
+      if (!ns) return;
       const nt = ns.getVideoTracks()[0];
       const sender = pc.getSenders().find((s) => s.track?.kind === "video");
       if (sender) await sender.replaceTrack(nt); /* seamless — no re-negotiation */
@@ -178,7 +199,10 @@ function CastSenderInner() {
       if (videoRef.current) { videoRef.current.srcObject = ns; videoRef.current.play().catch(() => { /* muted autoplay */ }); }
       old.getTracks().forEach((t) => t.stop());
       setFacing(next);
-    } catch { /* flip not possible on this device — ignore */ }
+      flash(next === "user" ? "Front camera" : "Back camera");
+    } catch {
+      flash("Could not switch camera — try stopping and starting again");
+    }
   }
 
   useEffect(() => {
@@ -217,9 +241,10 @@ function CastSenderInner() {
           <div className="cast-start-card">
             <div className="cast-start-ico"><Icon name="image" size={44} /></div>
             <h2>Camera Cast to the TV</h2>
-            <p>Phone browsers cannot capture the phone screen (Android &amp; iPhone both block it) — <b>but your camera can go live on the big screen</b>. Perfect for showing a notebook, diagram, or experiment to the whole class.</p>
+            <p><b>Why not screen cast?</b> No phone browser is allowed to capture the phone screen — Android &amp; iPhone both block it for every website (a native app is needed for that, and it is coming). What phones <b>can</b> do live on the big screen: the <b>camera</b> — perfect for a notebook, diagram, or experiment.</p>
+            <p className="cast-want-screen"><Icon name="info" size={15} /> Want full <b>screen</b> cast? Open this same link on a <b>laptop / PC</b> (Chrome or Edge) — there you get the real screen cast.</p>
             <button className="cast-btn big" onClick={startCameraCast}><Icon name="image" size={22} /> Start Camera Cast</button>
-            {mode === "camera" && <small>Starting with the back camera — you can flip it while live.</small>}
+            <small>Camera permission will be asked — that is normal. Starts with the back camera; flip it while live.</small>
           </div>
         )}
 
@@ -238,7 +263,8 @@ function CastSenderInner() {
         {(status === "live" || status === "lost") && (
           <div className="cast-sender-live">
             <video ref={videoRef} autoPlay playsInline muted className={modeRef.current === "camera" ? "cam" : ""} />
-            <p>{status === "live" ? (modeRef.current === "camera" ? "Your camera is on the big screen" : "Your screen is on the big screen") : "Reconnecting…"}</p>
+            <p>{status === "live" ? (modeRef.current === "camera" ? `Camera (${facing === "user" ? "front" : "back"}) is on the big screen` : "Your screen is on the big screen") : "Reconnecting…"}</p>
+            {flipMsg && <p className="cast-flip-msg">{flipMsg}</p>}
             <div className="cast-live-row">
               {modeRef.current === "camera" && (
                 <button className="cast-btn light sm" onClick={flipCamera}><Icon name="refreshCw" size={17} /> Flip camera</button>
