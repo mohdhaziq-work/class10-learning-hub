@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "new-account GSC tag live (H_6j6j...P-E)",
+  lastCommit: "web-pane layout fix (empty card hidden, iframe full-height)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
