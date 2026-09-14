@@ -67,12 +67,9 @@ export const metadata: Metadata = {
       "max-video-preview": -1,
     },
   },
-  verification: {
-    google: [
-      "JRNgWYCLdfnRnXDLas-IrnjW38h-fgJJit3oXlxHXHw",
-      "PzwcyygbgXrqaPF-JZyPIRhvlKS_Nt4oTU-i-kRvzNo",
-    ],
-  },
+  verification: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION }
+    : undefined,
 };
 
 export const viewport: Viewport = {
