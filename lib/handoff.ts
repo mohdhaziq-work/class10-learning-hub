@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "c2f9a7f (EduRev web-pane split)",
+  lastCommit: "edcd41b (old GSC tags removed; re-verify with new account)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -62,6 +62,7 @@ export const HANDOFF = {
   log: [
     "2026-09-14: took over from a stalled session. Added batch D (~175 questions), board-paper redesign of chapter PYQ pages, DPR-crisp PDF rendering, hidden /ai handoff page + rule to update it after every task.",
     "2026-09-14: batch E — downloaded all 14 EduRev Class 10 Maths chapter PYQ pages, parsed 481 unique questions (MCQ options inline, assertion-reason, 2025-26 sections), merged + deduped; bank 373 -> 854. Pushed 52b916f.",
+    "2026-09-14: old Google verification tags removed from site (user deleting old GSC property, switching to new email). Verification meta renders only if NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION set — paste new code or set env. Pushed edcd41b.",
     "2026-09-14: board 'web' doc kind — /smart-board?web=<https-url> frames an external page (EduRev chapter PYQs) in the doc pane with whiteboard split; write/browse toggle. Chapter pages + PYQ pages link to it for all 14 maths chapters. Note: EduRev content is FRAMED only (no X-Frame-Options), never copied; parsed bank holds only short CBSE question statements + option/result answers. Pushed c2f9a7f.",
   ],
 };
