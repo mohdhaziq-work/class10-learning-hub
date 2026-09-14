@@ -7,6 +7,8 @@ import ChapterView from "@/components/chapter/ChapterView";
 import { Icon } from "@/components/ui/Icon";
 import { PYQ_MATHS } from "@/lib/content/pyq";
 import { ncertPdf, boardHref } from "@/lib/ncert";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 
 export function generateStaticParams() {
  return allChapterKeys().map((k) => ({
@@ -17,9 +19,14 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: { subjectId: string; groupIdx: string; chapterIdx: string } }): Promise<Metadata> {
  const f = getChapter(params.subjectId, +params.groupIdx, +params.chapterIdx);
  if (!f) return {};
+ const path = `/chapter/${params.subjectId}/${params.groupIdx}/${params.chapterIdx}`;
+ const title = `${f.ch.title} — Class 10 ${f.sub.name} Chapter ${f.ch.n}`;
+ const description = `${f.sub.name} Chapter ${f.ch.n}: ${f.ch.title} — free NCERT/CBSE slides, notes, quiz and revision. ${f.ch.hi || ""}`.trim();
  return {
- title: `Ch ${f.ch.n}: ${f.ch.title} — ${f.sub.name}`,
- description: `${f.sub.name} Chapter ${f.ch.n}: ${f.ch.title} — slides, notes, quiz and revision. ${f.ch.hi || ""}`,
+ title,
+ description,
+ alternates: { canonical: path },
+ openGraph: { title, description, url: path, type: "article" },
  };
 }
 
@@ -39,8 +46,33 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  const isAuto = !chapterDetail(f.key);
  const pdf = ncertPdf(f.key, f.ch.title);
  const bHref = boardHref(f.key, f.ch.title);
+ const path = `/chapter/${sub.id}/${g}/${c}`;
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6">
+ <JsonLd
+ data={[
+ {
+ "@context": "https://schema.org",
+ "@type": "LearningResource",
+ name: `${f.ch.title} — Class 10 ${sub.name} Chapter ${f.ch.n}`,
+ description: `${sub.name} Chapter ${f.ch.n}: ${f.ch.title} — free NCERT/CBSE slides, notes, quiz and revision. ${f.ch.hi || ""}`.trim(),
+ url: absoluteUrl(path),
+ educationalLevel: "Class 10",
+ learningResourceType: ["chapter study guide", "slides", "notes", "quiz"],
+ teaches: f.ch.hi || f.ch.title,
+ inLanguage: sub.id === "hindi" ? "hi" : "en",
+ audience: { "@type": "EducationalAudience", educationalRole: "student" },
+ about: { "@type": "Thing", name: sub.name },
+ isPartOf: { "@type": "Course", name: `Class 10 ${sub.name}`, url: absoluteUrl(`/subjects/${sub.id}`) },
+ provider: organizationJsonLd(),
+ },
+ breadcrumbJsonLd([
+ { name: "Home", path: "/" },
+ { name: sub.name, path: `/subjects/${sub.id}` },
+ { name: `Chapter ${f.ch.n}: ${f.ch.title}`, path },
+ ]),
+ ]}
+ />
  <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute mt-5 mb-4 flex-wrap">
  <Link href="/" className="flex items-center gap-1 hover:text-black transition"><Icon name="home" size={15} /> Home</Link>
  <Icon name="chevronRight" size={14} />

@@ -4,7 +4,11 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://class10-learning-hub.o
 
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: "*", allow: "/", disallow: ["/api/"] },
+    rules: {
+      userAgent: "*",
+      allow: "/",
+      disallow: ["/api/", "/admin", "/upload/"],
+    },
     sitemap: `${SITE}/sitemap.xml`,
   };
 }

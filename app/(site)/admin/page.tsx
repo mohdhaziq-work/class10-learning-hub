@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 export const metadata: Metadata = {
  title: "Admin — Content Editor",
  description: "Chapter content editor for teachers — fill slides, notes, and quizzes.",
+ robots: { index: false, follow: false },
 };
 
 export default function AdminPage() {

@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { SUBJECTS, getSubject } from "@/lib/syllabus";
 import SubjectChapters from "@/components/subject/SubjectChapters";
 import { Icon } from "@/components/ui/Icon";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 
 export function generateStaticParams() {
  return SUBJECTS.map((s) => ({ subjectId: s.id }));
@@ -12,15 +14,43 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: { subjectId: string } }): Promise<Metadata> {
  const sub = getSubject(params.subjectId);
  if (!sub) return {};
- return { title: `${sub.name} — All Chapters`, description: `${sub.tagline} Class 10 ${sub.name} chapters with slides, notes and quizzes.` };
+ const path = `/subjects/${sub.id}`;
+ const title = `Class 10 ${sub.name} — All Chapters`;
+ const description = `${sub.tagline} Free Class 10 ${sub.name} chapters with NCERT-aligned slides, notes, quizzes and Smart Board support.`;
+ return {
+ title,
+ description,
+ alternates: { canonical: path },
+ openGraph: { title, description, url: path, type: "website" },
+ };
 }
 
 export default function SubjectPage({ params }: { params: { subjectId: string } }) {
  const sub = getSubject(params.subjectId);
  if (!sub) notFound();
  const total = sub.groups.reduce((a, g) => a + g.chapters.length, 0);
+ const path = `/subjects/${sub.id}`;
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6">
+ <JsonLd
+ data={[
+ {
+ "@context": "https://schema.org",
+ "@type": "Course",
+ name: `Class 10 ${sub.name}`,
+ description: `${sub.tagline} Free Class 10 ${sub.name} chapters with slides, notes, quizzes and Smart Board support.`,
+ url: absoluteUrl(path),
+ educationalLevel: "Class 10",
+ inLanguage: sub.id === "hindi" ? "hi" : "en",
+ teaches: sub.groups.map((g) => g.label).join(", "),
+ provider: organizationJsonLd(),
+ },
+ breadcrumbJsonLd([
+ { name: "Home", path: "/" },
+ { name: sub.name, path },
+ ]),
+ ]}
+ />
  <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute mt-5 mb-4">
  <Link href="/" className="flex items-center gap-1 hover:text-black transition"><Icon name="home" size={15} /> Home</Link>
  <Icon name="chevronRight" size={14} />

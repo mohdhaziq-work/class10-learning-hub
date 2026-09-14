@@ -4,6 +4,9 @@ import SubjectGrid from "@/components/home/SubjectGrid";
 import { totalChapters } from "@/lib/syllabus";
 import { totalQuizQuestions } from "@/lib/content";
 import { Icon } from "@/components/ui/Icon";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { SUBJECTS } from "@/lib/syllabus";
+import { absoluteUrl, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 function SectionHead({ overline, title, sub }: { overline: string; title: string; sub: string }) {
  return (
@@ -41,6 +44,34 @@ const FEATURES = [
 export default function HomePage() {
  return (
  <div>
+ <JsonLd
+ data={[
+ {
+ "@context": "https://schema.org",
+ "@type": "ItemList",
+ name: "Class 10 Subjects",
+ url: SITE_URL,
+ itemListElement: SUBJECTS.map((s, i) => ({
+ "@type": "ListItem",
+ position: i + 1,
+ name: `Class 10 ${s.name}`,
+ url: absoluteUrl(`/subjects/${s.id}`),
+ })),
+ },
+ {
+ "@context": "https://schema.org",
+ "@type": "LearningResource",
+ name: SITE_NAME,
+ url: SITE_URL,
+ description:
+ "Free NCERT/CBSE Class 10 study hub with smart slides, notes, quizzes, PYQs and an advanced Smart Board.",
+ educationalLevel: "Class 10",
+ inLanguage: "en",
+ learningResourceType: ["study hub", "slides", "quiz", "smart board"],
+ audience: { "@type": "EducationalAudience", educationalRole: "student" },
+ },
+ ]}
+ />
  {/* ---------- HERO ---------- */}
  <section className="border-b border-slate-200 ">
  <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-12 grid gap-12 lg:grid-cols-[1.05fr_.95fr] items-center">
