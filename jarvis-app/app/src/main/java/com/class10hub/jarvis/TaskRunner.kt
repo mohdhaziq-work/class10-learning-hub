@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 
-/* Task queue — "pehle X, phir Y". When one finishes (instant OR arena work-done),
+/* Task queue — "first X, then Y". When one finishes (instant OR arena work-done),
    the next one auto-starts. Queue survives app restart (SharedPreferences). */
 object TaskRunner {
   private val main = Handler(Looper.getMainLooper())
@@ -22,13 +22,11 @@ object TaskRunner {
     current = null
   }
 
-  fun currentTask(): String? = current
-
   fun display(): String {
     val q = P.queue
     val sb = StringBuilder()
-    current?.let { sb.append("▶ (chalu) ").append(it).append("\n") }
-    if (q.isEmpty() && current == null) return "Khaali — koi kaam pending nahi"
+    current?.let { sb.append("▶ ").append(it).append("\n") }
+    if (q.isEmpty() && current == null) return "Empty — no pending tasks."
     q.forEachIndexed { i, s -> sb.append(i + 1).append(". ").append(s).append("\n") }
     return sb.toString().trim()
   }
@@ -38,14 +36,17 @@ object TaskRunner {
     val nxt = q.removeFirstOrNull()
     if (nxt == null) {
       current = null
-      Speech.speak(c, "Koi kaam pending nahi")
+      say(c, "No pending tasks.", "कोई काम बाकी नहीं है।")
       return
     }
     P.queue = q
     current = nxt
     when (CommandCenter.execute(c, nxt)) {
       CommandCenter.INSTANT -> main.postDelayed({ onTaskDone(c, quiet = false) }, 900)
-      CommandCenter.FAILED -> { Speech.speak(c, "Ye kaam nahi ho paya, skip kar raha hoon"); main.postDelayed({ onTaskDone(c, quiet = true) }, 900) }
+      CommandCenter.FAILED -> {
+        say(c, "That task could not be done. Skipping it.", "यह काम नहीं हो पाया। इसे छोड़ रहा हूँ।")
+        main.postDelayed({ onTaskDone(c, quiet = true) }, 900)
+      }
       CommandCenter.PENDING -> { /* arena flow will call onTaskDone when the AI finishes */ }
     }
   }
@@ -55,10 +56,10 @@ object TaskRunner {
     current = null
     val more = P.queue.isNotEmpty()
     if (more) {
-      if (!quiet) Speech.speak(c, "Kaam poora hua. Agla shuru karta hoon") { TaskRunner.runNext(c) }
+      if (!quiet) say(c, "Task complete. Starting the next one.", "काम पूरा हुआ। अगला शुरू करता हूँ।") { TaskRunner.runNext(c) }
       else main.postDelayed({ TaskRunner.runNext(c) }, 600)
     } else {
-      if (!quiet) Speech.speak(c, "Kaam poora hua. Queue khaali hai")
+      if (!quiet) say(c, "Task complete. The queue is now empty.", "काम पूरा हुआ। अब कोई काम बाकी नहीं है।")
     }
   }
 }

@@ -48,7 +48,7 @@ class BubbleService : Service() {
     Speech.initTts(this)
     startFg()
     addBubble()
-    Speech.speak(this, "Jarvis ready. Bubble dabakar boliye")
+    say(this, "Jarvis is ready. Tap the bubble and speak.", "जार्विस तैयार है। बबल दबाकर बोलिए।")
   }
 
   private fun startFg() {
@@ -120,7 +120,7 @@ class BubbleService : Service() {
     Speech.listen(this) { text ->
       pulseOn = false
       if (text.isNullOrBlank()) {
-        Speech.speak(this, "Samajh nahi aaya, dobara boliye")
+        say(this, "I did not catch that. Please try again.", "समझ नहीं आया। कृपया फिर से बोलिए।")
       } else {
         CommandCenter.handle(this, text)
       }

@@ -16,7 +16,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/* Executes ONE device command (app open, call, alarm, torch, …). Returns true if done. */
+/* Executes ONE device command. Understands pure English AND pure Hindi. */
 object Exec {
 
   private val APP_PKGS = mapOf(
@@ -34,7 +34,13 @@ object Exec {
     "messages" to "com.google.android.apps.messaging", "sms" to "com.google.android.apps.messaging",
     "files" to "com.android.documentsui", "gallery" to "com.android.gallery3d",
     "photos" to "com.google.android.apps.photos", "spotify" to "com.spotify.music",
-    "snapchat" to "com.snapchat.android", "zoom" to "us.zoom.videomeetings"
+    "snapchat" to "com.snapchat.android", "zoom" to "us.zoom.videomeetings",
+    "क्रोम" to "com.android.chrome", "व्हाट्सएप" to "com.whatsapp", "व्हाट्सप्प" to "com.whatsapp",
+    "यूट्यूब" to "com.google.android.youtube", "इंस्टाग्राम" to "com.instagram.android",
+    "टेलीग्राम" to "org.telegram.messenger", "फेसबुक" to "com.facebook.katana",
+    "जीमेल" to "com.google.android.gm", "मैप" to "com.google.android.apps.maps", "नक्शा" to "com.google.android.apps.maps",
+    "कैमरा" to "com.android.camera2", "कैलकुलेटर" to "com.google.android.calculator",
+    "घड़ी" to "com.google.android.deskclock", "फोटो" to "com.google.android.apps.photos", "सेटिंग" to "com.android.settings"
   )
 
   fun execute(c: Context, t: String): Boolean {
@@ -42,107 +48,118 @@ object Exec {
     if (low.isEmpty()) return false
 
     /* ---------- torch ---------- */
-    if (low.contains("torch") || low.contains("flash light") || low.contains("flashlight") || low.contains("flash")) {
-      val off = low.contains("off") || low.contains("band") || low.contains("bujha")
+    if (low.contains("torch") || low.contains("flashlight") || low.contains("flash light") || low.contains("flash") ||
+        low.contains("टॉर्च") || low.contains("फ्लैश") || low.contains("मशाल")) {
+      val off = low.contains("off") || low.contains("band") || low.contains("bujha") ||
+                low.contains("बंद") || low.contains("बुझा")
       return torch(c, !off)
     }
 
     /* ---------- volume ---------- */
-    if (low.contains("volume") || low.contains("awaaz") || low.contains("awaz")) {
+    if (low.contains("volume") || low.contains("awaaz") || low.contains("awaz") || low.contains("वॉल्यूम") || low.contains("आवाज़") || low.contains("आवाज")) {
       val am = c.getSystemService(Context.AUDIO_SERVICE) as AudioManager
       when {
-        low.contains("full") || low.contains("max") || low.contains("100") -> am.setStreamVolume(AudioManager.STREAM_MUSIC, am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 1)
-        low.contains("kam") || low.contains("ghata") || low.contains("down") || low.contains("low") || low.contains("reduce") -> am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 1)
+        low.contains("full") || low.contains("max") || low.contains("100") || low.contains("पूरी") || low.contains("पूरा") ->
+          am.setStreamVolume(AudioManager.STREAM_MUSIC, am.getStreamMaxVolume(AudioManager.STREAM_MUSIC), 1)
+        low.contains("down") || low.contains("lower") || low.contains("reduce") || low.contains("decrease") || low.contains("mute") ||
+          low.contains("कम") || low.contains("घटाओ") || low.contains("घटा") || low.contains("मूक") ->
+          am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_LOWER, 1)
         else -> am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, 1)
       }
-      Speech.speak(c, "Theek hai")
+      say(c, "Done.", "ठीक है।")
       return true
     }
 
     /* ---------- battery ---------- */
-    if (low.contains("battery") || low.contains("charge kitni")) {
+    if (low.contains("battery") || low.contains("बैटरी") || low.contains("चार्ज")) {
       val bm = c.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
       val pct = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-      Speech.speak(c, "Battery $pct percent hai")
+      say(c, "Battery is at $pct percent.", "बैटरी $pct प्रतिशत है।")
       return true
     }
 
-    /* ---------- time ---------- */
-    if ((low.contains("time") && low.contains("kya")) || low.contains("kitne baje") || low.contains("samay")) {
-      Speech.speak(c, "Abhi " + SimpleDateFormat("h:mm a", Locale.US).format(Date()) + " baje hai")
-      return true
+    /* ---------- time / date ---------- */
+    if (low.contains("time") || low.contains("समय") || low.contains("कितने बजे") || low.contains("kitne baje")) {
+      if (low.contains("what") || low.contains("kya") || low.contains("kitne") || low.contains("समय") || low.contains("बजे") || low.length < 30) {
+        say(c, "It is " + SimpleDateFormat("h:mm a", Locale.US).format(Date()) + ".", "अभी " + SimpleDateFormat("h:mm a", Locale.US).format(Date()) + " हुए हैं।")
+        return true
+      }
     }
-    if (low.contains("date") || low.contains("tareekh") || low.contains("tarikh")) {
-      Speech.speak(c, "Aaj " + SimpleDateFormat("d MMMM yyyy", Locale.US).format(Date()) + " hai")
+    if (low.contains("date") || low.contains("तारीख") || low.contains("तारीख़") || low.contains("आज का दिन")) {
+      say(c, "Today is " + SimpleDateFormat("d MMMM yyyy", Locale.US).format(Date()) + ".", "आज " + SimpleDateFormat("d MMMM yyyy", Locale.US).format(Date()) + " है।")
       return true
     }
 
-    /* ---------- timer (before alarm) ---------- */
-    if (low.contains("timer") || low.contains("stopwatch")) {
-      val m = Regex("(\\d+)\\s*(minute|min|minut|mint|second|sec|ghante|ghanta|hour|hr)").find(low)
+    /* ---------- timer ---------- */
+    if (low.contains("timer") || low.contains("stopwatch") || low.contains("टाइमर")) {
+      val m = Regex("(\\d+)\\s*(minute|min|minut|mint|second|sec|ghante|ghanta|hour|hr|मिनट|सेकंड|घंटा|घंटे)").find(low)
       if (m != null) {
         val n = m.groupValues[1].toIntOrNull() ?: 1
         val unit = m.groupValues[2]
         val secs = when {
-          unit.startsWith("sec") -> n
-          unit.startsWith("min") || unit == "minut" || unit == "mint" -> n * 60
+          unit.startsWith("sec") || unit.startsWith("सेकंड") -> n
+          unit.startsWith("min") || unit == "minut" || unit == "mint" || unit.startsWith("मिनट") -> n * 60
           else -> n * 3600
         }
         return try {
           c.startActivity(Intent(AlarmClock.ACTION_SET_TIMER).apply {
             putExtra(AlarmClock.EXTRA_LENGTH, secs)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis timer")
+            putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis")
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
           })
-          Speech.speak(c, "$n $unit ka timer laga diya")
+          say(c, "Timer set for $n $unit.", "$n $unit का टाइमर लग गया।")
           true
         } catch (_: Exception) { false }
       }
-      Speech.speak(c, "Kitne minute ka timer?")
+      say(c, "For how many minutes?", "कितने मिनट का टाइमर?")
       return false
     }
 
     /* ---------- alarm ---------- */
-    if (low.contains("alarm")) {
-      val m = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").find(low.replace(Regex("(\\d)\\s*baje"), "$1"))
+    if (low.contains("alarm") || low.contains("अलारम") || low.contains("अलार्म")) {
+      val m = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?").find(low.replace(Regex("(\\d)\\s*(?:baje|बजे)"), "$1"))
       if (m != null) {
         var h = m.groupValues[1].toIntOrNull() ?: return false
         val min = m.groupValues[2].toIntOrNull() ?: 0
         val ap = m.groupValues[3]
         if (ap == "pm" && h < 12) h += 12
         if (ap == "am" && h == 12) h = 0
+        if (low.contains("subah") || low.contains("सुबह")) { if (h in 1..11 && ap.isEmpty()) { /* already morning */ } }
+        if (low.contains("shaam") || low.contains("शाम") || low.contains("raat") || low.contains("रात")) { if (h < 12 && ap.isEmpty()) h += 12 }
         return try {
           c.startActivity(Intent(AlarmClock.ACTION_SET_ALARM).apply {
             putExtra(AlarmClock.EXTRA_HOUR, h)
             putExtra(AlarmClock.EXTRA_MINUTES, min)
-            putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis alarm")
+            putExtra(AlarmClock.EXTRA_MESSAGE, "Jarvis")
             putExtra(AlarmClock.EXTRA_SKIP_UI, true)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
           })
-          Speech.speak(c, "$h baje $min minute ka alarm laga diya")
+          say(c, "Alarm set for $h:${min.toString().padStart(2, '0')}.", "$h:${min.toString().padStart(2, '0')} बजे का अलार्म लग गया।")
           true
         } catch (_: Exception) { false }
       }
-      Speech.speak(c, "Kitne baje ka alarm lagana hai?")
+      say(c, "For what time?", "कितने बजे का अलार्म?")
       return false
     }
 
     /* ---------- youtube play ---------- */
-    if (low.contains("youtube")) {
+    if (low.contains("youtube") || low.contains("यूट्यूब")) {
       var q = afterFillers(low)
-      q = q.replace(Regex("^(?:youtube|you tube|yt)\\s*"), "")
+      q = q.replace(Regex("^(?:youtube|you tube|yt|यूट्यूब)\\s*"), "")
       q = cleanQuery(q)
       return if (q.isNotBlank()) {
         openUrl(c, "https://www.youtube.com/results?search_query=" + URLEncoder.encode(q, "UTF-8"))
-      } else openApp(c, "youtube").also { Speech.speak(c, "YouTube khol raha hoon") }
+      } else openApp(c, "youtube").also { say(c, "Opening YouTube.", "यूट्यूब खोल रहा हूँ।") }
     }
 
     /* ---------- google search ---------- */
-    if (low.contains("search") || low.contains("google pe") || low.contains("google mein") || low.contains("google me")) {
+    if (low.contains("search") || low.contains("google pe") || low.contains("google mein") || low.contains("google me") ||
+        low.contains("गूगल पर") || low.contains("गूगल में") || low.contains("खोजो") || low.contains("ढूँढो") || low.contains("ढूंढो")) {
       var q = afterFillers(low)
-      q = q.replace(Regex("^(?:google|ggl)\\s*(?:pe|par|mein|me|in|on)?\\s*"), "")
+      q = q.replace(Regex("^(?:google|ggl|गूगल)\\s*(?:pe|par|mein|me|in|on|पर|में)?\\s*"), "")
       q = q.replace(Regex("^search(?: karo| kar)?\\s*"), "")
+      q = q.replace(Regex("^(?:खोजो|ढूँढो|ढूंढो)\\s*"), "")
       q = cleanQuery(q)
       return if (q.isNotBlank()) {
         openUrl(c, "https://www.google.com/search?q=" + URLEncoder.encode(q, "UTF-8"))
@@ -159,50 +176,51 @@ object Exec {
       }
     }
 
-    /* ---------- call (after youtube/search/url so "call of duty youtube pe" works) ---------- */
-    if (low.contains("call") || low.contains("dial") || low.contains("phone lagao") || low.contains("phone mila")) {
+    /* ---------- call ---------- */
+    if (low.contains("call") || low.contains("dial") || low.contains("कॉल") || low.contains("फ़ोन लगाओ") || low.contains("फोन लगाओ")) {
       return call(c, low)
     }
 
     /* ---------- open app ---------- */
-    if (low.contains("kholo") || low.contains("khol") || low.contains("open") || low.contains("chalao") || low.contains("launch") || low.contains("start")) {
+    if (low.contains("kholo") || low.contains("khol") || low.contains("open") || low.contains("chalao") ||
+        low.contains("launch") || low.contains("start") || low.contains("खोलो") || low.contains("खोल") || low.contains("चलाओ") || low.contains("चालू करो")) {
       val subject = subjectOf(low)
       if (subject.isNotBlank()) {
         val ok = openApp(c, subject)
-        if (ok) Speech.speak(c, "${subject.replaceFirstChar { it.uppercase() }} khol raha hoon")
-        else Speech.speak(c, "$subject naam ka app nahi mila")
+        if (ok) say(c, "Opening it.", "खोल रहा हूँ।")
+        else say(c, "That app was not found.", "यह ऐप नहीं मिला।")
         return ok
       }
     }
 
-    Speech.speak(c, "Ye command samajh nahi aayi. Help ke liye Jarvis app kholo.")
+    say(c, "I did not understand that command. Open the Jarvis app for examples.", "यह आदेश समझ नहीं आया। उदाहरण के लिए जार्विस ऐप खोलिए।")
     return false
   }
 
-  /* strip command words to find the subject (app name / person / query) */
+  /* strip command words (EN + HI) to find the subject */
   private fun subjectOf(low: String): String {
     var s = " " + low + " "
-    for (w in listOf("kholo", "khol do", "khol", "open karo", "open", "chalao", "chala do", "launch karo", "launch",
-                     "start karo", "start", "karo", "kar do", "jara", "zara", "mujhe", "please", "plz", "app", "the", "an", "a", "do")) {
-      s = Regex("\\b" + Regex.escape(w) + "\\b").replace(s, " ")
-    }
+    val words = listOf("kholo", "khol do", "khol", "open karo", "open", "chalao", "chala do", "launch karo", "launch",
+                       "start karo", "start", "karo", "kar do", "jara", "zara", "mujhe", "please", "plz", "app", "the", "an", "a", "do",
+                       "खोलो", "खोल दो", "खोल", "चलाओ", "चला दो", "चालू करो", "करो", "कर दो", "ज़रा", "जरा", "मुझे", "ऐप", "एप", "कृपया")
+    for (w in words) s = Regex("\\b" + Regex.escape(w) + "\\b").replace(s, " ")
     return s.replace(Regex("\\s+"), " ").trim()
   }
 
   private fun afterFillers(low: String): String {
     var s = low
-    for (w in listOf("pe", "par", "mein", "me", "in", "on", "se", "par", "karo", "chalao", "play", "laga do", "laga", "lagao",
-                     "video", "song", "gaana", "gana", "dikhao", "search", "khojo", "dhundo", "dhoondo", "jarvis")) {
-      s = Regex("\\b$w\\b").replace(s, " ")
-    }
+    val words = listOf("pe", "par", "mein", "me", "in", "on", "se", "karo", "chalao", "play", "laga do", "laga", "lagao",
+                       "video", "song", "gaana", "gana", "dikhao", "search", "khojo", "dhundo", "dhoondo", "jarvis",
+                       "पर", "में", "से", "करो", "चलाओ", "लगाओ", "लगा दो", "वीडियो", "गाना", "दिखाओ", "खोजो", "ढूँढो", "जार्विस")
+    for (w in words) s = Regex("\\b$w\\b").replace(s, " ")
     return s.replace(Regex("\\s+"), " ").trim()
   }
 
   private fun cleanQuery(q: String): String {
     var s = q
-    for (w in listOf("karo", "kya", "hai", "ka", "ki", "ke", "please", "plz", "jarvis", "batao", "dikha")) {
-      s = Regex("\\b$w\\b").replace(s, " ")
-    }
+    val words = listOf("karo", "kya", "hai", "ka", "ki", "ke", "please", "plz", "jarvis", "batao", "dikha",
+                       "करो", "क्या", "है", "का", "की", "के", "कृपया", "जार्विस", "बताओ", "दिखाओ")
+    for (w in words) s = Regex("\\b$w\\b").replace(s, " ")
     return s.replace(Regex("\\s+"), " ").trim()
   }
 
@@ -241,7 +259,7 @@ object Exec {
   }
 
   fun openUrl(c: Context, url: String): Boolean {
-    Speech.speak(c, "Khol raha hoon")
+    say(c, "Opening.", "खोल रहा हूँ।")
     return try {
       val i = Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       try { i.setPackage("com.android.chrome"); c.startActivity(i) } catch (_: Exception) { i.setPackage(null); c.startActivity(i) }
@@ -251,15 +269,15 @@ object Exec {
 
   private fun call(c: Context, low: String): Boolean {
     if (c.checkSelfPermission(android.Manifest.permission.READ_CONTACTS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-      Speech.speak(c, "Contacts ki permission do Jarvis app mein")
+      say(c, "Please grant the Contacts permission in the Jarvis app.", "कृपया जार्विस ऐप में संपर्क (Contacts) की अनुमति दें।")
       return false
     }
     var name = low
-    for (w in listOf("call", "phone", "lagao", "dial", "karo", "ko", "se", "mila", "jarvis", "do", "a", "kar")) {
-      name = Regex("\\b$w\\b").replace(name, " ")
-    }
+    val words = listOf("call", "phone", "lagao", "dial", "karo", "ko", "se", "mila", "jarvis", "do", "a", "kar", "up", "on",
+                       "कॉल", "फ़ोन", "फोन", "लगाओ", "डायल", "करो", "को", "से", "जार्विस", "उपर", "पर")
+    for (w in words) name = Regex("\\b$w\\b").replace(name, " ")
     name = name.replace(Regex("\\s+"), " ").trim()
-    if (name.isBlank()) { Speech.speak(c, "Kisko call karna hai?"); return false }
+    if (name.isBlank()) { say(c, "Whom should I call?", "किसे कॉल करना है?"); return false }
     return try {
       val cur = c.contentResolver.query(
         ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
@@ -278,8 +296,8 @@ object Exec {
           if (sc > bestScore) { bestScore = sc; bestName = dn; bestNum = cu.getString(idxP) ?: "" }
         }
       }
-      if (bestNum.isBlank()) { Speech.speak(c, "Contacts mein $name nahi mila"); return false }
-      Speech.speak(c, "$bestName ko call laga raha hoon")
+      if (bestNum.isBlank()) { say(c, "No contact named $name was found.", "संपर्कों में $name नाम का कोई व्यक्ति नहीं मिला।"); return false }
+      say(c, "Calling $bestName.", "$bestName को कॉल कर रहा हूँ।")
       c.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:" + Uri.encode(bestNum))).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
       true
     } catch (_: Exception) { false }
@@ -294,7 +312,8 @@ object Exec {
           cm.setTorchMode(id, on); done = true; break
         }
       }
-      if (done) Speech.speak(c, if (on) "Torch on" else "Torch off") else Speech.speak(c, "Flash light nahi mila")
+      if (done) say(c, if (on) "Torch on." else "Torch off.", if (on) "टॉर्च चालू।" else "टॉर्च बंद।")
+      else say(c, "No flash was found.", "फ्लैश नहीं मिला।")
       done
     } catch (_: Exception) { false }
   }

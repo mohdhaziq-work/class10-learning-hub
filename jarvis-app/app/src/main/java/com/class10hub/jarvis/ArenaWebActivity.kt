@@ -5,6 +5,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -21,22 +23,24 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import org.json.JSONObject
 
-/* The smart browser for arena.ai. Automation = injected JS:
-   find the chat input (any chat UI), type the message, send it,
+/* The smart browser for arena.ai.
+   ALWAYS opens a fresh, empty chat — no previous messages.
+   Automation = injected JS: find the chat input, type the message, send it,
    then watch the page until the AI's reply stops changing -> "work done". */
 class ArenaWebActivity : Activity() {
 
   private lateinit var web: WebView
   private lateinit var status: TextView
-  private lateinit var confirmBar: LinearLayout
+  private lateinit var statusDot: View
+  private lateinit var confirmCard: LinearLayout
   private lateinit var draftText: TextView
   private var pendingDraft: String? = null
   private var pendingAfterLoad: String? = null
   private var retries = 0
+  private var nullRetries = 0
   private var watchOn = false
   private val main = Handler(Looper.getMainLooper())
   private var watchTimeout: Runnable? = null
-  private var nullRetries = 0
 
   companion object {
     var front: ArenaWebActivity? = null
@@ -160,17 +164,27 @@ class ArenaWebActivity : Activity() {
     route(i.getStringExtra("spoken"))
   }
 
-  private fun pinOrHome(): String = P.pin.ifEmpty { "https://arena.ai" }
-
+  /* ALWAYS a fresh, empty chat */
   private fun route(spoken: String?) {
     val s = spoken?.trim()?.lowercase() ?: ""
     val msg = CommandCenter.hasMessage(s)
     when {
-      s.contains("naya") || s.contains("new") -> web.loadUrl("https://arena.ai")
-      s.isEmpty() || (s.contains("chat") || s.contains("latest") || s.contains("pin")) && !msg -> web.loadUrl(pinOrHome())
-      msg -> { pendingAfterLoad = CommandCenter.extractMsg(spoken!!); web.loadUrl(pinOrHome()); status.text = "Chat khol ke message tayyar kar raha hoon…" }
-      else -> web.loadUrl(pinOrHome())
+      msg -> {
+        pendingAfterLoad = CommandCenter.extractMsg(spoken!!)
+        web.loadUrl("https://arena.ai")
+        setStatus("Opening a new chat…", C_BUSY)
+      }
+      else -> {
+        web.loadUrl("https://arena.ai")
+        setStatus("New chat — say: ask Arena, followed by your message", C_OK)
+      }
     }
+  }
+
+  private fun newChat() {
+    pendingAfterLoad = null
+    web.loadUrl("https://arena.ai")
+    setStatus("New empty chat.", C_OK)
   }
 
   /* ---------------- draft + confirm + send ---------------- */
@@ -178,18 +192,18 @@ class ArenaWebActivity : Activity() {
     front = this
     retries = 0
     pendingDraft = text
-    status.text = "Message likh raha hoon…"
+    setStatus("Typing your message…", C_BUSY)
     web.evaluateJavascript(JS_TYPE.replace("__TEXT__", JSONObject.quote(text))) { v ->
       val r = v?.trim('"')
       if (r == "TYPED") showConfirm(text)
       else if (r == "NO_INPUT") {
         if (retries < 8) {
           retries++
-          status.text = "Input dhoondh raha hoon… ($retries/8)"
+          setStatus("Looking for the chat box… ($retries/8)", C_BUSY)
           main.postDelayed({ proposeDraft(text) }, 1500)
         } else {
-          status.text = "❌ Chat ka input nahi mila — chat khol ke Pin karo"
-          Speech.speak(this, "Chat ka input nahi mila. Pehle chat kholo aur pin karo")
+          setStatus("Could not find the chat box.", C_ERR)
+          say(this, "I could not find the chat box. Please open a chat and try again.", "चैट बॉक्स नहीं मिला। कृपया चैट खोलकर फिर कोशिश करें।")
           TaskRunner.onTaskDone(this, quiet = true)
         }
       }
@@ -199,8 +213,8 @@ class ArenaWebActivity : Activity() {
   private fun showConfirm(msg: String) {
     nullRetries = 0
     draftText.text = msg
-    confirmBar.visibility = View.VISIBLE
-    Speech.speak(this, "Main bhejta hoon. $msg. … Haan boliye to send, nahi to cancel") {
+    confirmCard.visibility = View.VISIBLE
+    say(this, "Message ready. Say send to confirm, or cancel.", "संदेश तैयार है। भेजने के लिए 'भेजो' कहें, रोकने के लिए 'रद्द'।") {
       main.postDelayed({ confirmListen(msg) }, 250)
     }
   }
@@ -213,38 +227,40 @@ class ArenaWebActivity : Activity() {
           nullRetries++
           if (nullRetries >= 3) {
             nullRetries = 0
-            Speech.speak(this, "Theek hai, neeche button dabao — bhejo ya cancel")
+            say(this, "Use the buttons below — send or cancel.", "नीचे के बटन इस्तेमाल करें — भेजें या रद्द।")
           } else {
-            Speech.speak(this, "Sunai nahi diya. Haan boliye ya cancel") { confirmListen(msg) }
+            say(this, "I did not hear that. Say send or cancel.", "सुनाई नहीं दिया। 'भेजो' या 'रद्द' कहें।") { confirmListen(msg) }
           }
         }
-        a.contains("haan") || a.contains("yes") || a.contains("bhejo") || a.contains("send") ||
-          a.contains("thik") || a.contains("theek") || a.contains("ok") || a.contains("okay") || a.contains("kar do") || a.contains("kardo") -> doSend(msg)
-        a.contains("nahi") || a.contains("no") || a.contains("cancel") || a.contains("mat") || a.contains("ruko") || a.contains("band") -> {
-          confirmBar.visibility = View.GONE
-          status.text = "❌ Cancel kar diya"
-          Speech.speak(this, "Cancel kar diya")
+        a.contains("send") || a.contains("yes") || a.contains("haan") || a.contains("bhejo") || a.contains("bhej do") ||
+          a.contains("okay") || a.contains("ok") || a.contains("sure") || a.contains("भेजो") || a.contains("भेज दो") ||
+          a.contains("हाँ") || a.contains("हां") || a.contains("ठीक") || a.contains("बिल्कुल") -> doSend(msg)
+        a.contains("cancel") || a.contains("no") || a.contains("nahi") || a.contains("stop") || a.contains("ruko") ||
+          a.contains("रद्द") || a.contains("नहीं") || a.contains("रुको") || a.contains("मत") -> {
+          confirmCard.visibility = View.GONE
+          setStatus("Cancelled.", C_ERR)
+          say(this, "Cancelled.", "रद्द कर दिया।")
           TaskRunner.onTaskDone(this, quiet = true)
         }
-        else -> Speech.speak(this, "Haan ya nahi?") { confirmListen(msg) }
+        else -> say(this, "Send or cancel?", "भेजें या रद्द?") { confirmListen(msg) }
       }
     }
   }
 
   private fun doSend(msg: String) {
-    confirmBar.visibility = View.GONE
-    status.text = "📤 Bhej raha hoon…"
+    confirmCard.visibility = View.GONE
+    setStatus("Sending…", C_BUSY)
     web.evaluateJavascript(JS_SEND.replace("__TEXT__", JSONObject.quote(msg))) { v ->
       val r = v?.trim('"')
       if (r == "SENT_BTN" || r == "SENT_FORM" || r == "SENT_ENTER") {
-        status.text = "⏳ Bhej diya — AI ka jawab aane ka wait…"
-        Speech.speak(this, "Bhej diya. Jawab ka wait karta hoon")
+        setStatus("Sent — waiting for the reply…", C_BUSY)
+        say(this, "Sent. Waiting for the reply.", "भेज दिया। उत्तर की प्रतीक्षा कर रहा हूँ।")
         startWatch()
       } else if (r == "NO_INPUT") {
         main.postDelayed({ proposeDraft(msg) }, 1200)
       } else {
-        status.text = "❌ Send button nahi mila — ek baar khud dabao"
-        Speech.speak(this, "Send button nahi mila. Aap ek baar dabao")
+        setStatus("Send button not found — press it once.", C_ERR)
+        say(this, "I could not find the send button. Please press it once.", "सेंड बटन नहीं मिला। कृपया एक बार दबा दें।")
         TaskRunner.onTaskDone(this, quiet = true)
       }
     }
@@ -257,8 +273,8 @@ class ArenaWebActivity : Activity() {
     watchTimeout = Runnable {
       if (watchOn) {
         watchOn = false
-        status.text = "⏱ Jawab ka pata nahi chala — check kar lo"
-        Speech.speak(this, "Jawab ka pata nahi chala, aap check kar lo")
+        setStatus("No reply detected — please check.", C_ERR)
+        say(this, "I could not detect a reply. Please check the screen.", "उत्तर का पता नहीं चला। कृपया स्क्रीन देख लें।")
         TaskRunner.onTaskDone(this, quiet = true)
       }
     }
@@ -269,86 +285,113 @@ class ArenaWebActivity : Activity() {
     if (!watchOn) return
     watchOn = false
     watchTimeout?.let { main.removeCallbacks(it) }
-    status.text = "✅ Jawab aa gaya"
-    Speech.speak(this, "Jawab aa gaya")
+    setStatus("Reply received.", C_OK)
+    say(this, "The reply has arrived.", "उत्तर आ गया है।")
     TaskRunner.onTaskDone(this, quiet = false)
   }
 
-  /* ---------------- UI ---------------- */
+  /* ---------------- UI (light, labs-style) ---------------- */
+  private val C_OK = Color.parseColor("#188038")
+  private val C_BUSY = Color.parseColor("#1A73E8")
+  private val C_ERR = Color.parseColor("#D93025")
+
   private fun dp(d: Int): Int = (d * resources.displayMetrics.density).toInt()
+
+  private fun rounded(color: Int, radius: Int, stroke: Int? = null): GradientDrawable {
+    return GradientDrawable().apply {
+      setColor(color)
+      cornerRadius = dp(radius).toFloat()
+      stroke?.let { setStroke(dp(1), it) }
+    }
+  }
+
+  private fun setStatus(text: String, color: Int) {
+    status.text = text
+    status.setTextColor(color)
+    statusDot.setBackgroundColor(color)
+  }
 
   @SuppressLint("SetJavaScriptEnabled")
   private fun buildUi() {
     val root = FrameLayout(this)
+    root.setBackgroundColor(Color.WHITE)
     val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-    val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.parseColor("#111A2C")) }
+    /* top bar */
+    val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.WHITE); setPadding(dp(8), dp(6), dp(8), dp(6)) }
     fun tb(label: String, cb: () -> Unit): Button = Button(this).apply {
-      text = label; textSize = 13f
+      text = label; textSize = 14f; setAllCaps(false)
+      setTextColor(Color.parseColor("#111827"))
+      background = rounded(Color.parseColor("#F1F3F4"), 999)
       setOnClickListener { cb() }
-      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(3), 0, dp(3), 0) }
     }
-    bar.addView(tb("←") { if (web.canGoBack()) web.goBack() })
+    bar.addView(tb("←") { if (web.canGoBack()) web.goBack() else finish() })
     bar.addView(tb("⟳") { web.reload() })
-    bar.addView(tb("🏠 Home") { web.loadUrl(pinOrHome()) })
-    bar.addView(tb("📌 Pin chat") { pinNow() })
+    bar.addView(tb("＋ New chat") { newChat() })
     col.addView(bar)
+
+    val line = View(this).apply { setBackgroundColor(Color.parseColor("#E8EAF0")); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(1)) }
+    col.addView(line)
 
     web = WebView(this)
     web.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
     col.addView(web)
 
-    status = TextView(this).apply {
-      text = "Ready"
-      setPadding(dp(12), dp(8), dp(12), dp(10))
-      setTextColor(Color.parseColor("#8B98B3"))
-      setBackgroundColor(Color.parseColor("#111A2C"))
-      textSize = 12.5f
+    /* status strip */
+    val strip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.parseColor("#F8F9FA")); setPadding(dp(14), dp(10), dp(14), dp(12)) }
+    statusDot = View(this).apply {
+      background = rounded(C_OK, 999)
+      layoutParams = LinearLayout.LayoutParams(dp(8), dp(8)).apply { marginEnd = dp(8) }
     }
-    col.addView(status)
+    strip.addView(statusDot)
+    status = TextView(this).apply {
+      setTextColor(Color.parseColor("#5F6368")); textSize = 13f
+    }
+    strip.addView(status, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    col.addView(strip)
     root.addView(col, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
 
-    confirmBar = LinearLayout(this).apply {
+    /* confirm card */
+    confirmCard = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
-      setBackgroundColor(Color.parseColor("#16223B"))
-      setPadding(dp(14), dp(12), dp(14), dp(16))
+      background = rounded(Color.WHITE, 24, Color.parseColor("#E8EAF0"))
+      setPadding(dp(18), dp(16), dp(18), dp(18))
       visibility = View.GONE
     }
-    draftText = TextView(this).apply {
-      setTextColor(Color.parseColor("#E8EDF6")); textSize = 15f; setPadding(0, 0, 0, dp(10))
+    val cap = TextView(this).apply {
+      text = Str.pick("MESSAGE READY", "संदेश तैयार")
+      setTextColor(Color.parseColor("#1A73E8")); textSize = 11f; typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.12f
     }
-    confirmBar.addView(draftText)
+    confirmCard.addView(cap)
+    draftText = TextView(this).apply {
+      setTextColor(Color.parseColor("#111827")); textSize = 16f; setPadding(0, dp(8), 0, dp(14))
+    }
+    confirmCard.addView(draftText)
     val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
     val by = Button(this).apply {
-      text = "✓ Bhejo (haan)"; textSize = 14f
+      text = Str.pick("Send", "भेजें"); textSize = 15f; setAllCaps(false); typeface = Typeface.DEFAULT_BOLD
+      setTextColor(Color.WHITE)
+      background = rounded(Color.parseColor("#111827"), 999)
       setOnClickListener { doSend(pendingDraft ?: draftText.text.toString()) }
-      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(0, 0, dp(5), 0) }
     }
     val bn = Button(this).apply {
-      text = "✕ Cancel"; textSize = 14f
+      text = Str.pick("Cancel", "रद्द करें"); textSize = 15f; setAllCaps(false)
+      setTextColor(Color.parseColor("#5F6368"))
+      background = rounded(Color.parseColor("#F1F3F4"), 999)
       setOnClickListener {
-        confirmBar.visibility = View.GONE
-        status.text = "❌ Cancel"
+        confirmCard.visibility = View.GONE
+        setStatus("Cancelled.", C_ERR)
         TaskRunner.onTaskDone(this@ArenaWebActivity, quiet = true)
       }
-      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+      layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(5), 0, 0, 0) }
     }
     row.addView(by); row.addView(bn)
-    confirmBar.addView(row)
-    root.addView(confirmBar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
+    confirmCard.addView(row)
+    root.addView(confirmCard, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM).apply { setMargins(dp(14), 0, dp(14), dp(14)) })
 
     setContentView(root)
-  }
-
-  private fun pinNow() {
-    web.evaluateJavascript("location.href") { u ->
-      val url = u?.trim('"') ?: ""
-      if (url.isNotEmpty()) {
-        P.pin = url
-        status.text = "📌 Pin ho gaya: $url"
-        Speech.speak(this, "Ye chat pin ho gaya. Ab bolna — latest chat kholo")
-      }
-    }
   }
 
   override fun onBackPressed() {

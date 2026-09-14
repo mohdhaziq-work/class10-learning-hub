@@ -2,7 +2,6 @@ package com.class10hub.jarvis
 
 import android.Manifest
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -10,7 +9,6 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
-import android.widget.RadioButton
 import android.widget.TextView
 import android.widget.Toast
 
@@ -30,32 +28,23 @@ class MainActivity : Activity() {
     findViewById<Button>(R.id.btnStart).setOnClickListener {
       if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
         requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 7)
-        Toast.makeText(this, "Pehle microphone ki permission do", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Grant the microphone permission first", Toast.LENGTH_LONG).show()
         return@setOnClickListener
       }
       if (!Settings.canDrawOverlays(this)) {
-        Toast.makeText(this, "Pehle overlay permission do (neeche button)", Toast.LENGTH_LONG).show()
+        Toast.makeText(this, "Allow \u201CDisplay over other apps\u201D for Jarvis, then press Start again", Toast.LENGTH_LONG).show()
+        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         return@setOnClickListener
       }
       val i = Intent(this, BubbleService::class.java)
       if (Build.VERSION.SDK_INT >= 26) startForegroundService(i) else startService(i)
-      Toast.makeText(this, "Jarvis chalu — bubble dabao aur bolo", Toast.LENGTH_SHORT).show()
+      Toast.makeText(this, "Jarvis is running — tap the bubble and speak", Toast.LENGTH_SHORT).show()
     }
     findViewById<Button>(R.id.btnStop).setOnClickListener { stopService(Intent(this, BubbleService::class.java)) }
+    findViewById<Button>(R.id.btnArena).setOnClickListener { ArenaWebActivity.open(this, "") }
 
-    findViewById<Button>(R.id.btnOverlay).setOnClickListener {
-      startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
-    }
-    findViewById<Button>(R.id.btnArena).setOnClickListener { ArenaWebActivity.open(this, "kholo") }
-
-    findViewById<RadioButton>(R.id.langHi).setOnClickListener { P.lang = "hi-IN" }
-    findViewById<RadioButton>(R.id.langEn).setOnClickListener { P.lang = "en-IN" }
-
-    findViewById<Button>(R.id.btnUnpin).setOnClickListener {
-      P.pin = ""
-      update()
-      Toast.makeText(this, "Pin hata diya", Toast.LENGTH_SHORT).show()
-    }
+    findViewById<Button>(R.id.langEn).setOnClickListener { P.lang = "en-IN"; update() }
+    findViewById<Button>(R.id.langHi).setOnClickListener { P.lang = "hi-IN"; update() }
   }
 
   override fun onResume() { super.onResume(); update() }
@@ -65,15 +54,27 @@ class MainActivity : Activity() {
     val mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     val con = checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
     val ov = Settings.canDrawOverlays(this)
-    findViewById<TextView>(R.id.permStatus).text = buildString {
-      append(if (mic) "✅" else "❌").append(" Microphone (bolne ke liye)\n")
-      append(if (con) "✅" else "❌").append(" Contacts (call karo bole to)\n")
-      append(if (ov) "✅" else "❌").append(" Overlay (floating bubble)")
+    row(findViewById(R.id.permMic), "Microphone", mic)
+    row(findViewById(R.id.permContacts), "Contacts — for calls", con)
+    row(findViewById(R.id.permOverlay), "Display over other apps", ov)
+    findViewById<Button>(R.id.langEn).apply {
+      background = getDrawable(if (P.lang == "en-IN") R.drawable.seg_on else R.drawable.seg_off)
+      setTextColor(getColor(if (P.lang == "en-IN") R.color.ink else R.color.mute))
     }
-    val pin = P.pin
-    findViewById<TextView>(R.id.pinView).text = "📌 Pinned chat: " + if (pin.isEmpty()) "koi nahi" else pin.substringAfter("arena.ai/", pin)
-    findViewById<RadioButton>(R.id.langHi).isChecked = P.lang == "hi-IN"
-    findViewById<RadioButton>(R.id.langEn).isChecked = P.lang == "en-IN"
-    findViewById<TextView>(R.id.queueView).text = TaskRunner.display()
+    findViewById<Button>(R.id.langHi).apply {
+      background = getDrawable(if (P.lang == "hi-IN") R.drawable.seg_on else R.drawable.seg_off)
+      setTextColor(getColor(if (P.lang == "hi-IN") R.color.ink else R.color.mute))
+    }
+    val q = TaskRunner.display()
+    findViewById<TextView>(R.id.queueView).text =
+      if (q == "Empty — no pending tasks.") Str.pick(
+        "Empty — no pending tasks.\nSay: task — first check maths on Arena, then play physics on YouTube, then call Papa.",
+        "कोई काम बाकी नहीं है।\nकहें: काम — पहले एरीना पर गणित पूछो, फिर यूट्यूब पर फिजिक्स चलाओ, फिर पापा को कॉल करो।")
+      else q
+  }
+
+  private fun row(v: TextView, label: String, ok: Boolean) {
+    v.text = (if (ok) "\u2713  " else "\u2717  ") + label
+    v.setTextColor(getColor(if (ok) R.color.ink else R.color.bad))
   }
 }
