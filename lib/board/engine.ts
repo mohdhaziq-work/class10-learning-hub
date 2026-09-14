@@ -21,7 +21,7 @@ export interface BoardObject {
   tool?: string; kind?: string; points?: { x: number; y: number; w?: number }[];
   shape?: string; x1?: number; y1?: number; x2?: number; y2?: number;
   x?: number; y?: number; w?: number; h?: number;
-  text?: string; fontSize?: number; bg?: string; src?: string; img?: HTMLImageElement;
+  text?: string; fontSize?: number; weight?: number; bg?: string; src?: string; img?: HTMLImageElement;
   color?: string; size?: number; opacity?: number; fill?: boolean; dashed?: boolean;
   _w?: number; _h?: number;
 }
@@ -211,7 +211,7 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   }
   else if (o.type === "shape") drawShape(ctx, o);
   else if (o.type === "text") {
-    ctx.font = `700 ${o.fontSize || 32}px ui-sans-serif,system-ui,"Noto Sans",Arial`;
+    ctx.font = `${o.weight || 700} ${o.fontSize || 32}px ui-sans-serif,system-ui,"Noto Sans",Arial`;
     String(o.text || "").split("\n").forEach((ln, i) => ctx.fillText(ln, o.x || 0, (o.y || 0) + i * (o.fontSize || 32) * 1.25));
   }
   else if (o.type === "sticky") drawSticky(ctx, o);
@@ -376,6 +376,7 @@ export class BoardEngine {
   private pendingAnchor: { surface: "board" | "doc"; page?: number; x: number; y: number } | null = null;
   private editingObj: { store: Store; obj: BoardObject; surface: "board" | "doc"; page?: number } | null = null;
 
+  private textColor = "#141414";
   /* laser trail */
   private trail: { x: number; y: number; t: number }[] = [];
   private trailCv!: HTMLCanvasElement; private trailCtx!: CanvasRenderingContext2D;
@@ -900,7 +901,7 @@ export class BoardEngine {
       const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
       const hit = hitTest(this.boardStore.objects, w.x, w.y);
       if (!hit) return;
-      if (hit.obj.type === "text") { this.editingObj = { store: this.boardStore, obj: hit.obj, surface: "board" }; (this.$("#textInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mText"); }
+      if (hit.obj.type === "text") { this.editingObj = { store: this.boardStore, obj: hit.obj, surface: "board" }; (this.$("#textInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mText"); this.syncTextModal(hit.obj); }
       if (hit.obj.type === "sticky") { this.editingObj = { store: this.boardStore, obj: hit.obj, surface: "board" }; (this.$("#stickyInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mSticky"); }
     });
   }
@@ -1454,7 +1455,7 @@ export class BoardEngine {
       const p = this.annotPos(canvas, e, sc, zc);
       const hit = hitTest(this.docStore(pageNum).objects, p.x, p.y);
       if (!hit) return;
-      if (hit.obj.type === "text") { this.editingObj = { store: this.docStore(pageNum), obj: hit.obj, surface: "doc", page: pageNum }; (this.$("#textInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mText"); }
+      if (hit.obj.type === "text") { this.editingObj = { store: this.docStore(pageNum), obj: hit.obj, surface: "doc", page: pageNum }; (this.$("#textInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mText"); this.syncTextModal(hit.obj); }
       if (hit.obj.type === "sticky") { this.editingObj = { store: this.docStore(pageNum), obj: hit.obj, surface: "doc", page: pageNum }; (this.$("#stickyInput") as HTMLTextAreaElement).value = hit.obj.text || ""; this.openModal("mSticky"); }
     });
   }
@@ -1948,6 +1949,16 @@ export class BoardEngine {
   }
 
   private buildStickyColors() {
+    const tcols = ["#141414", "#1a73e8", "#b3261e", "#188038", "#7c3aed", "#b45309"];
+    const tbox = this.$("#textColors") as HTMLElement | null;
+    if (tbox) {
+      tbox.innerHTML = tcols.map((c) => `<button class="sw${c === this.textColor ? " on" : ""}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join("");
+      tbox.querySelectorAll(".sw").forEach((b) => (b as HTMLElement).onclick = () => {
+        this.textColor = (b as HTMLElement).dataset.c!;
+        tbox.querySelectorAll(".sw").forEach((x) => x.classList.remove("on"));
+        (b as HTMLElement).classList.add("on");
+      });
+    }
     const box = this.$("#stickyColors") as HTMLElement;
     STICKY_COLORS.forEach((c) => {
       const b = document.createElement("button");
@@ -2309,6 +2320,14 @@ export class BoardEngine {
   /* ==========================================================================
      MODALS
      ========================================================================== */
+  private syncTextModal(o: { color?: string; weight?: number; fontSize?: number }) {
+    const bold = this.$("#textBold") as HTMLInputElement | null;
+    if (bold) bold.checked = (o.weight || 700) !== 500;
+    if (o.color) {
+      this.textColor = o.color;
+      this.$all("#textColors .sw").forEach((x) => x.classList.toggle("on", (x as HTMLElement).dataset.c === o.color));
+    }
+  }
   private openModal(id: string) { (this.$("#" + id) as HTMLElement).classList.add("show"); }
   private closeModal(el: HTMLElement) { el.classList.remove("show"); }
 
@@ -2324,6 +2343,7 @@ export class BoardEngine {
       if (this.editingObj) {
         this.editingObj.store.pushHistory();
         this.editingObj.obj.text = v; this.editingObj.obj.fontSize = fs;
+        this.editingObj.obj.color = this.textColor; this.editingObj.obj.weight = (this.$("#textBold") as HTMLInputElement).checked ? 700 : 500;
         if (this.editingObj.surface === "doc") this.refreshAnnot(this.editingObj.page || 1); else this.renderBoard();
         this.editingObj = null;
       } else if (this.pendingAnchor) {
@@ -2331,11 +2351,11 @@ export class BoardEngine {
         if (a.surface === "doc" && a.page) {
           const sc = this.doc?.kind === "pdf" ? this.pages.find((p) => p.num === a.page)?.scale || 1 : 1;
           const st = this.docStore(a.page); st.pushHistory();
-          st.objects.push({ id: uid(), type: "text", text: v, x: a.x, y: a.y, fontSize: fs / sc, color: this.color, opacity: 100 });
+          st.objects.push({ id: uid(), type: "text", text: v, x: a.x, y: a.y, fontSize: fs / sc, color: this.textColor, weight: (this.$("#textBold") as HTMLInputElement).checked ? 700 : 500, opacity: 100 });
           this.refreshAnnot(a.page);
         } else {
           this.boardStore.pushHistory();
-          this.boardStore.objects.push({ id: uid(), type: "text", text: v, x: a.x, y: a.y, fontSize: fs / this.boardZoom, color: this.color, opacity: 100 });
+          this.boardStore.objects.push({ id: uid(), type: "text", text: v, x: a.x, y: a.y, fontSize: fs / this.boardZoom, color: this.textColor, weight: (this.$("#textBold") as HTMLInputElement).checked ? 700 : 500, opacity: 100 });
           this.renderBoard();
         }
         this.pendingAnchor = null;
@@ -2400,15 +2420,15 @@ export class BoardEngine {
     const cv = this.$("#graphCanvas") as HTMLCanvasElement;
     const ctx = cv.getContext("2d")!;
     const W = cv.width, H = cv.height;
-    ctx.fillStyle = "#0a0f24"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
     const ox = W / 2, oy = H / 2, unit = 34;
-    ctx.strokeStyle = "#ffffff14"; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.strokeStyle = "#0f172a14"; ctx.lineWidth = 1; ctx.beginPath();
     for (let x = ox % unit; x < W; x += unit) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
     for (let y = oy % unit; y < H; y += unit) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
     ctx.stroke();
-    ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2; ctx.beginPath();
+    ctx.strokeStyle = "#475569"; ctx.lineWidth = 2; ctx.beginPath();
     ctx.moveTo(0, oy); ctx.lineTo(W, oy); ctx.moveTo(ox, 0); ctx.lineTo(ox, H); ctx.stroke();
-    ctx.fillStyle = "#94a3b8"; ctx.font = "12px sans-serif";
+    ctx.fillStyle = "#64748b"; ctx.font = "12px sans-serif";
     ctx.fillText("x", W - 14, oy - 8); ctx.fillText("y", ox + 8, 14); ctx.fillText("O", ox + 6, oy + 15);
     const expr = ((this.$("#graphFn") as HTMLInputElement).value || "").trim() || "x";
     let f: (x: number, m: typeof Math) => number;
@@ -2428,7 +2448,7 @@ export class BoardEngine {
       if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
     }
     ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.fillStyle = "#e2e8f0"; ctx.font = "700 15px sans-serif";
+    ctx.fillStyle = "#111827"; ctx.font = "700 15px sans-serif";
     ctx.fillText("y = " + expr, 14, H - 14);
     return true;
   }

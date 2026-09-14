@@ -304,6 +304,11 @@ export default function SmartBoard() {
         <textarea id="textInput" placeholder="Type here… use the symbols below for maths" />
         <div className="math-syms" id="textSyms" style={{ marginTop: 10 }} />
         <label>Size</label><input type="range" id="textSize" min={14} max={120} defaultValue={34} />
+        <label>Color</label>
+        <div className="swatches" id="textColors" style={{ marginTop: 6 }} />
+        <label className="chk-row" style={{ display: "inline-flex", gap: 8, alignItems: "center", marginTop: 10 }}>
+          <input type="checkbox" id="textBold" defaultChecked style={{ width: 16, height: 16, accentColor: "#1a73e8" }} /> Bold text
+        </label>
         <div className="mrow"><button className="mbtn" data-close="1">Cancel</button><button className="mbtn primary" id="textOk"><Icon name="check" size={17} /> Add</button></div>
       </div></div>
 
