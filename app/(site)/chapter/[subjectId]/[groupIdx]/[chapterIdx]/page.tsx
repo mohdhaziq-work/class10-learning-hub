@@ -9,6 +9,7 @@ import { PYQ_MATHS } from "@/lib/content/pyq";
 import { ncertPdf, boardHref } from "@/lib/ncert";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
+import { pyqChapterHref } from "@/lib/pyqSeo";
 
 export function generateStaticParams() {
  return allChapterKeys().map((k) => ({
@@ -46,6 +47,7 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  const isAuto = !chapterDetail(f.key);
  const pdf = ncertPdf(f.key, f.ch.title);
  const bHref = boardHref(f.key, f.ch.title);
+ const pyqHref = sub.id === "maths" ? pyqChapterHref(f.key) : undefined;
  const path = `/chapter/${sub.id}/${g}/${c}`;
  return (
  <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -104,6 +106,11 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  <Link href={bHref} className="btn-g btn-g-white text-[13.5px]">
  <Icon name="squarePen" size={17} /> Open in Board
  </Link>
+ {pyqHref && (
+ <Link href={pyqHref} className="btn-g btn-g-white text-[13.5px]">
+ <Icon name="trophy" size={17} /> Chapter PYQs
+ </Link>
+ )}
  </div>
  )}
  {PYQ_MATHS[f.key] && (

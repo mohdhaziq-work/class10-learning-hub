@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 export default function Footer() {
  return (
  <footer className="border-t border-slate-200 bg-white mt-16">
- <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+ <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
  <div className="lg:col-span-2 max-w-sm">
  <div className="flex items-center gap-2.5">
  <span className="w-9 h-9 rounded-xl grid place-items-center text-white bg-slate-900 ">
@@ -36,6 +36,15 @@ export default function Footer() {
  <Icon name={s.icon} size={16} className="text-ink-mute " /> {s.name}
  </Link>
  ))}
+ </div>
+ </div>
+ <div>
+ <h4 className="eyebrow mb-3">Exam Practice</h4>
+ <div className="grid gap-1 text-sm font-medium">
+ <Link href="/pyq" className="flex items-center gap-2.5 py-1.5 text-ink-soft hover:text-black transition"><Icon name="trophy" size={16} className="text-ink-mute " /> Class 10 PYQs</Link>
+ <Link href="/pyq/maths" className="flex items-center gap-2.5 py-1.5 text-ink-soft hover:text-black transition"><Icon name="calculator" size={16} className="text-ink-mute " /> Maths PYQs</Link>
+ <Link href="/pyq/maths/chapter-1-real-numbers" className="flex items-center gap-2.5 py-1.5 text-ink-soft hover:text-black transition"><Icon name="fileText" size={16} className="text-ink-mute " /> Chapter-wise PYQs</Link>
+ <Link href="/smart-board" className="flex items-center gap-2.5 py-1.5 text-ink-soft hover:text-black transition"><Icon name="squarePen" size={16} className="text-ink-mute " /> Smart Board</Link>
  </div>
  </div>
  <div>

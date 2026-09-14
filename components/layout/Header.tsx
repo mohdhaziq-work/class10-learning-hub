@@ -21,6 +21,7 @@ export default function Header() {
         {/* desktop nav */}
         <nav className="ml-auto hidden md:flex items-center gap-1 text-[14.5px] font-medium">
           <Link href="/#subjects" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">Subjects</Link>
+          <Link href="/pyq" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">PYQs</Link>
           <Link href="/admin" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">Admin</Link>
           <Link href="/smart-board" className="ml-1 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-semibold bg-slate-900 text-white hover:bg-black transition">
             <Icon name="squarePen" size={16} /> Smart Board
@@ -40,6 +41,7 @@ export default function Header() {
         <nav className="md:hidden absolute top-16 inset-x-0 bg-white border-b border-slate-200 shadow-pop px-4 py-3 space-y-1 animate-fadeUp">
           {[
             { href: "/#subjects", icon: "layoutGrid", label: "Subjects" },
+            { href: "/pyq", icon: "trophy", label: "PYQs" },
             { href: "/smart-board", icon: "squarePen", label: "Smart Board" },
             { href: "/admin", icon: "shieldCheck", label: "Admin" },
           ].map((l) => (

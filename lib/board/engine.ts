@@ -1848,7 +1848,7 @@ export class BoardEngine {
       store.objects.push({ id: uid(), type: "text", text, x: x1, y: y1 + fontSize * 0.92, fontSize, color: strokes[0].color || "#111827", opacity: 100 });
       if (pend.surface === "board") this.renderBoard(); else this.refreshAnnot(pend.page || 1);
       this.scheduleSave();
-      this.toast("✨ " + text.split("\n")[0].slice(0, 30));
+      this.toast("Recognised: " + text.split("\n")[0].slice(0, 30));
     } catch {
       this.toast("Text service not reachable — your writing stays as it is");
     } finally {

@@ -67,8 +67,27 @@ export default function HomePage() {
  "Free NCERT/CBSE Class 10 study hub with smart slides, notes, quizzes, PYQs and an advanced Smart Board.",
  educationalLevel: "Class 10",
  inLanguage: "en",
- learningResourceType: ["study hub", "slides", "quiz", "smart board"],
+ learningResourceType: ["study hub", "slides", "quiz", "previous year questions", "smart board"],
  audience: { "@type": "EducationalAudience", educationalRole: "student" },
+ },
+ {
+ "@context": "https://schema.org",
+ "@type": "ItemList",
+ name: "Class 10 PYQs",
+ itemListElement: [
+ {
+ "@type": "ListItem",
+ position: 1,
+ name: "Class 10 PYQs",
+ url: absoluteUrl("/pyq"),
+ },
+ {
+ "@type": "ListItem",
+ position: 2,
+ name: "Class 10 Maths PYQs",
+ url: absoluteUrl("/pyq/maths"),
+ },
+ ],
  },
  ]}
  />
@@ -88,7 +107,7 @@ export default function HomePage() {
  </p>
  <div className="flex gap-3 mt-8 flex-wrap">
  <Link href="/pyq" className="btn-g btn-g-white text-[15px]">
- 📋 Board PYQs
+ <Icon name="trophy" size={18} /> Board PYQs
  </Link>
  <Link href="/smart-board" className="btn-g btn-g-dark text-[15px]">
  <Icon name="squarePen" size={18} /> Open Smart Board
