@@ -458,3 +458,10 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .chk-row input{cursor:pointer}
 /* graph modal card blends with light paper canvas */
 #mGraph canvas{border:1px solid #e5e9f0;border-radius:10px}
+
+/* ================= POLISH 2026-09-14 (b) ================= */
+/* compact bg color swatches in bottom bar */
+#bgColors .sw{width:22px;height:22px;border-radius:7px}
+#bgColors input[type=color]{flex:0 0 auto}
+/* doc pane: keep vertical touch scroll, allow pinch handler */
+#docScroll{touch-action:pan-y}

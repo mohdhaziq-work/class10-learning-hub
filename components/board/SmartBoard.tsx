@@ -184,6 +184,7 @@ export default function SmartBoard() {
             <option value="ruled">Ruled</option>
             <option value="dotted">Dotted</option>
           </select>
+          <div className="swatches" id="bgColors" title="Board background color" style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6 }} />
         </div>
         <button className="sb-btn" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={16} /></button>
         <div className="sb-group sb-seg" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
@@ -196,6 +197,8 @@ export default function SmartBoard() {
           <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
           <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
           <button className="sb-btn" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
+          <button className="sb-btn" id="btnBoardDup" title="Duplicate this board page"><Icon name="layers" size={16} /></button>
+          <button className="sb-btn" id="btnBoardDel" title="Delete this board page"><Icon name="trash" size={16} /></button>
           <span className="pg" id="targetLbl" style={{ minWidth: "auto" }}>Board</span>
           <button className="sb-btn" id="pgPrev" title="Previous page (←)"><Icon name="chevronLeft" size={16} /></button>
           <span className="pg" id="pgLbl">– / –</span>

@@ -332,7 +332,7 @@ export class BoardEngine {
   private erasedThisDrag = false;
   private layout: "doc" | "split" | "board" = "split";
   private docZoom = 1; private boardZoom = 1; private boardPan = { x: 40, y: 40 };
-  private bg: BgKind = "graph"; private textSize = 34; private stickyColor = "#fef08a";
+  private bg: BgKind = "graph"; private bgColor = ""; private textSize = 34; private stickyColor = "#fef08a";
   private active: { kind: "board" | "doc"; page: number | null } = { kind: "board", page: null };
 
   /* stores */
@@ -392,6 +392,11 @@ export class BoardEngine {
     this.root = root;
     if (opts.layout === "doc" || opts.layout === "split" || opts.layout === "board") this.layout = opts.layout;
     if (opts.bg && ["white", "black", "grid", "graph", "ruled", "dotted"].includes(opts.bg)) this.bg = opts.bg as BgKind;
+    try {
+      const saved = JSON.parse(localStorage.getItem("sb-bg-prefs") || "{}") as { bg?: BgKind; color?: string };
+      if (saved.bg && !opts.bg) this.bg = saved.bg;
+      if (saved.color) this.bgColor = saved.color;
+    } catch { /* first run */ }
 
     (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
       "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -422,6 +427,7 @@ export class BoardEngine {
     this.wireWidgets();
     this.wireExport();
     this.wirePages();
+    this.wireDocPinch();
     this.wireUpload();
     this.wirePad();
     this.wireFiles();
@@ -704,7 +710,7 @@ export class BoardEngine {
       bx.clearRect(0, 0, this.bgC.width, this.bgC.height);
       bx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       const bgc: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
-      bx.fillStyle = bgc[this.bg] || "#fff";
+      bx.fillStyle = this.bgColor || bgc[this.bg] || "#fff";
       bx.fillRect(0, 0, this.boardW, this.boardH);
       this.drawBoardPattern(bx, z, px, py);
     }
@@ -1703,6 +1709,10 @@ export class BoardEngine {
     }
   }
 
+  private webSrc(url: string): string {
+    try { const u = new URL(url); if (/edurev\.in$/i.test(u.hostname)) return "/api/web-proxy?url=" + encodeURIComponent(url); } catch { /* direct frame */ }
+    return url;
+  }
   private applyHtmlZoom() {
     const box = this.$("#docHtmlBox") as HTMLElement | null;
     if (box) (box.style as unknown as Record<string, string>).zoom = String(this.docZoom);
@@ -1712,6 +1722,34 @@ export class BoardEngine {
     this.$("#pgLbl").textContent = this.totalPages ? `${this.currentPage} / ${this.totalPages}`: "– / –";
   }
 
+  private wireDocPinch() {
+    const sc = this.$("#docScroll") as HTMLElement;
+    const pts = new Map<number, { x: number; y: number }>();
+    let pinch: { d: number; z: number } | null = null;
+    this.on(sc, "pointerdown", (e: PointerEvent) => {
+      if (e.pointerType === "mouse" || e.pointerType === "pen") return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (pts.size === 2) {
+        const [a, b] = [...pts.values()];
+        pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), z: this.docZoom };
+      }
+    });
+    this.on(sc, "pointermove", (e: PointerEvent) => {
+      if (!pts.has(e.pointerId) || !pinch) return;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch.d > 0) this.setZoom(pinch.z * (d / pinch.d));
+      e.preventDefault();
+    });
+    const end = (e: PointerEvent) => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; };
+    this.on(sc, "pointerup", end); this.on(sc, "pointercancel", end);
+    this.on(sc, "wheel", (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      this.setZoom(this.docZoom * (e.deltaY < 0 ? 1.1 : 0.9));
+    }, { passive: false } as AddEventListenerOptions);
+  }
   private setZoom(z: number) {
     this.docZoom = Math.min(3, Math.max(0.5, Math.round(z * 10) / 10));
     this.$("#zoomLbl").textContent = Math.round(this.docZoom * 100) + "%";
@@ -2108,8 +2146,11 @@ export class BoardEngine {
     (this.$("#shapeSize") as HTMLInputElement).oninput = (e: Event) => { this.size = +(e.target as HTMLInputElement).value; this.syncPenPop(); this.saveTools(); };
     (this.$("#bgSelect") as HTMLSelectElement).onchange = (e: Event) => {
       this.bg = (e.target as HTMLSelectElement).value as BgKind;
+      const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
+      this.bgColor = def[this.bg] || "#ffffff"; this.syncBgSwatches(); this.saveBgPrefs();
       this.renderBoard(); this.scheduleSave();
     };
+    this.wireBgSwatches(); this.syncBgSwatches();
 
     this.$all("#layoutGroup .sb-btn").forEach((b: HTMLElement) => (b.onclick = () => this.setLayout((b as HTMLButtonElement).dataset.layout as "doc" | "split" | "board")));
 
@@ -2139,6 +2180,25 @@ export class BoardEngine {
     this.$("#btnExport").onclick = () => this.openModal("mExport");
   }
 
+  private saveBgPrefs() {
+    try { localStorage.setItem("sb-bg-prefs", JSON.stringify({ bg: this.bg, color: this.bgColor })); } catch { /* private mode */ }
+  }
+  private wireBgSwatches() {
+    const cols = ["#ffffff", "#fffef5", "#eef4ff", "#eefaf0", "#fff0f3", "#f5f0ff", "#0d1526"];
+    const box = this.$("#bgColors") as HTMLElement | null;
+    if (!box) return;
+    box.innerHTML = cols.map((c) => `<button class="sw${c === (this.bgColor || "#ffffff") ? " on" : ""}" data-c="${c}" style="background:${c};border:1px solid #d7dde6" title="${c}"></button>`).join("") +
+      `<input type="color" value="${this.bgColor || "#ffffff"}" title="Custom background color" style="width:30px;height:30px;border:1px solid #d7dde6;border-radius:8px;padding:0;background:#fff;cursor:pointer" />`;
+    box.querySelectorAll(".sw").forEach((b) => (b as HTMLElement).onclick = () => {
+      this.bgColor = (b as HTMLElement).dataset.c!; this.syncBgSwatches(); this.saveBgPrefs(); this.renderBoard();
+    });
+    const inp = box.querySelector("input") as HTMLInputElement;
+    if (inp) inp.onchange = () => { this.bgColor = inp.value; this.syncBgSwatches(); this.saveBgPrefs(); this.renderBoard(); };
+  }
+  private syncBgSwatches() {
+    this.$all("#bgColors .sw").forEach((x) => x.classList.toggle("on", (x as HTMLElement).dataset.c === this.bgColor));
+  }
+
   /* ---------- whiteboard pages ---------- */
   private updateBoardPgLabel() {
     const el = this.$("#boardPgLbl") as HTMLElement | null;
@@ -2158,10 +2218,26 @@ export class BoardEngine {
     this.gotoBoardPage(this.boardPages.length - 1);
     this.toast(`Board page ${this.boardPage + 1}`);
   }
+  private dupBoardPage() {
+    if (this.boardPages.length >= 50) { this.toast("Too many pages (max 50)"); return; }
+    const clone = new Store();
+    try { clone.objects = JSON.parse(JSON.stringify(this.boardStore.objects)); } catch { clone.objects = []; }
+    this.boardPages.splice(this.boardPage + 1, 0, clone);
+    this.gotoBoardPage(this.boardPage + 1);
+    this.toast(`Duplicated as page ${this.boardPage + 1}`);
+  }
+  private delBoardPage() {
+    if (this.boardPages.length <= 1) { this.toast("At least one board page is needed"); return; }
+    this.boardPages.splice(this.boardPage, 1);
+    this.gotoBoardPage(this.boardPage);
+    this.toast(`Page removed (${this.boardPages.length} left)`);
+  }
   private wirePages() {
     this.$("#btnBoardPrev").onclick = () => this.gotoBoardPage(this.boardPage - 1);
     this.$("#btnBoardNext").onclick = () => this.gotoBoardPage(this.boardPage + 1);
     this.$("#btnBoardAdd").onclick = () => this.addBoardPage();
+    const dup = this.$("#btnBoardDup"); if (dup) dup.onclick = () => this.dupBoardPage();
+    const del = this.$("#btnBoardDel"); if (del) del.onclick = () => this.delBoardPage();
     this.updateBoardPgLabel();
   }
 
@@ -2757,7 +2833,7 @@ export class BoardEngine {
          <button id="webToggle" class="web-toggle" type="button">Write on page</button>
          <a class="web-open" href="${this.esc(url)}" target="_blank" rel="noopener noreferrer">Open full page</a>
        </div>
-       <iframe class="web-frame" src="${this.esc(url)}" title="${this.esc(name)}" loading="lazy"
+       <iframe class="web-frame" src="${this.webSrc(url)}" title="${this.esc(name)}" loading="lazy"
           style="width:100%;height:calc(100vh - 230px);min-height:480px;border:0;border-radius:10px;background:#fff;display:block"></iframe>`,
       true
     );
