@@ -1,0 +1,38 @@
+plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+
+android {
+  namespace 'com.class10hub.vaani'
+  compileSdk 34
+  defaultConfig {
+    applicationId "com.class10hub.vaani"
+    minSdk 24
+    targetSdk 33
+    versionCode 1
+    versionName "1.0"
+  }
+  signingConfigs {
+    release {
+      storeFile file('../vaani.keystore')
+      storePassword 'vaani202627'
+      keyAlias 'vaani'
+      keyPassword 'vaani202627'
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.release
+    }
+  }
+  lint {
+    checkReleaseBuilds false
+    abortOnError false
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies { }
