@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "2026-09-14 session: batch D + handoff + paper design",
+  lastCommit: "52b916f (batch E from EduRev PYQ sets)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -44,7 +44,7 @@ export const HANDOFF = {
   currentState: [
     "Site live on Render; SEO live: verification tags (two), canonical, OG, JSON-LD, sitemap with subjects+chapters+PYQ pages.",
     "PYQ system: /pyq landing + /pyq/maths + 14 chapter slug pages (server-rendered board-paper style), PDF download, Smart Board file-viewer opening, marks filters (?marks=).",
-    "PYQ count after batch D: ~370 maths questions (2011-2026). Target: grow towards 2000+ in batches (see tasks).",
+    "PYQ count now 854 maths questions: batches A-D curated + batch E (481) parsed from EduRev's 14 chapter PYQ pages (question statements are CBSE board items; answers = option/result line only, no explanations copied). Target 2000+ via more batches (see tasks).",
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
@@ -61,5 +61,6 @@ export const HANDOFF = {
 
   log: [
     "2026-09-14: took over from a stalled session. Added batch D (~175 questions), board-paper redesign of chapter PYQ pages, DPR-crisp PDF rendering, hidden /ai handoff page + rule to update it after every task.",
+    "2026-09-14: batch E — downloaded all 14 EduRev Class 10 Maths chapter PYQ pages, parsed 481 unique questions (MCQ options inline, assertion-reason, 2025-26 sections), merged + deduped; bank 373 -> 854. Pushed 52b916f.",
   ],
 };
