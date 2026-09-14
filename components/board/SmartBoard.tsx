@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { BoardEngine } from "@/lib/board/engine";
+import { pyqBoardLines } from "@/lib/content/pyq";
 import { Icon } from "@/components/ui/Icon";
 
 /* Smart Board shell — the engine is pure TS; React only mounts/unmounts it.
@@ -13,11 +14,22 @@ export default function SmartBoard() {
   useEffect(() => {
     if (!rootRef.current) return;
     const pdf = params.get("pdf");
+    const pyq = params.get("pyq");
+    let pyqText: string[] | undefined;
+    if (pyq) {
+      const [chKey, idxStr] = pyq.split(".");
+      const idx = idxStr != null ? Math.max(0, parseInt(idxStr, 10) || 0) : undefined;
+      try {
+        const lines = pyqBoardLines(chKey, idxStr != null ? idx : undefined);
+        if (lines.length) pyqText = ["BOARD PYQ", ...lines];
+      } catch { /* bad key */ }
+    }
     const engine = new BoardEngine(rootRef.current, {
       layout: params.get("layout") || undefined,
       bg: params.get("bg") || undefined,
       pdfUrl: pdf ? `/api/pdf?u=${encodeURIComponent(pdf)}` : undefined,
       pdfName: params.get("name") || undefined,
+      pyqText,
     });
     return () => engine.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps

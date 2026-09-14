@@ -5,6 +5,7 @@ import { getSubject, getChapter, allChapterKeys } from "@/lib/syllabus";
 import { chapterDetail } from "@/lib/content";
 import ChapterView from "@/components/chapter/ChapterView";
 import { Icon } from "@/components/ui/Icon";
+import { PYQ_MATHS } from "@/lib/content/pyq";
 import { ncertPdf, boardHref } from "@/lib/ncert";
 
 export function generateStaticParams() {
@@ -70,6 +71,13 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  </a>
  <Link href={bHref} className="btn-g btn-g-white text-[13.5px]">
  <Icon name="squarePen" size={17} /> Open in Board
+ </Link>
+ </div>
+ )}
+ {PYQ_MATHS[f.key] && (
+ <div className="flex gap-2 mt-2 flex-wrap">
+ <Link href={`/pyq?ch=${f.key}`} className="btn-g btn-g-blue text-[13.5px]">
+ <Icon name="fileText" size={17} /> Board PYQs ({PYQ_MATHS[f.key].length})
  </Link>
  </div>
  )}

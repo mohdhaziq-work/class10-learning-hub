@@ -56,6 +56,9 @@ export default function HomePage() {
  NCERT chapters as smart slides, quizzes, and revision notes — plus a powerful Smart Board for classrooms. From phone to projector.
  </p>
  <div className="flex gap-3 mt-8 flex-wrap">
+ <Link href="/pyq" className="btn-g text-[15px] border border-white/25 text-white hover:bg-white/10">
+ 📋 Board PYQs
+ </Link>
  <Link href="/smart-board" className="btn-g btn-g-dark text-[15px]">
  <Icon name="squarePen" size={18} /> Open Smart Board
  </Link>
