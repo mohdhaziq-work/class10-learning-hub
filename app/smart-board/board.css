@@ -437,3 +437,11 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 @media(max-width:900px){
   .tool-pop{width:248px}
 }
+/* external reference page (EduRev PYQs) inside doc pane */
+.web-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px;font-weight:700;color:#9aa6c7}
+.web-bar>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46%}
+.web-toggle{border:1px solid #3b4252;background:#161b27;color:#e6edf3;font-weight:800;font-size:12px;padding:7px 14px;border-radius:99px;cursor:pointer;font-family:inherit}
+.web-toggle.on{background:#1a73e8;border-color:#1a73e8;color:#fff}
+.web-open{color:#8ab4f8;font-weight:800;font-size:12px;text-decoration:none;border:1px solid #3b4252;border-radius:99px;padding:7px 14px}
+.web-open:hover{border-color:#8ab4f8}
+.doc-html .web-frame{width:100%;height:calc(100vh - 210px);min-height:420px;border:0;border-radius:10px;background:#fff;display:block}

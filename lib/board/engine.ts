@@ -6,7 +6,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import QRCode from "qrcode";
 
-export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
+export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string; webUrl?: string; webName?: string }
 import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
@@ -340,7 +340,7 @@ export class BoardEngine {
   private boardPage = 0;
   private get boardStore(): Store { return this.boardPages[this.boardPage] || this.boardPages[0]; }
   private docStores: Record<string, Record<number, Store>> = {};
-  private doc: { kind: "pdf" | "html" | "image" | "video" | "audio" | "file"; key: string; name: string } | null = null;
+  private doc: { kind: "pdf" | "html" | "image" | "video" | "audio" | "file" | "web"; key: string; name: string } | null = null;
 
   /* pdf */
   private pdfDoc: any = null; private pages: PdfPage[] = [];
@@ -435,6 +435,7 @@ export class BoardEngine {
     this.sizeBoard();
     this.setActive("board", null);
     if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
+    if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
     else this.refreshEmpty();
     this.sizeTrail();
     this.laserLoop();
@@ -1578,7 +1579,7 @@ export class BoardEngine {
     this.updatePgLabel();
   }
 
-  private resetDocViewer(name: string, key: string, kind: "pdf" | "html" | "image" | "video" | "audio" | "file") {
+  private resetDocViewer(name: string, key: string, kind: "pdf" | "html" | "image" | "video" | "audio" | "file" | "web") {
     if (this.layout === "board") this.setLayout("split");
     this.doc = { kind, key, name };
     (this.$("#fileName") as HTMLElement).textContent = " " + name;
@@ -2724,6 +2725,33 @@ export class BoardEngine {
       c.addEventListener("click", () => this.openSaved(c.dataset.id || "")));
   }
 
+
+  /* ---------- external reference page (e.g. EduRev PYQs) + whiteboard ---------- */
+  private openWeb(url: string, name: string) {
+    if (!/^https:\/\//.test(url)) return;
+    this.resetDocViewer(name, url, "web");
+    this.mountHtmlDoc(
+      `<div class="web-bar">
+         <span>Source: ${this.esc(name)}</span>
+         <button id="webToggle" class="web-toggle" type="button">Write on page</button>
+         <a class="web-open" href="${this.esc(url)}" target="_blank" rel="noopener noreferrer">Open full page</a>
+       </div>
+       <iframe class="web-frame" src="${this.esc(url)}" title="${this.esc(name)}" loading="lazy"></iframe>`,
+      true
+    );
+    const cv = this.htmlAnnot ? this.htmlAnnot.cv : null;
+    if (cv) cv.style.pointerEvents = "none"; /* browse first; toggle to write */
+    const btn = this.$("#webToggle") as HTMLElement | null;
+    if (btn) btn.onclick = () => {
+      if (!this.htmlAnnot) return;
+      const toWrite = this.htmlAnnot.cv.style.pointerEvents === "none";
+      this.htmlAnnot.cv.style.pointerEvents = toWrite ? "" : "none";
+      btn.textContent = toWrite ? "Scroll / use page" : "Write on page";
+      btn.classList.toggle("on", toWrite);
+      this.toast(toWrite ? "Write mode — pen works over the page" : "Browse mode — scroll the page");
+    };
+    if (this.layout === "board") this.setLayout("split");
+  }
   /* ---------- phone upload via QR ---------- */
   private upSid = "";
   private upTimer: ReturnType<typeof setInterval> | null = null;

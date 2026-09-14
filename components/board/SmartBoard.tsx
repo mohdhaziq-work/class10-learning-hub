@@ -13,13 +13,17 @@ export default function SmartBoard() {
   useEffect(() => {
     if (!rootRef.current) return;
     const pdf = params.get("pdf");
+    const web = params.get("web");
     /* internal site PDFs (e.g. /api/pyq/pdf) load directly; external NCERT URLs go through the proxy */
     const pdfUrl = pdf ? (pdf.startsWith("/") ? pdf : `/api/pdf?u=${encodeURIComponent(pdf)}`) : undefined;
+    const webUrl = web && /^https:\/\//.test(web) ? web : undefined;
     const engine = new BoardEngine(rootRef.current, {
       layout: params.get("layout") || undefined,
       bg: params.get("bg") || undefined,
       pdfUrl,
       pdfName: params.get("name") || undefined,
+      webUrl,
+      webName: params.get("name") || undefined,
     });
     return () => engine.destroy();
     // eslint-disable-next-line react-hooks/exhaustive-deps

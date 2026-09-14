@@ -5,7 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { PYQ_MATHS } from "@/lib/content/pyq";
-import { PYQ_MATHS_SEO, getPyqChapterBySlug } from "@/lib/pyqSeo";
+import { PYQ_MATHS_SEO, getPyqChapterBySlug, eduRevBoardHref } from "@/lib/pyqSeo";
 
 export function generateStaticParams() {
   return PYQ_MATHS_SEO.map((c) => ({ slug: c.slug }));
@@ -164,7 +164,12 @@ export default function PyqChapterPage({
         <div className="qp-foot">
           <span>End of Chapter {ch.n} question set</span>
           <div className="flex gap-2">
-            <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-dark text-[13.5px]">
+            {eduRevBoardHref(ch.n, ch.name) && (
+            <Link href={eduRevBoardHref(ch.n, ch.name)!} className="btn-g btn-g-dark text-[13.5px]">
+              <Icon name="squarePen" size={16} /> EduRev PYQs + Whiteboard
+            </Link>
+          )}
+          <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-white text-[13.5px]">
               <Icon name="fileText" size={16} /> Download PDF
             </a>
             <Link
