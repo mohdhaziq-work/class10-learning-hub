@@ -1,0 +1,36 @@
+plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+
+android {
+  namespace 'com.class10hub.jarvis'
+  compileSdk 34
+  defaultConfig {
+    applicationId "com.class10hub.jarvis"
+    minSdk 24
+    targetSdk 34
+    versionCode 1
+    versionName "1.0"
+  }
+  signingConfigs {
+    release {
+      storeFile file('../jarvis.keystore')
+      storePassword 'jarvis202627'
+      keyAlias 'jarvis'
+      keyPassword 'jarvis202627'
+    }
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      signingConfig signingConfigs.release
+    }
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+  kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+  /* zero external deps — framework only (SpeechRecognizer, TTS, WebView) = tiny APK */
+}
