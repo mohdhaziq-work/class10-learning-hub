@@ -4,8 +4,6 @@ import "./globals.css";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { SITE_NAME, SITE_URL, organizationJsonLd } from "@/lib/seo";
 
-export const viewport: Viewport = { themeColor: "#111111" };
-
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 const jetbrains = JetBrains_Mono({ subsets: ["latin"], display: "swap", variable: "--font-mono" });
 
