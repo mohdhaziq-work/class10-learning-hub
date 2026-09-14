@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "Smart Board overhaul: light splash, text color/bold, light graph plotter, slimmer bar, SEO JSON-LD",
+  lastCommit: "EduRev clean-reader proxy, bg color customizer, page dup/delete, doc pinch zoom, emoji cleanup",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "Smart Board v2: EduRev pages in the doc pane now load through /api/web-proxy (server fetch + injected CSS/JS hides their sign-in buttons/login modals/sticky auth bar; only edurev.in allowed; engine webSrc() auto-routes edurev URLs). Board background fully customizable: bgSelect pattern + bgColors swatches + custom color input, persisted in localStorage (sb-bg-prefs). Board pages: duplicate + delete buttons. Doc pane: 2-finger pinch zoom + ctrl/cmd-wheel zoom (wireDocPinch). Zero-emoji rule enforced — removed leftover emojis from app/pad/join.",
     "Smart Board UI now fully light: light loading splash (no black screen), light graph plotter canvas, text tool has color + bold, laser pointer has glow-pulse, bottom bar is a slim floating pill, Admin removed from top nav (footer only), /smart-board has SoftwareApplication + Breadcrumb JSON-LD.",
   ],
 
@@ -67,5 +68,6 @@ export const HANDOFF = {
     "2026-09-14: board 'web' doc kind — /smart-board?web=<https-url> frames an external page (EduRev chapter PYQs) in the doc pane with whiteboard split; write/browse toggle. Chapter pages + PYQ pages link to it for all 14 maths chapters. Note: EduRev content is FRAMED only (no X-Frame-Options), never copied; parsed bank holds only short CBSE question statements + option/result answers. Pushed c2f9a7f.",
     "2026-09-14: web doc pane layout fix (empty-state card hidden, iframe full-height) 005ba25; new GSC tag H_6j6jPhsV6M2g4OBoeK4HERmggDtoEZG8kN6YxP-E live 54f5010.",
     "2026-09-14: Smart Board overhaul — light splash loader (black #0b1020 gone), text tool color swatches + bold toggle (engine o.weight), graph plotter converted to light paper theme, laser pointer glow-pulse, bottom bar slim floating pill, Admin link removed from top nav (still in footer), /smart-board SEO: stronger metadata + SoftwareApplication + BreadcrumbList JSON-LD. Pushed 559b584.",
+    "2026-09-14: EduRev clean-reader — /api/web-proxy streams edurev.in HTML through our origin and injects CSS+JS to remove sign-in buttons, login/OTP modals and sticky auth bars (content framed, never stored). Board bg customizer (patterns + 7 swatches + custom color, persisted). Board pages duplicate/delete. Doc pane 2-finger pinch zoom + ctrl-wheel zoom. Legacy pad-page emojis removed. Pushed dade196 + cleanup commit.",
   ],
 };

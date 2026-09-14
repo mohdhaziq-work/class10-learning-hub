@@ -277,8 +277,8 @@ function PadInner() {
     <div className="pad-root">
       <header className="pad-head">
         <div className="pad-brand">Phone Pad</div>
-        <div className={`pad-mode ${mode === "draw" ? "on" : ""}`} onClick={() => switchMode("draw")}>✏️ Draw</div>
-        <div className={`pad-mode ${mode === "cursor" ? "on" : ""}`} onClick={() => switchMode("cursor")}>🖱 Mouse</div>
+        <div className={`pad-mode ${mode === "draw" ? "on" : ""}`} onClick={() => switchMode("draw")}>Draw</div>
+        <div className={`pad-mode ${mode === "cursor" ? "on" : ""}`} onClick={() => switchMode("cursor")}>Mouse</div>
         <span className={`pad-badge ${connected ? "ok" : ""}`}>{badge}</span>
       </header>
 
@@ -343,20 +343,20 @@ function PadInner() {
                 <button id="padBtnL" className="pad-m" {...mouseBtn(0)}>Left</button>
                 <button id="padBtnM" className="pad-m" {...mouseBtn(1)}>Mid</button>
                 <button id="padBtnR" className="pad-m" {...mouseBtn(2)}>Right</button>
-                <button id="padBtnDrag" className={`pad-m ${dragLock ? "on" : ""}`} onClick={toggleDrag}>{dragLock ? "Drag ✓" : "Drag"}</button>
+                <button id="padBtnDrag" className={`pad-m ${dragLock ? "on" : ""}`} onClick={toggleDrag}>{dragLock ? "Drag on" : "Drag"}</button>
               </div>
               <div className="pad-row">
                 <button id="padScUndo" className="pad-t" onClick={() => scKey("z", true)}>↶ Undo</button>
                 <button id="padScRedo" className="pad-t" onClick={() => scKey("y", true)}>↷ Redo</button>
-                <button id="padScPen" className={`pad-t ${tool === "pen" ? "on" : ""}`} onClick={() => scTool("pen", "p")}>✏️ Pen</button>
-                <button id="padScErase" className={`pad-t ${tool === "eraser" ? "on" : ""}`} onClick={() => scTool("eraser", "e")}>🧽 Erase</button>
+                <button id="padScPen" className={`pad-t ${tool === "pen" ? "on" : ""}`} onClick={() => scTool("pen", "p")}>Pen</button>
+                <button id="padScErase" className={`pad-t ${tool === "eraser" ? "on" : ""}`} onClick={() => scTool("eraser", "e")}>Erase</button>
               </div>
               <div className="pad-row pad-set">
                 <span className="pad-lab">SPEED</span>
                 <input id="padSens" className="pad-slider" type="range" min="0.4" max="3" step="0.05" value={sens}
                   onChange={(e) => { const v = +e.target.value; sensRef.current = v; setSens(v); }} />
                 <span className="pad-val">{sens.toFixed(2)}×</span>
-                <button id="padAccel" className={`pad-chip ${accel ? "on" : ""}`} onClick={() => setAccel(!accel)} title="Pointer acceleration — slow = precise, flick = fast">⚡</button>
+                <button id="padAccel" className={`pad-chip ${accel ? "on" : ""}`} onClick={() => setAccel(!accel)} title="Pointer acceleration — slow = precise, flick = fast">Accel</button>
               </div>
             </footer>
           )}
