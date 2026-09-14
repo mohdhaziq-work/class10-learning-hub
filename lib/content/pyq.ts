@@ -4,6 +4,7 @@ import { PYQ_A } from "./pyq-maths-a";
 import { PYQ_B } from "./pyq-maths-b";
 import { PYQ_C } from "./pyq-maths-c";
 import { PYQ_D } from "./pyq-maths-d";
+import { PYQ_E } from "./pyq-maths-e";
 
 export interface Pyq {
   q: string;      /* the question exactly as asked in the board paper */
@@ -13,9 +14,9 @@ export interface Pyq {
 }
 
 /* concatenate per chapter (object spread would REPLACE same keys) */
-const PYQ_KEYS = [...new Set([...Object.keys(PYQ_A), ...Object.keys(PYQ_B), ...Object.keys(PYQ_C), ...Object.keys(PYQ_D)])];
+const PYQ_KEYS = [...new Set([...Object.keys(PYQ_A), ...Object.keys(PYQ_B), ...Object.keys(PYQ_C), ...Object.keys(PYQ_D), ...Object.keys(PYQ_E)])];
 export const PYQ_MATHS: Record<string, Pyq[]> = Object.fromEntries(
-  PYQ_KEYS.map((k) => [k, [...(PYQ_A[k] || []), ...(PYQ_B[k] || []), ...(PYQ_C[k] || []), ...(PYQ_D[k] || [])]])
+  PYQ_KEYS.map((k) => [k, [...(PYQ_A[k] || []), ...(PYQ_B[k] || []), ...(PYQ_C[k] || []), ...(PYQ_D[k] || []), ...(PYQ_E[k] || [])]])
 );
 
 export const PYQ_CHAPTERS: { key: string; n: number; name: string; unit: string }[] = [
