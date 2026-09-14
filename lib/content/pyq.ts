@@ -2,6 +2,7 @@
    Maths first (all 14 chapters, 2026-27 syllabus). More subjects coming. */
 import { PYQ_A } from "./pyq-maths-a";
 import { PYQ_B } from "./pyq-maths-b";
+import { PYQ_C } from "./pyq-maths-c";
 
 export interface Pyq {
   q: string;      /* the question exactly as asked in the board paper */
@@ -10,7 +11,11 @@ export interface Pyq {
   ans: string;    /* concise answer / key steps */
 }
 
-export const PYQ_MATHS: Record<string, Pyq[]> = { ...PYQ_A, ...PYQ_B };
+/* concatenate per chapter (object spread would REPLACE same keys) */
+const PYQ_KEYS = [...new Set([...Object.keys(PYQ_A), ...Object.keys(PYQ_B), ...Object.keys(PYQ_C)])];
+export const PYQ_MATHS: Record<string, Pyq[]> = Object.fromEntries(
+  PYQ_KEYS.map((k) => [k, [...(PYQ_A[k] || []), ...(PYQ_B[k] || []), ...(PYQ_C[k] || [])]])
+);
 
 export const PYQ_CHAPTERS: { key: string; n: number; name: string; unit: string }[] = [
   { key: "maths-0-0", n: 1, name: "Real Numbers", unit: "Number Systems" },

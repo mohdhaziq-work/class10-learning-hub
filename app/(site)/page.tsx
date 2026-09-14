@@ -56,7 +56,7 @@ export default function HomePage() {
  NCERT chapters as smart slides, quizzes, and revision notes — plus a powerful Smart Board for classrooms. From phone to projector.
  </p>
  <div className="flex gap-3 mt-8 flex-wrap">
- <Link href="/pyq" className="btn-g text-[15px] border border-white/25 text-white hover:bg-white/10">
+ <Link href="/pyq" className="btn-g btn-g-white text-[15px]">
  📋 Board PYQs
  </Link>
  <Link href="/smart-board" className="btn-g btn-g-dark text-[15px]">
@@ -90,19 +90,19 @@ export default function HomePage() {
  <span className="w-2.5 h-2.5 rounded-full bg-slate-300 " />
  <span className="ml-2 font-mono text-[11.5px] font-medium text-ink-mute tracking-wider">SMART BOARD — LIVE</span>
  </div>
- <svg viewBox="0 0 400 220" className="w-full block bg-[#0d1117]" role="img" aria-label="Graph preview">
+ <svg viewBox="0 0 400 220" className="w-full block bg-white" role="img" aria-label="Graph preview">
  <defs>
  <pattern id="hg" width="20" height="20" patternUnits="userSpaceOnUse">
- <path d="M20 0H0v20" fill="none" stroke="#ffffff10" strokeWidth="1" />
+ <path d="M20 0H0v20" fill="none" stroke="#64748b18" strokeWidth="1" />
  </pattern>
  </defs>
  <rect width="400" height="220" fill="url(#hg)" />
- <line x1="0" y1="150" x2="400" y2="150" stroke="#ffffff40" strokeWidth="1.5" />
- <line x1="60" y1="0" x2="60" y2="220" stroke="#ffffff40" strokeWidth="1.5" />
+ <line x1="0" y1="150" x2="400" y2="150" stroke="#94a3b8" strokeWidth="1.5" />
+ <line x1="60" y1="0" x2="60" y2="220" stroke="#94a3b8" strokeWidth="1.5" />
  <path d="M60 150 C 110 150, 110 60, 160 60 S 210 150, 260 150 S 310 60, 360 60" fill="none" stroke="#8ab4f8" strokeWidth="3" strokeLinecap="round" />
  <path d="M100 200 Q 200 40 320 190" fill="none" stroke="#7ee2a8" strokeWidth="3" strokeLinecap="round" />
  <circle cx="160" cy="60" r="16" fill="none" stroke="#c9a227" strokeWidth="2.5" />
- <text x="70" y="170" fill="#ffffff70" fontSize="13" fontWeight="600" fontFamily="monospace">y = sin x</text>
+ <text x="70" y="170" fill="#6b7280" fontSize="13" fontWeight="600" fontFamily="monospace">y = sin x</text>
  </svg>
  <div className="flex items-center justify-between px-5 py-4">
  <div>
@@ -129,29 +129,29 @@ export default function HomePage() {
  </section>
 
  {/* ---------- BOARD BANNER ---------- */}
- <section className="mt-16 rounded-3xl overflow-hidden bg-coal text-white">
+ <section className="mt-16 rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-card text-ink">
  <div className="grid gap-10 lg:grid-cols-2 p-8 sm:p-12 items-center">
  <div>
- <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-slate-400">For teachers</p>
+ <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-ink-mute">For teachers</p>
  <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-tight mt-3">A real smart board. Zero cost.</h2>
- <p className="text-slate-400 mt-3 text-[15.5px] leading-relaxed max-w-md">
+ <p className="text-ink-mute mt-3 text-[15.5px] leading-relaxed max-w-md">
  Open any PDF or Word file, write over it, split the screen, plot maths graphs — built for classroom projectors and touch boards.
  </p>
  <div className="flex gap-3 mt-7 flex-wrap">
- <Link href="/smart-board" className="btn-g bg-white text-slate-900 hover:bg-slate-200 text-[15px]">
+ <Link href="/smart-board" className="btn-g bg-slate-900 text-white hover:bg-black text-[15px]">
  <Icon name="squarePen" size={18} /> Launch Smart Board
  </Link>
- <Link href="/smart-board?layout=split" className="btn-g text-[15px] border border-white/25 text-white hover:bg-white/10">
+ <Link href="/smart-board?layout=split" className="btn-g btn-g-white text-[15px]">
  <Icon name="columns2" size={18} /> Split view
  </Link>
  </div>
  </div>
  <div className="grid grid-cols-2 gap-3.5">
  {BOARD_TILES.map((b) => (
- <div key={b.t} className="rounded-2xl bg-white/[.06] border border-white/10 p-5">
- <Icon name={b.icon} size={22} className="text-slate-300" />
+ <div key={b.t} className="rounded-2xl bg-slate-50 border border-slate-200 p-5">
+ <Icon name={b.icon} size={22} className="text-ink-mute" />
  <p className="font-bold text-[14.5px] mt-3">{b.t}</p>
- <p className="text-[13px] text-slate-400 mt-0.5">{b.d}</p>
+ <p className="text-[13px] text-ink-mute mt-0.5">{b.d}</p>
  </div>
  ))}
  </div>
@@ -189,16 +189,16 @@ export default function HomePage() {
  </section>
 
  {/* ---------- SCREEN CAST ---------- */}
- <section className="mt-16 rounded-3xl overflow-hidden bg-slate-900 text-white">
+ <section className="mt-16 rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-card text-ink">
  <div className="grid gap-10 lg:grid-cols-2 p-8 sm:p-12 items-center">
  <div>
- <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-slate-400">New · for teachers</p>
+ <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-ink-mute">New · for teachers</p>
  <h2 className="text-[28px] sm:text-[36px] font-extrabold tracking-tight mt-3">Cast your phone to the big screen.</h2>
- <p className="text-slate-400 mt-3 text-[15.5px] leading-relaxed max-w-md">
+ <p className="text-ink-mute mt-3 text-[15.5px] leading-relaxed max-w-md">
  Open Screen Cast on the TV or projector, scan the QR from your phone — and the phone&apos;s screen appears live. Peer-to-peer, encrypted, no delay, no app install.
  </p>
  <div className="flex gap-3 mt-7 flex-wrap">
- <Link href="/cast" className="btn-g bg-white text-slate-900 hover:bg-slate-200 text-[15px]">
+ <Link href="/cast" className="btn-g bg-slate-900 text-white hover:bg-black text-[15px]">
  <Icon name="cast" size={18} /> Open Screen Cast
  </Link>
  </div>
@@ -210,10 +210,10 @@ export default function HomePage() {
  { icon: "shieldCheck", t: "Private & secure", d: "End-to-end encrypted — screen never touches a server" },
  { icon: "scan", t: "No app needed", d: "Scan a QR — nothing to install" },
  ].map((c) => (
- <div key={c.t} className="rounded-2xl bg-white/[.06] border border-white/10 p-5">
- <Icon name={c.icon} size={22} className="text-slate-300" />
+ <div key={c.t} className="rounded-2xl bg-slate-50 border border-slate-200 p-5">
+ <Icon name={c.icon} size={22} className="text-ink-mute" />
  <p className="font-bold text-[14.5px] mt-3">{c.t}</p>
- <p className="text-[13px] text-slate-400 mt-0.5">{c.d}</p>
+ <p className="text-[13px] text-ink-mute mt-0.5">{c.d}</p>
  </div>
  ))}
  </div>
@@ -221,15 +221,15 @@ export default function HomePage() {
  </section>
 
  {/* ---------- CTA ---------- */}
- <section className="my-16 rounded-3xl bg-slate-900 text-white p-8 sm:p-12 text-center">
- <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-slate-400 ">Get started</p>
+ <section className="my-16 rounded-3xl bg-white border border-slate-200 shadow-card text-ink p-8 sm:p-12 text-center">
+ <p className="font-mono text-[11.5px] font-medium uppercase tracking-[.18em] text-ink-mute ">Get started</p>
  <h2 className="text-[26px] sm:text-[34px] font-extrabold tracking-tight mt-3">Ready for smarter classes?</h2>
- <p className="text-slate-400 mt-2 text-[15.5px]">Open a chapter, or launch the board — it takes five seconds.</p>
+ <p className="text-ink-mute mt-2 text-[15.5px]">Open a chapter, or launch the board — it takes five seconds.</p>
  <div className="flex gap-3 justify-center mt-7 flex-wrap">
- <Link href="/subjects/maths" className="btn-g bg-white text-slate-900 hover:bg-slate-200 text-[15px]">
+ <Link href="/subjects/maths" className="btn-g bg-slate-900 text-white hover:bg-black text-[15px]">
  <Icon name="bookOpen" size={18} /> Start with Maths
  </Link>
- <Link href="/smart-board" className="btn-g text-[15px] border border-white/30 hover:bg-white/10 ">
+ <Link href="/smart-board" className="btn-g btn-g-white text-[15px]">
  <Icon name="squarePen" size={18} /> Open Smart Board
  </Link>
  </div>

@@ -57,9 +57,14 @@ function PyqInner() {
             Real CBSE board questions, chapter-wise ({PYQ_TOTAL}+ questions, CBSE 2019–2026). Solve on the Smart Board, check the answer, match with any PYQ site.
           </p>
         </div>
-        <Link href={`/smart-board?pyq=${chKey}`} className="btn-g btn-g-dark text-[14px]">
-          <Icon name="squarePen" size={16} /> Whole chapter → Board
-        </Link>
+        <div className="flex gap-2 flex-wrap">
+          <a href={`/api/pyq/pdf?ch=${chKey}&dl=1`} className="btn-g btn-g-dark text-[14px]" target="_blank" rel="noopener noreferrer">
+            <Icon name="fileText" size={16} /> Download PDF
+          </a>
+          <Link href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${chKey}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} PYQs.pdf`)}`} className="btn-g btn-g-white text-[14px]">
+            <Icon name="squarePen" size={16} /> Open in Board (file)
+          </Link>
+        </div>
       </div>
 
       {/* chapter chips */}
@@ -132,7 +137,7 @@ function PyqInner() {
                   {isOpen ? "Hide answer" : "Answer"}
                 </button>
                 <Link
-                  href={`/smart-board?pyq=${chKey}.${idx}`}
+                  href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${chKey}&n=${idx}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} Q${idx + 1}.pdf`)}`}
                   className="text-[12px] font-bold px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-slate-700 transition inline-flex items-center gap-1.5"
                 >
                   <Icon name="squarePen" size={13} /> Solve on Board

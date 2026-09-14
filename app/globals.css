@@ -47,7 +47,7 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 .mm-branch ul { margin: 0; padding-left: 18px; font-size: 13.5px; display: grid; gap: 5px; }
 
 /* ---------- formula cards ---------- */
-.form-card { background: #0d1117; color: #e6edf3; border-radius: 16px; padding: 18px; font-family: "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace; border: 1px solid #30363d; }
+.form-card { background: #f6f8fa; color: #141414; border-radius: 16px; padding: 18px; font-family: "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace; border: 1px solid #e5e7eb; }
 
 /* ---------- scrollbars ---------- */
 *::-webkit-scrollbar { width: 10px; height: 10px; }

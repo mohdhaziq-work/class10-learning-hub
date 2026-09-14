@@ -1,5 +1,5 @@
 /* Phone Pad — the phone-side touchpad UI (dark, thumb-friendly) */
-.pad-root{--pb:#0b1220;--pp:#111a2c;--pl:#1e2a44;--pink:#e8edf6;--pmute:#8b98b3;
+.pad-root{--pb:#ffffff;--pp:#f8f9fa;--pl:#e8eaf0;--pink:#111827;--pmute:#5f6368;
   min-height:100vh;min-height:100dvh;background:var(--pb);color:var(--pink);
   font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column;
   -webkit-font-smoothing:antialiased;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
@@ -8,44 +8,44 @@
 .pad-mode{padding:7px 12px;border-radius:99px;border:1px solid var(--pl);background:var(--pp);color:var(--pmute);
   font-size:12.5px;font-weight:800;cursor:pointer}
 .pad-mode.on{background:#1a73e8;border-color:#1a73e8;color:#fff}
-.pad-badge{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;color:#fca5a5}
-.pad-badge.ok{color:#4ade80}
+.pad-badge{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:.05em;color:#b3261e}
+.pad-badge.ok{color:#146c2e}
 .pad-main{flex:1;position:relative;min-height:0}
-.pad-area{flex:1;background:radial-gradient(circle at 1px 1px,#1a2438 1px,transparent 1.6px) 0 0/22px 22px,var(--pb);
+.pad-area{flex:1;background:radial-gradient(circle at 1px 1px,#e9edf3 1px,transparent 1.6px) 0 0/22px 22px,var(--pb);
   position:relative;touch-action:none;display:grid;place-items:center}
 .pad-area.cursor{cursor:pointer}
 .pad-hint{display:flex;flex-direction:column;gap:6px;text-align:center;color:var(--pmute);pointer-events:none;padding:20px}
-.pad-hint b{font-size:16px;color:#cdd7ea}
+.pad-hint b{font-size:16px;color:#111827}
 .pad-hint span{font-size:12.5px;line-height:1.6;max-width:280px}
-.pad-overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(11,18,32,.82);
-  color:#fca5a5;font-weight:800;font-size:14px;text-align:center;padding:20px}
+.pad-overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(255,255,255,.94);
+  color:#b3261e;font-weight:800;font-size:14px;text-align:center;padding:20px}
 .pad-tools{flex:none;border-top:1px solid var(--pl);background:var(--pp);padding:8px 10px;display:flex;
   flex-direction:column;gap:7px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
 .pad-row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
-.pad-t{min-width:46px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--pl);background:#0e1626;
-  color:#cdd7ea;font:800 13px Inter,system-ui,sans-serif;cursor:pointer}
+.pad-t{min-width:46px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--pl);background:#ffffff;
+  color:#111827;font:800 13px Inter,system-ui,sans-serif;cursor:pointer}
 .pad-t.on{background:#1a73e8;border-color:#1a73e8;color:#fff}
-.pad-c{width:38px;height:38px;border-radius:99px;border:2px solid rgba(255,255,255,.25);cursor:pointer}
-.pad-c.on{box-shadow:0 0 0 3px #7ab0ff}
+.pad-c{width:38px;height:38px;border-radius:99px;border:2px solid rgba(0,0,0,.15);cursor:pointer}
+.pad-c.on{box-shadow:0 0 0 3px #1a73e8}
 .pad-gap{width:8px}
 .pad-center{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:30px;text-align:center}
 .pad-center b{font-size:18px}
 .pad-center p{color:var(--pmute);font-size:14px;line-height:1.7}
-.pad-link{color:#7ab0ff;font-weight:800;text-decoration:none}
-.pad-spin{width:40px;height:40px;border-radius:99px;border:3px solid var(--pl);border-top-color:#7ab0ff;
+.pad-link{color:#1a73e8;font-weight:800;text-decoration:none}
+.pad-spin{width:40px;height:40px;border-radius:99px;border:3px solid var(--pl);border-top-color:#1a73e8;
   animation:padSpin .8s linear infinite;margin:auto}
 @keyframes padSpin{to{transform:rotate(360deg)}}
 /* ---- cursor mode: full-mouse footer ---- */
 .pad-mouse{gap:8px}
-.pad-m{flex:1;min-width:64px;height:48px;border-radius:14px;border:1px solid var(--pl);background:#0e1626;
-  color:#cdd7ea;font:800 14px Inter,system-ui,sans-serif;cursor:pointer;touch-action:none;
-  box-shadow:0 2px 0 #060b16}
-.pad-m:active{transform:translateY(1px);box-shadow:0 1px 0 #060b16}
-.pad-m.on{background:#1a73e8;border-color:#1a73e8;color:#fff;box-shadow:0 2px 0 #0c3f8f,0 0 16px rgba(26,115,232,.4)}
+.pad-m{flex:1;min-width:64px;height:48px;border-radius:14px;border:1px solid var(--pl);background:#ffffff;
+  color:#111827;font:800 14px Inter,system-ui,sans-serif;cursor:pointer;touch-action:none;
+  box-shadow:0 2px 0 #d3d9e2}
+.pad-m:active{transform:translateY(1px);box-shadow:0 1px 0 #d3d9e2}
+.pad-m.on{background:#1a73e8;border-color:#1a73e8;color:#fff;box-shadow:0 2px 0 #b7d1f7,0 0 16px rgba(26,115,232,.4)}
 .pad-set{gap:10px;flex-wrap:nowrap}
 .pad-lab{font-size:10.5px;font-weight:800;color:var(--pmute);letter-spacing:.06em}
 .pad-slider{flex:1;min-width:110px;accent-color:#1a73e8;height:34px}
-.pad-val{font-size:12px;font-weight:800;color:#7ab0ff;min-width:46px;text-align:right;font-variant-numeric:tabular-nums}
-.pad-chip{height:36px;min-width:46px;padding:0 10px;border-radius:99px;border:1px solid var(--pl);background:#0e1626;
+.pad-val{font-size:12px;font-weight:800;color:#1a73e8;min-width:46px;text-align:right;font-variant-numeric:tabular-nums}
+.pad-chip{height:36px;min-width:46px;padding:0 10px;border-radius:99px;border:1px solid var(--pl);background:#ffffff;
   font-size:15px;cursor:pointer;opacity:.4;filter:grayscale(1)}
-.pad-chip.on{opacity:1;filter:none;border-color:#1a73e8;background:#12233f}
+.pad-chip.on{opacity:1;filter:none;border-color:#1a73e8;background:#e8f0fe}

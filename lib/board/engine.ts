@@ -6,7 +6,7 @@
 import * as pdfjsLib from "pdfjs-dist";
 import QRCode from "qrcode";
 
-export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string; pyqText?: string[] }
+export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdfName?: string }
 import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
@@ -436,7 +436,6 @@ export class BoardEngine {
     this.setActive("board", null);
     if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
     else this.refreshEmpty();
-    if (opts.pyqText?.length) this.stampPyq(opts.pyqText);
     this.sizeTrail();
     this.laserLoop();
     const ro = new ResizeObserver(() => this.sizeBoard());
@@ -619,33 +618,6 @@ export class BoardEngine {
       node = node.parentElement;
     }
     window.scrollBy(dx, dy);
-  }
-
-  /* stamp board PYQs onto the board as movable text cards (word-wrapped column) */
-  private stampPyq(lines: string[]) {
-    const wrap = (t: string, max = 62): string => {
-      const words = t.split(" ");
-      const out: string[] = [];
-      let cur = "";
-      for (const w of words) {
-        if ((cur + " " + w).trim().length > max) { out.push(cur.trim()); cur = w; }
-        else cur += " " + w;
-      }
-      if (cur.trim()) out.push(cur.trim());
-      return out.join("\n");
-    };
-    let y = 70;
-    lines.slice(0, 14).forEach((ln, i) => {
-      const text = (i === 0 ? ln : wrap(ln));
-      const nLines = text.split("\n").length;
-      this.boardStore.objects.push({
-        id: uid(), type: "text", text,
-        x: 60, y: y + 26, fontSize: i === 0 ? 34 : 24, color: "#111827", opacity: 100,
-      });
-      y += nLines * 30 + (i === 0 ? 26 : 22);
-    });
-    this.renderBoard();
-    this.scheduleSave();
   }
 
   destroy() {
