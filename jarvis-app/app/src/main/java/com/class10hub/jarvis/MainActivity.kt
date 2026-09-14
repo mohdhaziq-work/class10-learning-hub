@@ -43,6 +43,9 @@ class MainActivity : Activity() {
     findViewById<Button>(R.id.btnStop).setOnClickListener { stopService(Intent(this, BubbleService::class.java)) }
     findViewById<Button>(R.id.btnArena).setOnClickListener { ArenaWebActivity.open(this, "") }
 
+    findViewById<TextView>(R.id.permGesture).setOnClickListener {
+      startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+    }
     findViewById<Button>(R.id.langEn).setOnClickListener { P.lang = "en-IN"; update() }
     findViewById<Button>(R.id.langHi).setOnClickListener { P.lang = "hi-IN"; update() }
   }
@@ -54,9 +57,11 @@ class MainActivity : Activity() {
     val mic = checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     val con = checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
     val ov = Settings.canDrawOverlays(this)
+    val gs = GestureService.on()
     row(findViewById(R.id.permMic), "Microphone", mic)
     row(findViewById(R.id.permContacts), "Contacts — for calls", con)
     row(findViewById(R.id.permOverlay), "Display over other apps", ov)
+    row(findViewById(R.id.permGesture), "Accessibility — for scrolling", gs)
     findViewById<Button>(R.id.langEn).apply {
       background = getDrawable(if (P.lang == "en-IN") R.drawable.seg_on else R.drawable.seg_off)
       setTextColor(getColor(if (P.lang == "en-IN") R.color.ink else R.color.mute))

@@ -37,6 +37,8 @@
           android:text="Contacts — for calls" android:textSize="15sp" android:textColor="@color/ink" android:paddingVertical="6dp"/>
       <TextView android:id="@+id/permOverlay" android:layout_width="match_parent" android:layout_height="wrap_content"
           android:text="Display over other apps" android:textSize="15sp" android:textColor="@color/ink" android:paddingVertical="6dp"/>
+      <TextView android:id="@+id/permGesture" android:layout_width="match_parent" android:layout_height="wrap_content"
+          android:text="Accessibility — for scrolling" android:textSize="15sp" android:textColor="@color/ink" android:paddingVertical="6dp"/>
     </LinearLayout>
 
     <Button android:id="@+id/btnStart" android:layout_width="match_parent" android:layout_height="56dp"

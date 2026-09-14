@@ -22,11 +22,14 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import org.json.JSONObject
+import java.net.URLEncoder
 
 /* The smart browser for arena.ai.
    ALWAYS opens a fresh, empty chat — no previous messages.
-   Automation = injected JS: find the chat input, type the message, send it,
-   then watch the page until the AI's reply stops changing -> "work done". */
+   DICTATION: speak in segments — every segment APPENDS to the draft.
+   Nothing is ever removed unless you say "remove <word>" or "clear".
+   When you say "send" it confirms, sends, then watches the page until the
+   AI's reply stops changing -> "work done" -> next queued task starts. */
 class ArenaWebActivity : Activity() {
 
   private lateinit var web: WebView
@@ -41,6 +44,9 @@ class ArenaWebActivity : Activity() {
   private var watchOn = false
   private val main = Handler(Looper.getMainLooper())
   private var watchTimeout: Runnable? = null
+
+  /* the running draft buffer — append-only until sent/cleared */
+  private var draftBuf = ""
 
   companion object {
     var front: ArenaWebActivity? = null
@@ -141,7 +147,6 @@ class ArenaWebActivity : Activity() {
       mediaPlaybackRequiresUserGesture = false
       allowFileAccess = false
       allowContentAccess = false
-      /* real Chrome UA (no WebView token) — so Google login works */
       userAgentString = "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36"
     }
     CookieManager.getInstance().setAcceptCookie(true)
@@ -181,40 +186,153 @@ class ArenaWebActivity : Activity() {
     }
   }
 
-  private fun newChat() {
+  fun newChat() {
+    draftBuf = ""
     pendingAfterLoad = null
+    confirmCard.visibility = View.GONE
     web.loadUrl("https://arena.ai")
     setStatus("New empty chat.", C_OK)
   }
 
-  /* ---------------- draft + confirm + send ---------------- */
+  fun loadSite(url: String) {
+    say(this, "Opening.", "खोल रहा हूँ।")
+    web.loadUrl(url)
+    setStatus("Opening $url", C_BUSY)
+  }
+
+  fun searchInWeb(q: String): Boolean {
+    say(this, "Searching.", "खोज रहा हूँ।")
+    web.loadUrl("https://www.google.com/search?q=" + URLEncoder.encode(q, "UTF-8"))
+    setStatus("Searching for $q", C_BUSY)
+    return true
+  }
+
+  /* ---------------- draft engine ---------------- */
+  private fun retypeDraft() {
+    web.evaluateJavascript(JS_TYPE.replace("__TEXT__", JSONObject.quote(draftBuf)), null)
+  }
+
+  private fun draftStatus() {
+    setStatus("Draft: " + (if (draftBuf.length > 90) draftBuf.take(90) + "…" else draftBuf), C_BUSY)
+  }
+
+  /* start a NEW draft (task-driven or "arena pe likho X" when opening) */
   fun proposeDraft(text: String) {
     front = this
     retries = 0
-    pendingDraft = text
+    draftBuf = text.trim()
     setStatus("Typing your message…", C_BUSY)
-    web.evaluateJavascript(JS_TYPE.replace("__TEXT__", JSONObject.quote(text))) { v ->
+    web.evaluateJavascript(JS_TYPE.replace("__TEXT__", JSONObject.quote(draftBuf))) { v ->
       val r = v?.trim('"')
-      if (r == "TYPED") showConfirm(text)
-      else if (r == "NO_INPUT") {
+      if (r == "TYPED") {
+        draftStatus()
+        say(this, "Draft ready. Keep speaking to add more. Say send when you are done.",
+               "ड्राफ्ट तैयार है। और जोड़ने के लिए बोलते रहिए। पूरा होने पर 'भेजो' कहिए।") {
+          main.postDelayed({ draftLoop() }, 250)
+        }
+      } else if (r == "NO_INPUT") {
         if (retries < 8) {
           retries++
           setStatus("Looking for the chat box… ($retries/8)", C_BUSY)
           main.postDelayed({ proposeDraft(text) }, 1500)
         } else {
           setStatus("Could not find the chat box.", C_ERR)
-          say(this, "I could not find the chat box. Please open a chat and try again.", "चैट बॉक्स नहीं मिला। कृपया चैट खोलकर फिर कोशिश करें।")
+          say(this, "I could not find the chat box. Please open a chat and try again.",
+                 "चैट बॉक्स नहीं मिला। कृपया चैट खोलकर फिर कोशिश करें।")
           TaskRunner.onTaskDone(this, quiet = true)
         }
       }
     }
   }
 
+  /* append a spoken segment — never replaces, never removes */
+  fun appendDraft(text: String) {
+    front = this
+    val seg = text.trim()
+    if (seg.isEmpty()) return
+    draftBuf = if (draftBuf.isEmpty()) seg else "$draftBuf $seg"
+    retypeDraft()
+    draftStatus()
+    say(this, "Added.", "जोड़ दिया।") {
+      main.postDelayed({ draftLoop() }, 250)
+    }
+  }
+
+  /* keep listening: segments append until send / cancel / a device command */
+  private fun draftLoop() {
+    Speech.listen(this) { r ->
+      val low = r?.lowercase() ?: ""
+      when {
+        r == null -> {
+          nullRetries++
+          if (nullRetries >= 2) {
+            nullRetries = 0
+            say(this, "Tap the bubble to continue. Say send when you are done.",
+                   "जारी रखने के लिए बबल दबाइए। पूरा होने पर 'भेजो' कहिए।")
+          } else draftLoop()
+        }
+        CommandCenter.isSendCmd(low) -> sendNow()
+        low in setOf("cancel", "stop", "ruko", "nahi", "no", "mat", "रद्द", "रुको", "नहीं", "मत") -> {
+          setStatus("Paused. The draft is saved.", C_OK)
+          say(this, "Okay. The draft is saved.", "ठीक है। ड्राफ्ट सुरक्षित है।")
+          TaskRunner.onTaskDone(this, quiet = true)
+        }
+        CommandCenter.isNewChatCmd(low) -> newChat()
+        CommandCenter.isClearCmd(low) -> clearDraft(true) { draftLoop() }
+        CommandCenter.isReadCmd(low) -> readDraft { draftLoop() }
+        CommandCenter.removeTarget(low) != null -> removeFromDraft(CommandCenter.removeTarget(low)!!) { draftLoop() }
+        CommandCenter.looksLikeCommand(low) -> CommandCenter.handle(this, r)
+        else -> appendDraft(CommandCenter.extractMsg(r))
+      }
+    }
+  }
+
+  /* remove ONLY what the user names — e.g. "remove bye" */
+  fun removeFromDraft(target: String, then: (() -> Unit)? = null) {
+    if (draftBuf.isEmpty()) {
+      say(this, "The draft is empty.", "ड्राफ्ट खाली है।") { then?.invoke() }
+      return
+    }
+    val re = Regex(Regex.escape(target), RegexOption.IGNORE_CASE)
+    if (re.containsMatchIn(draftBuf)) {
+      draftBuf = re.replace(draftBuf, "").replace(Regex("\\s+"), " ").trim()
+      retypeDraft()
+      draftStatus()
+      say(this, "Removed.", "हटा दिया।") { then?.invoke() }
+    } else {
+      say(this, "That is not in the draft.", "यह ड्राफ्ट में नहीं है।") { then?.invoke() }
+    }
+  }
+
+  fun clearDraft(speak: Boolean, then: (() -> Unit)? = null) {
+    draftBuf = ""
+    retypeDraft()
+    setStatus("Draft cleared.", C_OK)
+    if (speak) say(this, "Cleared.", "साफ़ कर दिया।") { then?.invoke() } else then?.invoke()
+  }
+
+  fun readDraft(then: (() -> Unit)? = null) {
+    if (draftBuf.isEmpty()) say(this, "The draft is empty.", "ड्राफ्ट खाली है।") { then?.invoke() }
+    else say(this, "The draft says: $draftBuf", "ड्राफ्ट है: $draftBuf") { then?.invoke() }
+  }
+
+  fun sendNow() {
+    if (draftBuf.isBlank()) {
+      say(this, "The draft is empty. Say: write, followed by your message.",
+             "ड्राफ्ट खाली है। कहिए: लिखो, और फिर अपना संदेश।")
+      return
+    }
+    showConfirm(draftBuf)
+  }
+
+  /* ---------------- confirm + send ---------------- */
   private fun showConfirm(msg: String) {
     nullRetries = 0
+    pendingDraft = msg
     draftText.text = msg
     confirmCard.visibility = View.VISIBLE
-    say(this, "Message ready. Say send to confirm, or cancel.", "संदेश तैयार है। भेजने के लिए 'भेजो' कहें, रोकने के लिए 'रद्द'।") {
+    say(this, "Ready to send. Say send again to confirm, or cancel.",
+           "भेजने के लिए तैयार। भेजने के लिए फिर से 'भेजो' कहिए, या 'रद्द'।") {
       main.postDelayed({ confirmListen(msg) }, 250)
     }
   }
@@ -229,7 +347,7 @@ class ArenaWebActivity : Activity() {
             nullRetries = 0
             say(this, "Use the buttons below — send or cancel.", "नीचे के बटन इस्तेमाल करें — भेजें या रद्द।")
           } else {
-            say(this, "I did not hear that. Say send or cancel.", "सुनाई नहीं दिया। 'भेजो' या 'रद्द' कहें।") { confirmListen(msg) }
+            say(this, "I did not hear that. Say send or cancel.", "सुनाई नहीं दिया। 'भेजो' या 'रद्द' कहिए।") { confirmListen(msg) }
           }
         }
         a.contains("send") || a.contains("yes") || a.contains("haan") || a.contains("bhejo") || a.contains("bhej do") ||
@@ -238,8 +356,8 @@ class ArenaWebActivity : Activity() {
         a.contains("cancel") || a.contains("no") || a.contains("nahi") || a.contains("stop") || a.contains("ruko") ||
           a.contains("रद्द") || a.contains("नहीं") || a.contains("रुको") || a.contains("मत") -> {
           confirmCard.visibility = View.GONE
-          setStatus("Cancelled.", C_ERR)
-          say(this, "Cancelled.", "रद्द कर दिया।")
+          setStatus("Cancelled. The draft is saved.", C_OK)
+          say(this, "Cancelled. The draft is saved.", "रद्द कर दिया। ड्राफ्ट सुरक्षित है।")
           TaskRunner.onTaskDone(this, quiet = true)
         }
         else -> say(this, "Send or cancel?", "भेजें या रद्द?") { confirmListen(msg) }
@@ -253,14 +371,17 @@ class ArenaWebActivity : Activity() {
     web.evaluateJavascript(JS_SEND.replace("__TEXT__", JSONObject.quote(msg))) { v ->
       val r = v?.trim('"')
       if (r == "SENT_BTN" || r == "SENT_FORM" || r == "SENT_ENTER") {
+        draftBuf = ""   /* sent — next message starts fresh */
         setStatus("Sent — waiting for the reply…", C_BUSY)
         say(this, "Sent. Waiting for the reply.", "भेज दिया। उत्तर की प्रतीक्षा कर रहा हूँ।")
         startWatch()
       } else if (r == "NO_INPUT") {
-        main.postDelayed({ proposeDraft(msg) }, 1200)
+        draftBuf = msg
+        main.postDelayed({ retypeDraft(); showConfirm(msg) }, 1200)
       } else {
         setStatus("Send button not found — press it once.", C_ERR)
-        say(this, "I could not find the send button. Please press it once.", "सेंड बटन नहीं मिला। कृपया एक बार दबा दें।")
+        say(this, "I could not find the send button. Please press it once.",
+               "सेंड बटन नहीं मिला। कृपया एक बार दबा दें।")
         TaskRunner.onTaskDone(this, quiet = true)
       }
     }
@@ -274,7 +395,8 @@ class ArenaWebActivity : Activity() {
       if (watchOn) {
         watchOn = false
         setStatus("No reply detected — please check.", C_ERR)
-        say(this, "I could not detect a reply. Please check the screen.", "उत्तर का पता नहीं चला। कृपया स्क्रीन देख लें।")
+        say(this, "I could not detect a reply. Please check the screen.",
+               "उत्तर का पता नहीं चला। कृपया स्क्रीन देख लें।")
         TaskRunner.onTaskDone(this, quiet = true)
       }
     }
@@ -317,7 +439,6 @@ class ArenaWebActivity : Activity() {
     root.setBackgroundColor(Color.WHITE)
     val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 
-    /* top bar */
     val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.WHITE); setPadding(dp(8), dp(6), dp(8), dp(6)) }
     fun tb(label: String, cb: () -> Unit): Button = Button(this).apply {
       text = label; textSize = 14f; setAllCaps(false)
@@ -338,7 +459,6 @@ class ArenaWebActivity : Activity() {
     web.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
     col.addView(web)
 
-    /* status strip */
     val strip = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundColor(Color.parseColor("#F8F9FA")); setPadding(dp(14), dp(10), dp(14), dp(12)) }
     statusDot = View(this).apply {
       background = rounded(C_OK, 999)
@@ -352,7 +472,6 @@ class ArenaWebActivity : Activity() {
     col.addView(strip)
     root.addView(col, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
 
-    /* confirm card */
     confirmCard = LinearLayout(this).apply {
       orientation = LinearLayout.VERTICAL
       background = rounded(Color.WHITE, 24, Color.parseColor("#E8EAF0"))
@@ -382,7 +501,7 @@ class ArenaWebActivity : Activity() {
       background = rounded(Color.parseColor("#F1F3F4"), 999)
       setOnClickListener {
         confirmCard.visibility = View.GONE
-        setStatus("Cancelled.", C_ERR)
+        setStatus("Cancelled. The draft is saved.", C_OK)
         TaskRunner.onTaskDone(this@ArenaWebActivity, quiet = true)
       }
       layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { setMargins(dp(5), 0, 0, 0) }
