@@ -1587,6 +1587,7 @@ export class BoardEngine {
     (this.$("#thumbs") as HTMLElement).innerHTML = "";
     (this.$("#thumbs") as HTMLElement).classList.remove("show");
     this.$all("#docScroll .page-wrap, #docScroll .doc-html").forEach((n: HTMLElement) => n.remove());
+    this.setDocEmpty(false);
     this.htmlAnnot = null;
   }
 
@@ -2736,9 +2737,14 @@ export class BoardEngine {
          <button id="webToggle" class="web-toggle" type="button">Write on page</button>
          <a class="web-open" href="${this.esc(url)}" target="_blank" rel="noopener noreferrer">Open full page</a>
        </div>
-       <iframe class="web-frame" src="${this.esc(url)}" title="${this.esc(name)}" loading="lazy"></iframe>`,
+       <iframe class="web-frame" src="${this.esc(url)}" title="${this.esc(name)}" loading="lazy"
+          style="width:100%;height:calc(100vh - 230px);min-height:480px;border:0;border-radius:10px;background:#fff;display:block"></iframe>`,
       true
     );
+    const inner = this.$("#docHtmlBox .doc-html-inner") as HTMLElement | null;
+    if (inner) { inner.style.padding = "12px"; inner.style.lineHeight = "1.4"; }
+    const box = this.$("#docHtmlBox") as HTMLElement | null;
+    if (box) { box.style.width = "100%"; }
     const cv = this.htmlAnnot ? this.htmlAnnot.cv : null;
     if (cv) cv.style.pointerEvents = "none"; /* browse first; toggle to write */
     const btn = this.$("#webToggle") as HTMLElement | null;
