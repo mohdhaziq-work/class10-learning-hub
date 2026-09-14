@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "web-pane layout fix (empty card hidden, iframe full-height)",
+  lastCommit: "Smart Board overhaul: light splash, text color/bold, light graph plotter, slimmer bar, SEO JSON-LD",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "Smart Board UI now fully light: light loading splash (no black screen), light graph plotter canvas, text tool has color + bold, laser pointer has glow-pulse, bottom bar is a slim floating pill, Admin removed from top nav (footer only), /smart-board has SoftwareApplication + Breadcrumb JSON-LD.",
   ],
 
   pendingTasks: [
@@ -64,5 +65,7 @@ export const HANDOFF = {
     "2026-09-14: batch E — downloaded all 14 EduRev Class 10 Maths chapter PYQ pages, parsed 481 unique questions (MCQ options inline, assertion-reason, 2025-26 sections), merged + deduped; bank 373 -> 854. Pushed 52b916f.",
     "2026-09-14: old Google verification tags removed from site (user deleting old GSC property, switching to new email). Verification meta renders only if NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION set — paste new code or set env. Pushed edcd41b.",
     "2026-09-14: board 'web' doc kind — /smart-board?web=<https-url> frames an external page (EduRev chapter PYQs) in the doc pane with whiteboard split; write/browse toggle. Chapter pages + PYQ pages link to it for all 14 maths chapters. Note: EduRev content is FRAMED only (no X-Frame-Options), never copied; parsed bank holds only short CBSE question statements + option/result answers. Pushed c2f9a7f.",
+    "2026-09-14: web doc pane layout fix (empty-state card hidden, iframe full-height) 005ba25; new GSC tag H_6j6jPhsV6M2g4OBoeK4HERmggDtoEZG8kN6YxP-E live 54f5010.",
+    "2026-09-14: Smart Board overhaul — light splash loader (black #0b1020 gone), text tool color swatches + bold toggle (engine o.weight), graph plotter converted to light paper theme, laser pointer glow-pulse, bottom bar slim floating pill, Admin link removed from top nav (still in footer), /smart-board SEO: stronger metadata + SoftwareApplication + BreadcrumbList JSON-LD. Pushed 559b584.",
   ],
 };
