@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "edcd41b (old GSC tags removed; re-verify with new account)",
+  lastCommit: "new-account GSC tag live (H_6j6j...P-E)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
