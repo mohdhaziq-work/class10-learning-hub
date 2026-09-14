@@ -305,7 +305,7 @@ function safeFn(expr: string): (x: number, m: typeof Math) => number {
 /* ==========================================================================
    ENGINE CLASS
    ========================================================================== */
-interface PdfPage { num: number; wrap: HTMLElement; base: HTMLCanvasElement; annot: HTMLCanvasElement; actx: CanvasRenderingContext2D; rendered: boolean; dirty: boolean; rendering: boolean; scale: number }
+interface PdfPage { num: number; wrap: HTMLElement; base: HTMLCanvasElement; annot: HTMLCanvasElement; actx: CanvasRenderingContext2D; rendered: boolean; dirty: boolean; rendering: boolean; scale: number; cssScale: number }
 
 const LS_KEY = "sb-session-v2";
 const COLORS = ["#111827", "#ffffff", "#dc2626", "#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#ec4899", "#facc15", "#14b8a6", "#92400e", "#6b7280"];
@@ -1234,10 +1234,10 @@ export class BoardEngine {
     annot.className = "annot";
     wrap.appendChild(base); wrap.appendChild(annot);
     (this.$("#docScroll") as HTMLElement).appendChild(wrap);
-    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1 };
+    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1, cssScale: 1 };
     this.pages.push(pg);
     this.pageObserver?.observe(wrap);
-    this.wireAnnotCanvas(annot, n, () => pg.scale, null);
+    this.wireAnnotCanvas(annot, n, () => pg.cssScale, null);
   }
 
   private async renderPdfPage(pg: PdfPage) {
@@ -1245,14 +1245,17 @@ export class BoardEngine {
     pg.rendering = true; pg.dirty = false;
     try {
       const page = await this.pdfDoc.getPage(pg.num);
-      const scale = this.renderScale();
+      const css = this.renderScale();
+      const dpr = Math.min(2.5, window.devicePixelRatio || 1); /* crisp text on hi-DPI + projectors */
+      const scale = css * dpr;
       const vp = page.getViewport({ scale });
-      pg.scale = scale;
+      const cssVp = page.getViewport({ scale: css });
+      pg.scale = scale; pg.cssScale = css;
       pg.base.width = Math.floor(vp.width); pg.base.height = Math.floor(vp.height);
-      pg.base.style.width = vp.width + "px"; pg.base.style.height = vp.height + "px";
+      pg.base.style.width = cssVp.width + "px"; pg.base.style.height = cssVp.height + "px";
       pg.annot.width = Math.floor(vp.width); pg.annot.height = Math.floor(vp.height);
-      pg.annot.style.width = vp.width + "px"; pg.annot.style.height = vp.height + "px";
-      pg.wrap.style.width = vp.width + "px"; pg.wrap.style.height = vp.height + "px";
+      pg.annot.style.width = cssVp.width + "px"; pg.annot.style.height = cssVp.height + "px";
+      pg.wrap.style.width = cssVp.width + "px"; pg.wrap.style.height = cssVp.height + "px";
       await page.render({ canvasContext: pg.base.getContext("2d"), viewport: vp }).promise;
       pg.rendered = true;
       this.redrawAnnot(pg);

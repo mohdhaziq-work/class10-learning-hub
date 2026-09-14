@@ -1,0 +1,65 @@
+/* AI HANDOFF FILE — single source of truth for any AI agent continuing this project.
+   RULE: after completing ANY task in this repo, update this file (state, tasks, log)
+   and SKILL.md before finishing the session. Keep it factual and current. */
+
+export const HANDOFF = {
+  updated: "2026-09-14",
+  lastCommit: "2026-09-14 session: batch D + handoff + paper design",
+  repo: "github.com/mohdhaziq-work/class10-learning-hub",
+  branch: "main",
+  live: "https://class10-learning-hub.onrender.com",
+  stack: "Next.js 14 (app router) + TypeScript + Tailwind + pdfkit + qrcode; Firebase optional (local-first)",
+  deploy: "Render free plan via render.yaml (auto-deploy on push; if not, Manual Deploy -> Deploy latest commit)",
+
+  howToWork: [
+    "Read /home/user/SKILL.md FIRST — user's permanent rules live there (Hinglish replies, premium quality, zero emojis, English-only UI, light theme only, Render-only, free-only).",
+    "Read this page (app/(site)/ai/page.tsx renders lib/handoff.ts) for project state.",
+    "After your task: update lib/handoff.ts (state/log/lastCommit) + SKILL.md log, build, test, commit, push.",
+    "Commit identity: Mohd Haziq <mohdhaziq-work@users.noreply.github.com>. SSH key ~/.ssh/id_ed25519_class10 (set ~/.ssh/config Host github.com IdentityFile).",
+    "Always: npm run build must pass; curl-smoke key routes; emoji-scan (perl regexp) must be empty; no dark-theme additions.",
+  ],
+
+  userRulesSummary: [
+    "Replies to user in Hinglish; website content English only.",
+    "NO emojis anywhere on the website — icons only (components/ui/Icon.tsx). Math symbols OK.",
+    "Light theme ONLY — never add dark mode, dark: classes or theme toggles (Smart Board's own dark canvas is product, not theme).",
+    "Premium minimal Google/labs.google style: Inter + JetBrains Mono, monochrome + single blue #1a73e8.",
+    "Everything free (Render free + Firebase Spark optional). No Vercel.",
+    "Portfolio-level code: Next+TS+Tailwind+API routes+admin, like haziq-portfolio.",
+    "Maths is the main subject; Smart Board is the main feature; no flowcharts/mindmaps for Maths.",
+    "Responsive: phones, tablets, laptops, smart boards.",
+    "Verify before claiming done (build + curl + show results).",
+  ],
+
+  architecture: [
+    "app/(site) — public pages: home, subjects/[id], chapter/[s]/[g]/[c], pyq, pyq/maths, pyq/maths/[slug], admin.",
+    "app/smart-board — the Board product (lib/board/engine.ts is the big class; board.css at app/smart-board/board.css).",
+    "app/upload/[session] + app/api/board-upload + app/api/board-file — QR phone upload pipeline.",
+    "app/api/pyq/pdf — pdfkit-generated PYQ PDFs (DejaVu font in /fonts).",
+    "lib/syllabus.ts — 6 subjects, all chapters. lib/content/* — slides/notes/quiz + pyq banks (a,b,c,d).",
+    "lib/seo.ts + components/seo/JsonLd.tsx — canonical/OG/JSON-LD helpers. app/sitemap.ts + app/robots.ts.",
+    "lib/handoff.ts + app/(site)/ai/page.tsx — THIS handoff system (hidden, noindex).",
+  ],
+
+  currentState: [
+    "Site live on Render; SEO live: verification tags (two), canonical, OG, JSON-LD, sitemap with subjects+chapters+PYQ pages.",
+    "PYQ system: /pyq landing + /pyq/maths + 14 chapter slug pages (server-rendered board-paper style), PDF download, Smart Board file-viewer opening, marks filters (?marks=).",
+    "PYQ count after batch D: ~370 maths questions (2011-2026). Target: grow towards 2000+ in batches (see tasks).",
+    "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
+    "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
+    "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+  ],
+
+  pendingTasks: [
+    "PYQ depth: add batch E/F/G files (pyq-maths-e.ts ...) — ~300 questions per batch until 2000+ total; include Science/SST/English/Hindi PYQ pages later (same /pyq/<subject> pattern).",
+    "PYQ content quality rule: questions must be real board-style with year+marks+answer; never pad with generated junk; never claim counts that are not true (show PYQ_TOTAL).",
+    "Render deploy check after pushes (user does dashboard clicks; guide them).",
+    "Firebase keys still optional/unset — teacher sync off until user provides 6 keys.",
+    "Request indexing in Search Console for /pyq + /pyq/maths + chapter pages.",
+    "Keep updating this handoff file + SKILL.md after every session.",
+  ],
+
+  log: [
+    "2026-09-14: took over from a stalled session. Added batch D (~175 questions), board-paper redesign of chapter PYQ pages, DPR-crisp PDF rendering, hidden /ai handoff page + rule to update it after every task.",
+  ],
+};

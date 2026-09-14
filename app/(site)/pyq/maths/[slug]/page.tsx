@@ -37,12 +37,13 @@ export default function PyqChapterPage({
   const marksParam = Number(searchParams?.marks || 0);
   const marks = [1, 2, 3, 4, 5].includes(marksParam) ? marksParam : 0;
   const shown = marks ? all.filter((p) => p.m === marks) : all;
+  const totalMarks = all.reduce((a, p) => a + p.m, 0);
   const idx = PYQ_MATHS_SEO.findIndex((c) => c.key === ch.key);
   const prev = PYQ_MATHS_SEO[idx - 1];
   const next = PYQ_MATHS_SEO[idx + 1];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6">
       <JsonLd
         data={[
           {
@@ -67,7 +68,7 @@ export default function PyqChapterPage({
         ]}
       />
 
-      <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute mt-5 mb-4 flex-wrap">
+      <nav className="flex items-center gap-1.5 text-[13.5px] font-medium text-ink-mute mt-5 mb-5 flex-wrap">
         <Link href="/" className="flex items-center gap-1 hover:text-black transition"><Icon name="home" size={15} /> Home</Link>
         <Icon name="chevronRight" size={14} />
         <Link href="/pyq" className="hover:text-black transition">PYQs</Link>
@@ -77,94 +78,107 @@ export default function PyqChapterPage({
         <span className="text-ink font-semibold">Ch {ch.n}</span>
       </nav>
 
-      <div className="flex items-start justify-between gap-6 flex-wrap">
-        <div className="max-w-3xl">
-          <p className="eyebrow">{ch.unit} · CBSE Board Questions</p>
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mt-2">
-            Class 10 Maths Chapter {ch.n}: {ch.name} PYQs
-          </h1>
-          <p className="text-ink-soft mt-3 text-[15.5px] leading-relaxed">
-            {all.length} previous year questions with answers for {ch.name}. Filter by marks,
-            download the chapter PYQ PDF, or open it on the Smart Board for classroom practice.
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-dark text-[14px]">
-            <Icon name="fileText" size={16} /> Download PDF
-          </a>
-          <Link
-            href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} PYQs.pdf`)}`}
-            className="btn-g btn-g-white text-[14px]"
-          >
-            <Icon name="squarePen" size={16} /> Open in Board
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex gap-1.5 flex-wrap mt-6">
-        {[0, 1, 2, 3, 4, 5].map((m) => {
-          const count = m === 0 ? all.length : all.filter((p) => p.m === m).length;
-          const active = marks === m;
-          const href = m === 0 ? ch.path : `${ch.path}?marks=${m}`;
-          return (
-            <Link
-              key={m}
-              href={href}
-              className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition ${
-                active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-ink-mute border-slate-200 hover:border-slate-400"
-              }`}
-            >
-              {m === 0 ? `All ${count}` : `${m} mark${m > 1 ? "s" : ""} · ${count}`}
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="mt-6 grid gap-3 pb-8">
-        {shown.length === 0 && (
-          <div className="text-ink-mute text-sm border border-dashed border-slate-300 rounded-2xl p-6 text-center">
-            No {marks}-mark questions tagged in this chapter yet.
+      {/* ---------- board-paper sheet ---------- */}
+      <div className="qp-sheet">
+        <div className="qp-head">
+          <div className="qp-code">
+            <span>Mathematics (041)</span>
+            <span>Class X · Chapter {ch.n}</span>
           </div>
-        )}
-        {shown.map((p, i) => {
-          const qIndex = all.indexOf(p);
-          return (
-            <details key={`${ch.key}-${qIndex}`} className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 open:shadow-pop">
-              <summary className="cursor-pointer list-none">
-                <div className="flex items-start gap-3">
-                  <span className="w-7 h-7 rounded-xl bg-slate-900 text-white grid place-items-center text-[12.5px] font-extrabold flex-none mt-0.5">
-                    {qIndex + 1}
-                  </span>
-                  <div className="flex-1">
-                    <p className="text-[15px] leading-relaxed text-ink">{p.q}</p>
-                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{p.y}</span>
-                      <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-100">
-                        {p.m} mark{p.m > 1 ? "s" : ""}
-                      </span>
-                      <span className="text-[11px] font-bold text-ink-mute">Tap for answer</span>
-                    </div>
-                  </div>
+          <h1 className="qp-title">
+            {ch.name} — Previous Year Questions
+          </h1>
+          <div className="qp-meta">
+            <span>{all.length} questions</span>
+            <span className="qp-dot" />
+            <span>{totalMarks} marks total</span>
+            <span className="qp-dot" />
+            <span>CBSE 2011-2026</span>
+          </div>
+        </div>
+
+        <div className="qp-instructions">
+          <b>General instructions:</b>
+          <ol>
+            <li>All questions are previous year CBSE board questions; every question is compulsory in practice.</li>
+            <li>Marks against each question are tagged — practise with the same weightage.</li>
+            <li>Attempt on paper or on the Smart Board first, then open the answer to self-check.</li>
+            <li>Use the PDF download for offline, exam-style practice.</li>
+          </ol>
+        </div>
+
+        {/* marks filter */}
+        <div className="flex gap-1.5 flex-wrap">
+          {[0, 1, 2, 3, 4, 5].map((m) => {
+            const count = m === 0 ? all.length : all.filter((p) => p.m === m).length;
+            const active = marks === m;
+            const href = m === 0 ? ch.path : `${ch.path}?marks=${m}`;
+            return (
+              <Link
+                key={m}
+                href={href}
+                className={`px-3.5 py-1.5 rounded-full text-[12.5px] font-bold border transition ${
+                  active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-ink-mute border-slate-300 hover:border-slate-500"
+                }`}
+              >
+                {m === 0 ? `All · ${count}` : `${m} mark${m > 1 ? "s" : ""} · ${count}`}
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* questions */}
+        <div className="qp-list">
+          {shown.length === 0 && (
+            <div className="text-ink-mute text-sm border border-dashed border-slate-300 rounded-xl p-6 text-center">
+              No {marks}-mark questions tagged in this chapter yet.
+            </div>
+          )}
+          {shown.map((p) => {
+            const qIndex = all.indexOf(p);
+            return (
+              <article key={`${ch.key}-${qIndex}`} className="qp-q">
+                <div className="qp-qrow">
+                  <span className="qp-num">Q{qIndex + 1}.</span>
+                  <p className="qp-text">{p.q}</p>
+                  <span className="qp-marks">[{p.m}]</span>
                 </div>
-              </summary>
-              <div className="ml-10 mt-3 rounded-xl bg-slate-50 border border-slate-100 p-3.5 text-[14px] leading-relaxed text-ink">
-                <b className="text-[11px] font-mono uppercase tracking-[.14em] text-ink-mute block mb-1">Answer</b>
-                {p.ans}
-              </div>
-              <div className="ml-10 mt-3">
-                <Link
-                  href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}&n=${qIndex}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} Q${qIndex + 1}.pdf`)}`}
-                  className="text-[12px] font-bold px-3 py-1.5 rounded-full bg-slate-900 text-white hover:bg-slate-700 transition inline-flex items-center gap-1.5"
-                >
-                  <Icon name="squarePen" size={13} /> Solve on Board
-                </Link>
-              </div>
-            </details>
-          );
-        })}
+                <div className="qp-tags">
+                  <span className="qp-year">{p.y}</span>
+                  <details className="qp-ans">
+                    <summary>Answer</summary>
+                    <div className="qp-ans-body">{p.ans}</div>
+                  </details>
+                  <Link
+                    href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}&n=${qIndex}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} Q${qIndex + 1}.pdf`)}`}
+                    className="qp-board"
+                  >
+                    <Icon name="squarePen" size={13} /> Solve on Board
+                  </Link>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="qp-foot">
+          <span>End of Chapter {ch.n} question set</span>
+          <div className="flex gap-2">
+            <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-dark text-[13.5px]">
+              <Icon name="fileText" size={16} /> Download PDF
+            </a>
+            <Link
+              href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} PYQs.pdf`)}`}
+              className="btn-g btn-g-white text-[13.5px]"
+            >
+              <Icon name="squarePen" size={16} /> Open in Board
+            </Link>
+          </div>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3 border-t border-slate-200 py-6 mb-10 flex-wrap">
+      {/* prev / next */}
+      <div className="flex items-center justify-between gap-3 py-8 flex-wrap">
         {prev ? (
           <Link href={prev.path} className="btn-g btn-g-white text-[14px]">
             <Icon name="chevronLeft" size={16} /> Ch {prev.n}: {prev.name}

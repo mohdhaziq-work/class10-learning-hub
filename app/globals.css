@@ -65,3 +65,31 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
   body { background: #fff; }
   .card-g, .slide-stage { box-shadow: none; break-inside: avoid; }
 }
+
+/* ---------- board paper (PYQ question sheet) ---------- */
+.qp-sheet{background:#fff;border:1px solid #d8dde3;outline:1px solid #eef1f4;outline-offset:4px;border-radius:6px;padding:28px 26px 24px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 12px 32px -16px rgba(16,24,40,.12)}
+@media (min-width:640px){.qp-sheet{padding:36px 40px 28px}}
+.qp-head{border-bottom:2px solid #0f172a;padding-bottom:16px;text-align:center}
+.qp-code{display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5f6368;margin-bottom:12px}
+.qp-title{font-size:22px;font-weight:800;letter-spacing:-.01em;line-height:1.2}
+@media (min-width:640px){.qp-title{font-size:27px}}
+.qp-meta{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;font-family:var(--font-mono);font-size:11.5px;font-weight:600;color:#5f6368}
+.qp-dot{width:3px;height:3px;border-radius:99px;background:#9aa4af}
+.qp-instructions{margin:16px 0 18px;padding:12px 16px;border:1px dashed #cfd6dd;border-radius:8px;font-size:13px;line-height:1.65;color:#3c4043}
+.qp-instructions b{display:block;margin-bottom:4px;color:#0f172a}
+.qp-instructions ol{list-style:decimal;margin-left:18px}
+.qp-list{margin-top:16px;border-top:1px solid #e3e8ee}
+.qp-q{padding:16px 2px 14px;border-bottom:1px solid #e3e8ee}
+.qp-qrow{display:flex;gap:10px;align-items:flex-start}
+.qp-num{font-family:var(--font-mono);font-weight:800;font-size:13px;color:#0f172a;flex:none;padding-top:2px}
+.qp-text{flex:1;font-size:15px;line-height:1.7;color:#111827}
+.qp-marks{font-family:var(--font-mono);font-weight:700;font-size:12.5px;color:#1a73e8;flex:none;padding-top:3px}
+.qp-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0 32px}
+.qp-year{font-family:var(--font-mono);font-size:11px;font-weight:700;color:#5f6368;border:1px solid #d8dde3;border-radius:99px;padding:3px 10px}
+.qp-ans summary{cursor:pointer;font-size:12px;font-weight:800;color:#0f172a;border:1px solid #cfd6dd;border-radius:99px;padding:4px 12px;list-style:none;display:inline-block}
+.qp-ans summary:hover{border-color:#0f172a}
+.qp-ans[open] summary{background:#0f172a;color:#fff;border-color:#0f172a}
+.qp-ans-body{margin-top:8px;padding:10px 14px;border-left:3px solid #1a73e8;background:#f6f8fa;border-radius:0 8px 8px 0;font-size:13.5px;line-height:1.7;color:#111827}
+.qp-board{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#1a73e8;border:1px solid #d2e3fc;background:#f0f6ff;border-radius:99px;padding:4px 12px}
+.qp-board:hover{background:#e1edff}
+.qp-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:14px;border-top:2px solid #0f172a;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5f6368}
