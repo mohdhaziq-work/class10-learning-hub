@@ -145,6 +145,33 @@ function drawShape(ctx: CanvasRenderingContext2D, o: BoardObject) {
   else if (s === "tick") { ctx.lineWidth = Math.max(o.size || 4, 5); ctx.moveTo(x + w * 0.1, y + h * 0.55); ctx.lineTo(x + w * 0.42, y + h * 0.85); ctx.lineTo(x + w * 0.95, y + h * 0.08); ctx.stroke(); }
   else if (s === "cross") { ctx.moveTo(x, y); ctx.lineTo(x + w, y + h); ctx.moveTo(x + w, y); ctx.lineTo(x, y + h); ctx.stroke(); }
   else if (s === "bracket") { bracketPath(ctx, x, y, w, h); ctx.stroke(); }
+  else if (s === "pentagon" || s === "hexagon") {
+    const n = s === "pentagon" ? 5 : 6, cx = x + w / 2, cy = y + h / 2, r = Math.max(Math.min(w, h) / 2, 3);
+    for (let k = 0; k <= n; k++) { const a = -Math.PI / 2 + (k * 2 * Math.PI) / n; const px = cx + r * Math.cos(a), py = cy + r * Math.sin(a) * (h / w || 1); k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.closePath(); finish();
+  }
+  else if (s === "semicircle") { ctx.arc(x + w / 2, y + h, Math.max(w / 2, 2), Math.PI, 0); ctx.closePath(); finish(); }
+  else if (s === "cube") {
+    const d = Math.min(w, h) * 0.32;
+    ctx.rect(x, y + d, w - d, h - d); ctx.moveTo(x + d, y + d); ctx.lineTo(x + d, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + h - d); ctx.lineTo(x + w - d, y + h - d);
+    ctx.moveTo(x + w - d, y + d); ctx.lineTo(x + w, y);
+    ctx.stroke();
+  }
+  else if (s === "cylinder") {
+    const ry = Math.max(h * 0.14, 4);
+    ctx.ellipse(x + w / 2, y + ry, w / 2, ry, 0, 0, 7);
+    ctx.moveTo(x, y + ry); ctx.lineTo(x, y + h - ry);
+    ctx.moveTo(x + w, y + ry); ctx.lineTo(x + w, y + h - ry);
+    ctx.ellipse(x + w / 2, y + h - ry, w / 2, ry, 0, 0, Math.PI);
+    ctx.stroke();
+  }
+  else if (s === "cone") {
+    const ry = Math.max(h * 0.14, 4);
+    ctx.moveTo(x + w / 2, y); ctx.lineTo(x, y + h - ry); ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w, y + h - ry);
+    ctx.ellipse(x + w / 2, y + h - ry, w / 2, ry, 0, 0, Math.PI);
+    ctx.stroke();
+  }
+  else if (s === "sphere") { const r = Math.max(Math.min(w, h) / 2, 2); ctx.arc(x + w / 2, y + h / 2, r, 0, 7); ctx.ellipse(x + w / 2, y + h / 2, r, r * 0.35, 0, 0, 7); ctx.stroke(); }
 }
 /* ink pen: velocity-shaped width — fast = thin, slow = thick (deterministic from points) */
 function inkWidths(o: BoardObject): number[] {
@@ -331,8 +358,9 @@ export class BoardEngine {
   private customColors: string[] = [];
   private erasedThisDrag = false;
   private layout: "doc" | "split" | "board" = "split";
+  private docReadOnly = true; /* left pane is view-only; annotation lives on the whiteboard */
   private docZoom = 1; private boardZoom = 1; private boardPan = { x: 40, y: 40 };
-  private bg: BgKind = "graph"; private bgColor = ""; private textSize = 34; private stickyColor = "#fef08a";
+  private bg: BgKind = "graph"; private bgColor = ""; private gridScale = 1; private textSize = 34; private stickyColor = "#fef08a";
   private active: { kind: "board" | "doc"; page: number | null } = { kind: "board", page: null };
 
   /* stores */
@@ -380,7 +408,6 @@ export class BoardEngine {
   /* laser trail */
   private trail: { x: number; y: number; t: number }[] = [];
   private trailCv!: HTMLCanvasElement; private trailCtx!: CanvasRenderingContext2D;
-  private laserDot!: HTMLElement;
 
   /* widgets */
   private timerInt: ReturnType<typeof setInterval> | null = null;
@@ -393,9 +420,10 @@ export class BoardEngine {
     if (opts.layout === "doc" || opts.layout === "split" || opts.layout === "board") this.layout = opts.layout;
     if (opts.bg && ["white", "black", "grid", "graph", "ruled", "dotted"].includes(opts.bg)) this.bg = opts.bg as BgKind;
     try {
-      const saved = JSON.parse(localStorage.getItem("sb-bg-prefs") || "{}") as { bg?: BgKind; color?: string };
+      const saved = JSON.parse(localStorage.getItem("sb-bg-prefs") || "{}") as { bg?: BgKind; color?: string; grid?: number };
       if (saved.bg && !opts.bg) this.bg = saved.bg;
       if (saved.color) this.bgColor = saved.color;
+      if (typeof saved.grid === "number" && saved.grid >= 50 && saved.grid <= 200) this.gridScale = saved.grid / 100;
     } catch { /* first run */ }
 
     (pdfjsLib as any).GlobalWorkerOptions.workerSrc =
@@ -406,7 +434,6 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.lctx = this.boardLive.getContext("2d")!;
-    this.laserDot = this.$("#laser");
     this.trailCv = document.createElement("canvas");
     this.trailCv.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:149";
     document.body.appendChild(this.trailCv);
@@ -445,7 +472,6 @@ export class BoardEngine {
     if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
     else this.refreshEmpty();
     this.sizeTrail();
-    this.laserLoop();
     const ro = new ResizeObserver(() => this.sizeBoard());
     ro.observe(this.boardScroll);
     this.cleanups.push(() => ro.disconnect());
@@ -511,7 +537,7 @@ export class BoardEngine {
     }));
   }
   private padCommand(c: string, v?: any) {
-    if (["pen", "highlighter", "eraser", "select", "pan", "laser"].includes(c)) { this.setTool(c); this.toast("Phone pad: " + c); }
+    if (["pen", "highlighter", "eraser", "select", "pan"].includes(c)) { this.setTool(c); this.toast("Phone pad: " + c); }
     else if (c === "color") { this.color = String(v); this.syncPenPop(); this.saveTools(); }
     else if (c === "size") { this.size = Math.min(40, Math.max(1, +v || 4)); this.syncPenPop(); this.saveTools(); }
     else if (c === "key") {
@@ -666,6 +692,7 @@ export class BoardEngine {
     return this.boardStore;
   }
   private setActive(kind: "board" | "doc", page: number | null) {
+    if (this.docReadOnly) { kind = "board"; page = null; }
     this.active = { kind, page };
     (this.$("#targetLbl") as HTMLElement).innerHTML = kind === "doc" ? `<span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:#22c55e;margin-right:6px"></span>Page ${page}` : `<span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:#a855f7;margin-right:6px"></span>Board`;
     this.$all(".pane-head").forEach((h: HTMLElement) => (h.style.boxShadow = ""));
@@ -818,7 +845,7 @@ export class BoardEngine {
   }
   private drawBoardPattern(ctx: CanvasRenderingContext2D, z: number, px: number, py: number) {
     ctx.save(); ctx.lineWidth = 1;
-    const step = (this.bg === "graph" ? 28 : this.bg === "grid" ? 44 : this.bg === "ruled" ? 36 : 30) * z;
+    const step = (this.bg === "graph" ? 28 : this.bg === "grid" ? 44 : this.bg === "ruled" ? 36 : 30) * z * this.gridScale;
     if (this.bg === "grid" || this.bg === "graph") {
       ctx.strokeStyle = this.bg === "graph" ? "#bfdbfe" : "#e2e8f0";
       ctx.beginPath();
@@ -987,8 +1014,6 @@ export class BoardEngine {
       } else if (phase === "up") this.erasedThisDrag = false;
       return;
     }
-    if (tool === "laser") return;
-    if (tool === "spotlight") { if (phase !== "up" && e) this.moveSpot(e.clientX, e.clientY); return; }
     if (tool === "text" || tool === "sticky") {
       if (phase === "down" && w) { this.pendingAnchor = { surface: "board", x: w.x, y: w.y }; this.openModal(tool === "text" ? "mText" : "mSticky"); }
       return;
@@ -1314,6 +1339,7 @@ export class BoardEngine {
   }
 
   private wireAnnotCanvas(canvas: HTMLCanvasElement, pageNum: number, scaleFn: (() => number) | null, zoomCssFn: (() => number) | null) {
+    if (this.docReadOnly) { canvas.style.display = "none"; return; }
     let drawing = false, selDrag: { sx: number; sy: number } | null = null;
     let erasing = false, erasedAny = false;
     let lasso: { x: number; y: number }[] | null = null;
@@ -1329,7 +1355,7 @@ export class BoardEngine {
       const p = this.annotPos(canvas, e, sc, zc);
       const store = this.docStore(pageNum);
       this.hidePops();
-      if (this.tool === "pan" || this.tool === "laser") return;
+      if (this.tool === "pan") return;
       if (this.tool === "select") {
         const hit = hitTest(store.objects, p.x, p.y);
         this.selected = hit ? { surface: "doc", page: pageNum, obj: hit.obj } : null;
@@ -2018,10 +2044,8 @@ export class BoardEngine {
     }
     this.tool = t;
     this.$all(".tool[data-tool]").forEach((b: HTMLElement) => b.classList.toggle("on", b.dataset.tool === t));
-    const sp = this.$("#spotOverlay") as HTMLElement | null;
-    if (sp && t !== "spotlight") sp.style.display = "none";
-    (this.$("#toolShapes") as HTMLElement).classList.toggle("on", !["select", "pan", "pen", "highlighter", "eraser", "text", "sticky", "laser"].includes(t));
-    this.boardCanvas.style.cursor = t === "pan" ? "grab" : t === "select" ? "default" : t === "laser" ? "none" : "crosshair";
+    (this.$("#toolShapes") as HTMLElement).classList.toggle("on", !["select", "pan", "pen", "highlighter", "eraser", "text", "sticky"].includes(t));
+    this.boardCanvas.style.cursor = t === "pan" ? "grab" : t === "select" ? "default" : "crosshair";
     this.hidePops();
     this.updateBrushRing();
   }
@@ -2175,6 +2199,10 @@ export class BoardEngine {
       this.bgColor = def[this.bg] || "#ffffff"; this.syncBgSwatches(); this.saveBgPrefs();
       this.renderBoard(); this.scheduleSave();
     };
+    const gIn = this.$("#gridSize") as HTMLInputElement | null;
+    if (gIn) gIn.oninput = () => { this.gridScale = Math.min(2, Math.max(0.5, (+gIn.value || 100) / 100)); this.saveBgPrefs(); this.syncBgSwatches(); this.renderBoard(); };
+    const cr = this.$("#btnCanvasReset") as HTMLElement | null;
+    if (cr) cr.onclick = () => { this.boardZoom = 1; this.boardPan = { x: 40, y: 40 }; this.renderBoard(); this.toast("Canvas view reset"); };
     this.wireBgSwatches(); this.syncBgSwatches();
 
     this.$all("#layoutGroup .sb-btn").forEach((b: HTMLElement) => (b.onclick = () => this.setLayout((b as HTMLButtonElement).dataset.layout as "doc" | "split" | "board")));
@@ -2206,7 +2234,7 @@ export class BoardEngine {
   }
 
   private saveBgPrefs() {
-    try { localStorage.setItem("sb-bg-prefs", JSON.stringify({ bg: this.bg, color: this.bgColor })); } catch { /* private mode */ }
+    try { localStorage.setItem("sb-bg-prefs", JSON.stringify({ bg: this.bg, color: this.bgColor, grid: Math.round(this.gridScale * 100) })); } catch { /* private mode */ }
   }
   private wireBgSwatches() {
     const cols = ["#ffffff", "#fffef5", "#eef4ff", "#eefaf0", "#fff0f3", "#f5f0ff", "#0d1526"];
@@ -2222,6 +2250,8 @@ export class BoardEngine {
   }
   private syncBgSwatches() {
     this.$all("#bgColors .sw").forEach((x) => x.classList.toggle("on", (x as HTMLElement).dataset.c === this.bgColor));
+    const g = this.$("#gridSize") as HTMLInputElement | null;
+    if (g) { g.value = String(Math.round(this.gridScale * 100)); const v = this.$("#gridVal"); if (v) v.textContent = Math.round(this.gridScale * 100) + "%"; }
   }
 
   /* ---------- whiteboard pages ---------- */
@@ -2294,29 +2324,9 @@ export class BoardEngine {
      LASER
      ========================================================================== */
   private sizeTrail() { this.trailCv.width = window.innerWidth; this.trailCv.height = window.innerHeight; }
-  private laserLoop() {
-    if (this.destroyed) return;
-    /* sleep when nothing to draw — a permanent full-screen clear at 60fps costs real GPU */
-    if (!this.trail.length) { setTimeout(() => this.laserLoop(), 100); return; }
-    this.trailCtx.clearRect(0, 0, this.trailCv.width, this.trailCv.height);
-    const now = performance.now();
-    this.trail = this.trail.filter((p) => now - p.t < 700);
-    this.trail.forEach((p) => {
-      const a = 1 - (now - p.t) / 700;
-      this.trailCtx.globalAlpha = a;
-      this.trailCtx.fillStyle = "#ef4444";
-      this.trailCtx.beginPath(); this.trailCtx.arc(p.x, p.y, 5 * a + 2, 0, 7); this.trailCtx.fill();
-    });
-    this.trailCtx.globalAlpha = 1;
-    requestAnimationFrame(() => this.laserLoop());
-  }
+
   private wireLaser() {
     this.on(window, "pointermove", (e: PointerEvent) => {
-      if (this.tool === "spotlight") this.moveSpot(e.clientX, e.clientY);
-      else { const sp = this.$("#spotOverlay") as HTMLElement | null; if (sp && sp.style.display !== "none") sp.style.display = "none"; }
-      if (this.tool !== "laser") { this.laserDot.style.display = "none"; return; }
-      this.laserDot.style.display = "block";
-      this.laserDot.style.left = e.clientX + "px"; this.laserDot.style.top = e.clientY + "px";
       if (e.buttons) this.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
     });
     this.on(window, "pointerdown", (e: PointerEvent) => {
@@ -2855,7 +2865,6 @@ export class BoardEngine {
     this.mountHtmlDoc(
       `<div class="web-bar">
          <span>Source: ${this.esc(name)}</span>
-         <button id="webToggle" class="web-toggle" type="button">Write on page</button>
          <a class="web-open" href="${this.esc(url)}" target="_blank" rel="noopener noreferrer">Open full page</a>
        </div>
        <iframe class="web-frame" src="${this.webSrc(url)}" title="${this.esc(name)}" loading="lazy"
@@ -2866,17 +2875,6 @@ export class BoardEngine {
     if (inner) { inner.style.padding = "12px"; inner.style.lineHeight = "1.4"; }
     const box = this.$("#docHtmlBox") as HTMLElement | null;
     if (box) { box.style.width = "100%"; }
-    const cv = this.htmlAnnot ? this.htmlAnnot.cv : null;
-    if (cv) cv.style.pointerEvents = "none"; /* browse first; toggle to write */
-    const btn = this.$("#webToggle") as HTMLElement | null;
-    if (btn) btn.onclick = () => {
-      if (!this.htmlAnnot) return;
-      const toWrite = this.htmlAnnot.cv.style.pointerEvents === "none";
-      this.htmlAnnot.cv.style.pointerEvents = toWrite ? "" : "none";
-      btn.textContent = toWrite ? "Scroll / use page" : "Write on page";
-      btn.classList.toggle("on", toWrite);
-      this.toast(toWrite ? "Write mode — pen works over the page" : "Browse mode — scroll the page");
-    };
     if (this.layout === "board") this.setLayout("split");
   }
   /* ---------- phone upload via QR ---------- */
@@ -2982,9 +2980,34 @@ export class BoardEngine {
     this.wireWidget("toolRuler", "ruler");
     this.wireWidget("toolProtractor", "protractor");
     const pro = this.$("#protractor") as HTMLElement;
-    this.on(pro, "dblclick", () => {
-      this.proAngle = (this.proAngle + 15) % 360;
-      pro.style.transform = `rotate(${this.proAngle}deg)`;
+    const applyPro = () => { pro.style.transform = `rotate(${this.proAngle}deg)`; };
+    this.on(pro, "dblclick", () => { this.proAngle = (this.proAngle + 15) % 360; applyPro(); });
+    this.on(pro, "wheel", (e: WheelEvent) => {
+      e.preventDefault();
+      const snap = (this.$("#proSnap") as HTMLInputElement | null)?.checked !== false;
+      const d = snap ? 15 : 1;
+      this.proAngle = (this.proAngle + (e.deltaY < 0 ? d : -d) + 360) % 360;
+      const inp = this.$("#proAngleIn") as HTMLInputElement | null; if (inp) inp.value = String(this.proAngle);
+      applyPro();
+    }, { passive: false } as AddEventListenerOptions);
+    const inp = this.$("#proAngleIn") as HTMLInputElement | null;
+    if (inp) inp.onchange = () => { this.proAngle = ((+inp.value || 0) % 360 + 360) % 360; applyPro(); };
+    /* ruler: wheel = rotate, drag right edge = resize */
+    const ruler = this.$("#ruler") as HTMLElement;
+    let rrot = 0;
+    this.on(ruler, "wheel", (e: WheelEvent) => {
+      e.preventDefault();
+      rrot = (rrot + (e.deltaY < 0 ? 5 : -5) + 360) % 360;
+      ruler.style.transform = `rotate(${rrot}deg)`;
+    }, { passive: false } as AddEventListenerOptions);
+    this.on(ruler, "pointerdown", (e: PointerEvent) => {
+      const r = ruler.getBoundingClientRect();
+      if (e.clientX < r.right - 26) return; /* body = move (handled by wireWidget) */
+      e.stopPropagation();
+      const sw = ruler.offsetWidth, sx = e.clientX;
+      const mv = (ev: PointerEvent) => { ruler.style.width = Math.max(220, sw + ev.clientX - sx) + "px"; };
+      const up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up);
     });
   }
   private wireWidget(btnId: string, wId: string) {

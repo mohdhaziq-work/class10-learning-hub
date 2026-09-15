@@ -494,3 +494,18 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
   .dock-sep{height:28px}
   .menu-grid{grid-template-columns:repeat(5,44px)}
 }
+
+/* ================= PRO TOOLS v2 (2026-09-16) ================= */
+/* protractor precision chip */
+.measure-chip{position:absolute;top:6px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;
+  background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 8px;font-size:11px;color:var(--muted);
+  box-shadow:0 4px 14px rgba(15,23,42,.15);z-index:5}
+.measure-chip input[type=number]{width:52px;border:1px solid var(--line);border-radius:7px;padding:3px 5px;font-size:12px;
+  color:var(--ink);background:var(--panel2)}
+.measure-chip label{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-weight:600}
+#protractor{overflow:visible}
+/* settings hub */
+.set-lbl{display:block;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:10px 0 5px}
+.set-seg.wide select{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:8px 10px;font-size:13px;color:var(--ink)}
+#mSettings input[type=range]{width:100%}
+#mSettings .sw{width:26px;height:26px;border-radius:8px;border:1px solid #d7dde6}

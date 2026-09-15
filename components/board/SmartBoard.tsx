@@ -91,7 +91,6 @@ export default function SmartBoard() {
             <div id="shadeHint">Screen hidden — drag the bar to reveal, double-tap to close</div>
             <div id="shadeHandle" title="Drag to reveal"><span /></div>
           </div>
-          <div id="spotOverlay" style={{ display: "none" }} />
 
           <section className="pane" id="paneDoc">
             <div className="pane-head"><span className="dot" style={{ background: "#188038" }} /> Document <span className="pane-sub" id="fileName">no file open — use Files on the left</span></div>
@@ -116,7 +115,14 @@ export default function SmartBoard() {
             <div className="pane-body">
               <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><div id="brushRing" /></div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
-              <div id="protractor" className="measure"><svg id="protractorSvg" width="260" height="150" /></div>
+              <div id="protractor" className="measure">
+                <svg id="protractorSvg" width="260" height="150" />
+                <div className="measure-chip" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                  <input id="proAngleIn" type="number" min={0} max={359} step={15} defaultValue={0} title="Exact angle in degrees" />
+                  <span>deg</span>
+                  <label title="Snap rotation to 15-degree steps"><input type="checkbox" id="proSnap" defaultChecked /> 15°</label>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -141,18 +147,12 @@ export default function SmartBoard() {
         <div className="dock-sep" />
         <div className="dock-cluster">
           {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
-          {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
           <button className="tool on" data-tool="pen" title="Pen — 3 tip types, any color, any size (P)">
             <Icon name="pencil" size={20} /><small>PEN</small>
             <span className="tool-dot" id="penColorDot" style={{ background: "#dc2626" }} />
           </button>
-          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
           {tool("eraser", "eraser", "ERASE", "Eraser — stroke / pixel / area (E)")}
-          <button className="tool" id="toolShapes" title="Shapes (L/R/C...)"><Icon name="shapes" size={20} /><small>SHAPE</small></button>
-          {tool("text", "type", "TEXT", "Text (T)")}
-          {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
-          {tool("laser", "circleDot", "LASER", "Laser pointer")}
-          <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={20} /><small>MATHS</small></button>
+          <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={20} /><small>CLEAR</small></button>
           <div className="dock-sep" />
           <button className="tool half" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={18} /></button>
           <button className="tool half" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={18} /></button>
@@ -175,17 +175,6 @@ export default function SmartBoard() {
             <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
             <span className="pg" id="pgLbl">– / –</span>
             <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
-          </div>
-          <div className="bb-group">Board&nbsp;
-            <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
-              <option value="white">White</option>
-              <option value="black">Blackboard</option>
-              <option value="grid">Grid</option>
-              <option value="graph">Graph (Maths)</option>
-              <option value="ruled">Ruled</option>
-              <option value="dotted">Dotted</option>
-            </select>
-            <div className="swatches" id="bgColors" title="Board background color" style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6 }} />
           </div>
         </div>
       </footer>
@@ -266,6 +255,13 @@ export default function SmartBoard() {
           <button data-shape="tick" title="Tick"><Icon name="check" size={20} /></button>
           <button data-shape="cross" title="Cross"><Icon name="x" size={20} /></button>
           <button data-shape="bracket" title="Curly bracket" style={{ fontWeight: 800 }}>{"{}"}</button>
+          <button data-shape="pentagon" title="Pentagon"><Icon name="pentagon" size={20} /></button>
+          <button data-shape="hexagon" title="Hexagon"><Icon name="hexagon" size={20} /></button>
+          <button data-shape="semicircle" title="Semicircle"><Icon name="semicircle" size={20} /></button>
+          <button data-shape="cube" title="Cube (3D)"><Icon name="box" size={20} /></button>
+          <button data-shape="cylinder" title="Cylinder (3D)"><Icon name="cylinder" size={20} /></button>
+          <button data-shape="cone" title="Cone (3D)"><Icon name="cone" size={20} /></button>
+          <button data-shape="sphere" title="Sphere (3D)"><Icon name="sphere" size={20} /></button>
         </div>
         <h5 style={{ marginTop: 12 }}>Color &amp; style</h5>
         <div className="color-grid ten" id="shapeColorGrid" />
@@ -287,11 +283,15 @@ export default function SmartBoard() {
       <div className="pop" id="menuPop">
         <h5>More tools</h5>
         <div className="menu-grid">
-          <button className="tool" data-tool="spotlight" title="Spotlight — dim everything except where you point (O)"><Icon name="sun" size={20} /><small>SPOT</small></button>
+          {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
+          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
+          <button className="tool" id="toolShapes" title="Advanced shapes — 2D + 3D"><Icon name="shapes" size={20} /><small>SHAPE</small></button>
+          {tool("text", "type", "TEXT", "Text (T)")}
+          {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
+          <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={20} /><small>MATHS</small></button>
+          <button className="tool" id="toolRuler" title="Ruler — drag, wheel to rotate, edge to resize"><Icon name="ruler" size={20} /><small>SCALE</small></button>
+          <button className="tool" id="toolProtractor" title="Protractor — precise angles, 15-degree snap"><Icon name="protractor" size={20} /><small>ANGLE</small></button>
           <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={20} /><small>SHADE</small></button>
-          <button className="tool" id="toolRuler" title="Ruler — drag to measure"><Icon name="ruler" size={20} /><small>RULER</small></button>
-          <button className="tool" id="toolProtractor" title="Protractor — drag to measure angles"><Icon name="protractor" size={20} /><small>ANGLE</small></button>
-          <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={20} /><small>CLEAR</small></button>
           <button className="tool" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={20} /><small>PAGES</small></button>
           <button className="tool" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={20} /><small>TEMPL</small></button>
           <button className="tool" id="btnReplay" title="Replay — watch the board build itself"><Icon name="rotateCcw" size={20} /><small>REPLAY</small></button>
@@ -460,8 +460,28 @@ export default function SmartBoard() {
           <div className="set-seg"><button id="setRailL" className="on">Left</button><button id="setRailR">Right</button></div>
         </div>
 
+        <h5 className="set-head">Board canvas</h5>
+        <label className="set-lbl">Surface style</label>
+        <div className="set-seg wide" id="bgSeg">
+          <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
+            <option value="white">Plain</option>
+            <option value="black">Blackboard</option>
+            <option value="grid">Grid</option>
+            <option value="graph">Graph</option>
+            <option value="ruled">Ruled</option>
+            <option value="dotted">Dots</option>
+          </select>
+        </div>
+        <label className="set-lbl">Canvas color</label>
+        <div className="swatches" id="bgColors" style={{ display: "flex", gap: 7, flexWrap: "wrap" }} />
+        <label className="set-lbl">Grid size <b id="gridVal">100%</b></label>
+        <input type="range" id="gridSize" min={50} max={200} step={5} defaultValue={100} />
+        <div className="set-row" style={{ marginTop: 10 }}>
+          <span>Reset canvas view <span className="hint">zoom 100% and recenter</span></span>
+          <button className="mbtn" id="btnCanvasReset" type="button"><Icon name="refreshCw" size={14} /> Reset</button>
+        </div>
+
         <h5 className="set-head">Board &amp; data</h5>
-        <div className="set-row"><span>Board background <span className="hint">switch in the bottom bar</span></span><Icon name="layoutGrid" size={17} /></div>
         <div className="set-row"><span>Auto-save <span className="hint">every change is saved on this device</span></span><span className="badge-on"><Icon name="check" size={13} /> ON</span></div>
         <div className="set-row"><span>Export / backup <span className="hint">PNG, print, session JSON</span></span><Icon name="download" size={17} /></div>
 
@@ -541,7 +561,6 @@ export default function SmartBoard() {
       </div></div>
 
       <div className="sb-toast" id="sbToast" />
-      <div id="laser" />
     </div>
   );
 }

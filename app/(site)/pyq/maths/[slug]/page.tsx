@@ -78,6 +78,27 @@ export default function PyqChapterPage({
         <span className="text-ink font-semibold">Ch {ch.n}</span>
       </nav>
 
+      {/* ---------- sticky action bar — launch the board without scrolling ---------- */}
+      <div className="qp-actions">
+        {eduRevBoardHref(ch.n, ch.name) && (
+          <Link href={eduRevBoardHref(ch.n, ch.name)!} className="btn-g btn-g-dark text-[13.5px]">
+            <Icon name="squarePen" size={16} /> Open in Board with EduRev
+          </Link>
+        )}
+        <Link
+          href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} PYQs.pdf`)}`}
+          className="btn-g btn-g-white text-[13.5px]"
+        >
+          <Icon name="squarePen" size={16} /> Open in Board
+        </Link>
+        <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-white text-[13.5px]">
+          <Icon name="fileText" size={16} /> Download PDF
+        </a>
+        <span className="ml-auto hidden sm:flex items-center gap-1.5 text-[12px] font-semibold text-ink-mute">
+          <Icon name="trophy" size={14} /> {all.length} questions · CBSE 2011-2026
+        </span>
+      </div>
+
       {/* ---------- board-paper sheet ---------- */}
       <div className="qp-sheet">
         <div className="qp-head">
@@ -163,22 +184,6 @@ export default function PyqChapterPage({
 
         <div className="qp-foot">
           <span>End of Chapter {ch.n} question set</span>
-          <div className="flex gap-2">
-            {eduRevBoardHref(ch.n, ch.name) && (
-            <Link href={eduRevBoardHref(ch.n, ch.name)!} className="btn-g btn-g-dark text-[13.5px]">
-              <Icon name="squarePen" size={16} /> EduRev PYQs + Whiteboard
-            </Link>
-          )}
-          <a href={`/api/pyq/pdf?ch=${ch.key}&dl=1`} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-white text-[13.5px]">
-              <Icon name="fileText" size={16} /> Download PDF
-            </a>
-            <Link
-              href={`/smart-board?pdf=${encodeURIComponent(`/api/pyq/pdf?ch=${ch.key}`)}&name=${encodeURIComponent(`Class 10 Maths Ch ${ch.n} PYQs.pdf`)}`}
-              className="btn-g btn-g-white text-[13.5px]"
-            >
-              <Icon name="squarePen" size={16} /> Open in Board
-            </Link>
-          </div>
         </div>
       </div>
 

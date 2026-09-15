@@ -93,3 +93,21 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 .qp-board{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#1a73e8;border:1px solid #d2e3fc;background:#f0f6ff;border-radius:99px;padding:4px 12px}
 .qp-board:hover{background:#e1edff}
 .qp-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:20px;padding-top:14px;border-top:2px solid #0f172a;font-family:var(--font-mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5f6368}
+
+/* ===== PYQ premium cards + sticky action bar (2026-09-16) ===== */
+.qp-actions{position:sticky;top:66px;z-index:30;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 12px;margin:0 0 14px;background:rgba(255,255,255,.86);backdrop-filter:blur(10px);
+  border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.08)}
+.pyq-card{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px 18px 16px;
+  position:relative;overflow:hidden;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.pyq-card::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,#1a73e8,#5aa2f8);opacity:0;transition:opacity .18s}
+.pyq-card:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(15,23,42,.12);border-color:#c9d8f2}
+.pyq-card:hover::before{opacity:1}
+.pyq-num{display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:#0f172a;color:#fff;
+  font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:16px;letter-spacing:.04em}
+.pyq-chip{font-size:11px;font-weight:800;color:#1a73e8;background:#e8f0fe;border-radius:99px;padding:4px 10px}
+.pyq-meter{height:5px;border-radius:99px;background:#eef2f7;overflow:hidden}
+.pyq-meter span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#1a73e8,#5aa2f8)}
+.pyq-sub{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px;transition:transform .18s,box-shadow .18s,border-color .18s}
+.pyq-sub:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(15,23,42,.12);border-color:#c9d8f2}
+.pyq-sub-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#f1f5f9}

@@ -82,19 +82,30 @@ export default function PyqMathsPage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 mt-10 pb-4">
-        {PYQ_MATHS_SEO.map((c) => (
-          <Link key={c.key} href={c.path} className="card-g p-5 hover:shadow-lift hover:-translate-y-0.5 transition">
-            <div className="flex items-center justify-between gap-3">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">
-                Chapter {c.n} · {c.count} Qs
-              </p>
-              <Icon name="chevronRight" size={16} className="text-ink-mute" />
-            </div>
-            <h2 className="font-bold text-[16.5px] mt-1.5">{c.name}</h2>
-            <p className="text-[13px] text-ink-mute mt-1">{c.unit}</p>
-          </Link>
-        ))}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-10 pb-4">
+        {PYQ_MATHS_SEO.map((c) => {
+          const max = Math.max(...PYQ_MATHS_SEO.map((x) => x.count));
+          const pct = Math.round((c.count / max) * 100);
+          return (
+            <Link key={c.key} href={c.path} className="pyq-card group">
+              <div className="flex items-start justify-between gap-3">
+                <span className="pyq-num">{String(c.n).padStart(2, "0")}</span>
+                <span className="pyq-chip">{c.count} Qs</span>
+              </div>
+              <h2 className="font-bold text-[17px] mt-3 leading-snug group-hover:text-brand-600 transition">{c.name}</h2>
+              <p className="text-[12.5px] text-ink-mute mt-1.5">{c.unit}</p>
+              <div className="mt-4">
+                <div className="pyq-meter"><span style={{ width: `${pct}%` }} /></div>
+                <div className="flex items-center justify-between mt-2 text-[11px] font-semibold text-ink-mute">
+                  <span>CBSE 2011-2026</span>
+                  <span className="flex items-center gap-1 group-hover:text-brand-600 transition">
+                    Practice <Icon name="arrowUpRight" size={13} />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
       </div>
 
       <section className="mt-8 max-w-3xl pb-10">

@@ -6,6 +6,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { PYQ_TOTAL } from "@/lib/content/pyq";
 import { PYQ_MATHS_SEO, getPyqChapterByKey } from "@/lib/pyqSeo";
+import { SUBJECTS } from "@/lib/syllabus";
 
 export const metadata: Metadata = {
   title: "Class 10 PYQs — CBSE Previous Year Questions Chapter-wise",
@@ -156,6 +157,30 @@ export default function PyqPage({
               <p className="text-[13px] text-ink-mute mt-1">{c.unit}</p>
             </Link>
           ))}
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-2xl font-extrabold tracking-tight">Every subject, chapter-wise PYQs</h2>
+        <p className="text-ink-soft mt-2 max-w-3xl text-[15px]">
+          Maths has a full built-in PYQ bank. Science, Social Science, English and Hindi open
+          chapter-wise CBSE PYQ pages inside the Smart Board reading pane (via EduRev) with the
+          whiteboard side-by-side for solving.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mt-6">
+          {SUBJECTS.filter((x) => x.id !== "ai").map((sub) => {
+            const chapters = sub.groups.reduce((a, g) => a + g.chapters.length, 0);
+            return (
+              <Link key={sub.id} href={sub.id === "maths" ? "/pyq/maths" : `/subjects/${sub.id}`} className="pyq-sub group">
+                <span className="pyq-sub-ic" style={{ color: sub.color }}><Icon name={sub.icon} size={22} /></span>
+                <h3 className="font-bold text-[16px] mt-3">{sub.name}</h3>
+                <p className="text-[12.5px] text-ink-mute mt-1">{chapters} chapters · PYQs in Smart Board</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-brand-600">
+                  {sub.id === "maths" ? "Open PYQ bank" : "Open chapters"} <Icon name="arrowUpRight" size={13} />
+                </span>
+              </Link>
+            );
+          })}
         </div>
       </section>
 
