@@ -11,26 +11,43 @@ const UA =
 
 const CLEAN_CSS = `
 <style id="sb-reader-clean">
- .lp_sup_si_btn,.signinbtn,.signupbtn,.signbtn,.ER_Model_OTP,.er-sticky-inner-pp,
+ .lp_sup_si_btn,.signinbtn,.signupbtn,.signbtn,.tpbr_lgn_btn,.showinmobile,
+ .ER_Model_OTP,.er-sticky,.er-sticky-inner-pp,#erStickyRoot-pp,#myModal,#myModalRegister,
  .modal,.modal-backdrop,[id*="dvLogin"],[id*="divLogin"],[class*="signin-popup"],
- [class*="login-pop"],[class*="auth-modal"],.fixfooter,.fixed-bottom{display:none!important}
+ [class*="login-pop"],[class*="auth-modal"],.fixfooter,.fixed-bottom,
+ .Get_the_App_Btn,.app_dnld_lnk{display:none!important}
+ *{backdrop-filter:none!important}
+ [style*="blur"]{filter:none!important;backdrop-filter:none!important}
+ .ed_container,.ed_container_inr,.ed_main,.ql_content,body{filter:none!important}
+ body.modal-open{overflow:auto!important;padding-right:0!important}
 </style>`;
 
 const CLEAN_JS = `
 <script id="sb-reader-clean-js">
 (function(){
+ var SEL=".lp_sup_si_btn,.signinbtn,.signupbtn,.tpbr_lgn_btn,.showinmobile,.ER_Model_OTP,.modal,.modal-backdrop,.er-sticky,#erStickyRoot-pp,.Get_the_App_Btn";
  function rm(el){ if(el&&el.parentNode) el.parentNode.removeChild(el); }
+ function unblur(){
+  document.querySelectorAll("[style*=\"blur\"],.blur,.blurred,.blurme").forEach(function(el){
+   el.style.filter="none"; el.style.backdropFilter="none"; el.style.webkitFilter="none";
+  });
+  document.querySelectorAll(".ed_container,.ed_container_inr,.ed_main,.ql_content,main,body").forEach(function(el){
+   el.style.filter="none"; el.style.backdropFilter="none";
+  });
+  document.body && document.body.classList.remove("modal-open","blurred");
+ }
  function clean(){
-  document.querySelectorAll(".lp_sup_si_btn,.signinbtn,.signupbtn,.ER_Model_OTP,.modal,.modal-backdrop,.er-sticky-inner-pp").forEach(rm);
+  document.querySelectorAll(SEL).forEach(rm);
+  unblur();
   document.querySelectorAll("body > *").forEach(function(el){
    try{
     var cs=getComputedStyle(el);
-    if(cs.position==="fixed" && el.offsetHeight>50 && /sign\\s*in|log\\s*in|create account|join free/i.test(el.textContent||"")) rm(el);
+    if(cs.position==="fixed" && el.offsetHeight>40 && /sign\\s*in|log\\s*in|create account|join free|get the app/i.test(el.textContent||"")) rm(el);
    }catch(_){}
   });
  }
- if(document.readyState!=="loading") clean(); else document.addEventListener("DOMContentLoaded",clean);
- setTimeout(clean,1200); setTimeout(clean,4000);
+ if(document.readyState!=="loading"){ clean(); } else { document.addEventListener("DOMContentLoaded",clean); }
+ var t=0, iv=setInterval(function(){ clean(); if(++t>14) clearInterval(iv); },700);
 })();
 </script>`;
 
