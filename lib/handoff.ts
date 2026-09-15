@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "EduRev clean-reader proxy, bg color customizer, page dup/delete, doc pinch zoom, emoji cleanup",
+  lastCommit: "EduRev anti-blur fix + EduRev PYQ web-pane for ALL subjects (77 chapter pages mapped)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "EduRev now on ALL subject chapter pages: EDUREV_CHAPTERS map in lib/pyqSeo.ts (flat chapter-index order, NOT chapter n — SST/Hindi/English groups reset numbering) covers Science 13, SST 22, English 28, Hindi 14 (no EduRev page for सूर के पद). Chapter page passes flat idx to eduRevBoardHrefFor. Anti-blur fix in /api/web-proxy: blanket backdrop-filter removal, unblur sweep every 700ms (15 ticks) clearing filter/backdropFilter from content wrappers + body, removal of #erStickyRoot-pp sticky sign-in bar, myModal/myModalRegister modals, Get-the-App buttons, modal-open scroll lock. Note: SSH key perms reset to 0644 by workspace restore — chmod 600 before push.",
     "Smart Board v2: EduRev pages in the doc pane now load through /api/web-proxy (server fetch + injected CSS/JS hides their sign-in buttons/login modals/sticky auth bar; only edurev.in allowed; engine webSrc() auto-routes edurev URLs). Board background fully customizable: bgSelect pattern + bgColors swatches + custom color input, persisted in localStorage (sb-bg-prefs). Board pages: duplicate + delete buttons. Doc pane: 2-finger pinch zoom + ctrl/cmd-wheel zoom (wireDocPinch). Zero-emoji rule enforced — removed leftover emojis from app/pad/join.",
     "Smart Board UI now fully light: light loading splash (no black screen), light graph plotter canvas, text tool has color + bold, laser pointer has glow-pulse, bottom bar is a slim floating pill, Admin removed from top nav (footer only), /smart-board has SoftwareApplication + Breadcrumb JSON-LD.",
   ],
@@ -69,5 +70,6 @@ export const HANDOFF = {
     "2026-09-14: web doc pane layout fix (empty-state card hidden, iframe full-height) 005ba25; new GSC tag H_6j6jPhsV6M2g4OBoeK4HERmggDtoEZG8kN6YxP-E live 54f5010.",
     "2026-09-14: Smart Board overhaul — light splash loader (black #0b1020 gone), text tool color swatches + bold toggle (engine o.weight), graph plotter converted to light paper theme, laser pointer glow-pulse, bottom bar slim floating pill, Admin link removed from top nav (still in footer), /smart-board SEO: stronger metadata + SoftwareApplication + BreadcrumbList JSON-LD. Pushed 559b584.",
     "2026-09-14: EduRev clean-reader — /api/web-proxy streams edurev.in HTML through our origin and injects CSS+JS to remove sign-in buttons, login/OTP modals and sticky auth bars (content framed, never stored). Board bg customizer (patterns + 7 swatches + custom color, persisted). Board pages duplicate/delete. Doc pane 2-finger pinch zoom + ctrl-wheel zoom. Legacy pad-page emojis removed. Pushed dade196 + cleanup commit.",
+    "2026-09-15: EduRev anti-blur fix (sign-in overlay used to blur the page; now unblur sweep + backdrop-filter removal) and EduRev PYQ web-pane extended to ALL subjects via EDUREV_CHAPTERS flat-index map: Science 13, SST 22 (History/Geo/Civics/Eco), English 28 (FF prose+poetry+Footprints), Hindi 14. Verified links on chapter pages for every subject. Pushed 4b2d6ed.",
   ],
 };
