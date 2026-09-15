@@ -2017,7 +2017,7 @@ export class BoardEngine {
       this.convertTextPen();
     }
     this.tool = t;
-    this.$all("#rail .tool[data-tool]").forEach((b: HTMLElement) => b.classList.toggle("on", b.dataset.tool === t));
+    this.$all(".tool[data-tool]").forEach((b: HTMLElement) => b.classList.toggle("on", b.dataset.tool === t));
     const sp = this.$("#spotOverlay") as HTMLElement | null;
     if (sp && t !== "spotlight") sp.style.display = "none";
     (this.$("#toolShapes") as HTMLElement).classList.toggle("on", !["select", "pan", "pen", "highlighter", "eraser", "text", "sticky", "laser"].includes(t));
@@ -2027,7 +2027,7 @@ export class BoardEngine {
   }
 
   private hidePops() {
-    ["#shapePop", "#mathPop", "#penPop", "#hlPop", "#eraserPop"].forEach((s) => {
+    ["#shapePop", "#mathPop", "#penPop", "#hlPop", "#eraserPop", "#menuPop"].forEach((s) => {
       const el = this.$(s) as HTMLElement | null;
       if (el) el.classList.remove("show");
     });
@@ -2042,12 +2042,13 @@ export class BoardEngine {
     pop.classList.add("show");
     const r = btn.getBoundingClientRect();
     const pw = pop.offsetWidth || 264, ph = pop.offsetHeight || 320;
-    if (window.matchMedia("(max-width:900px)").matches) {
+    if (r.top > window.innerHeight * 0.5) {
+      /* bottom dock — flyout opens ABOVE the button, centered on it */
+      pop.style.left = Math.max(8, Math.min(r.left + r.width / 2 - pw / 2, window.innerWidth - pw - 8)) + "px";
+      pop.style.top = Math.max(8, r.top - ph - 10) + "px";
+    } else if (window.matchMedia("(max-width:900px)").matches) {
       pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - pw - 8)) + "px";
       pop.style.top = r.bottom + 8 + "px";
-    } else if (this.root.classList.contains("sb-railright")) {
-      pop.style.left = Math.max(8, r.left - pw - 8) + "px";
-      pop.style.top = Math.min(Math.max(8, r.top - 24), Math.max(8, window.innerHeight - ph - 8)) + "px";
     } else {
       pop.style.left = r.right + 8 + "px";
       pop.style.top = Math.min(Math.max(8, r.top - 24), Math.max(8, window.innerHeight - ph - 8)) + "px";
@@ -2075,7 +2076,7 @@ export class BoardEngine {
   }
 
   private wireToolbar() {
-    this.$all("#rail .tool[data-tool]").forEach((b: HTMLElement) => (b.onclick = () => {
+    this.$all(".tool[data-tool]").forEach((b: HTMLElement) => (b.onclick = () => {
       const t = (b as HTMLButtonElement).dataset.tool || "pen";
       const popId = t === "pen" ? "#penPop" : t === "highlighter" ? "#hlPop" : t === "eraser" ? "#eraserPop" : null;
       const wasOpen = !!popId && !!(this.$(popId) as HTMLElement | null)?.classList.contains("show");
@@ -2097,8 +2098,13 @@ export class BoardEngine {
       e.stopPropagation();
       const r = (this.$("#toolShapes") as HTMLElement).getBoundingClientRect();
       const pop = this.$("#shapePop") as HTMLElement;
-      pop.style.left = r.right + 8 + "px";
-      pop.style.top = Math.min(r.top, window.innerHeight - 320) + "px";
+      if (r.top > window.innerHeight * 0.5) {
+        pop.style.left = Math.max(8, Math.min(r.left + r.width / 2 - (pop.offsetWidth || 300) / 2, window.innerWidth - (pop.offsetWidth || 300) - 8)) + "px";
+        pop.style.top = Math.max(8, r.top - (pop.offsetHeight || 340) - 10) + "px";
+      } else {
+        pop.style.left = r.right + 8 + "px";
+        pop.style.top = Math.min(r.top, window.innerHeight - 320) + "px";
+      }
       pop.classList.toggle("show");
       (this.$("#mathPop") as HTMLElement).classList.remove("show");
       this.paintShapeGrid();
@@ -2115,17 +2121,36 @@ export class BoardEngine {
     };
     this.on(document, "click", (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest(".pop") && !t.closest("#toolShapes") && !t.closest("#toolMath") && !t.closest("#rail")) this.hidePops();
+      if (!t.closest(".pop") && !t.closest("#toolShapes") && !t.closest("#toolMath") && !t.closest(".sb-dock") && !t.closest(".sb-side") && !t.closest("#btnMenu")) this.hidePops();
     });
     this.$("#toolMath").onclick = (e: MouseEvent) => {
       e.stopPropagation();
       const r = (this.$("#toolMath") as HTMLElement).getBoundingClientRect();
       const pop = this.$("#mathPop") as HTMLElement;
-      pop.style.left = r.right + 8 + "px";
-      pop.style.top = Math.max(8, Math.min(r.top - 120, window.innerHeight - 380)) + "px";
+      if (r.top > window.innerHeight * 0.5) {
+        pop.style.left = Math.max(8, Math.min(r.left + r.width / 2 - (pop.offsetWidth || 340) / 2, window.innerWidth - (pop.offsetWidth || 340) - 8)) + "px";
+        pop.style.top = Math.max(8, r.top - (pop.offsetHeight || 300) - 10) + "px";
+      } else {
+        pop.style.left = r.right + 8 + "px";
+        pop.style.top = Math.max(8, Math.min(r.top - 120, window.innerHeight - 380)) + "px";
+      }
       pop.classList.toggle("show");
       (this.$("#shapePop") as HTMLElement).classList.remove("show");
     };
+    const menuBtn = this.$("#btnMenu") as HTMLElement | null;
+    if (menuBtn) menuBtn.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      this.hidePops();
+      const p = this.$("#menuPop") as HTMLElement;
+      const r = menuBtn.getBoundingClientRect();
+      p.classList.toggle("show");
+      if (p.classList.contains("show")) {
+        p.style.left = Math.max(8, Math.min(r.left, window.innerWidth - (p.offsetWidth || 280) - 8)) + "px";
+        p.style.top = Math.max(8, r.top - (p.offsetHeight || 220) - 10) + "px";
+      }
+    };
+    const menuPop = this.$("#menuPop") as HTMLElement | null;
+    if (menuPop) menuPop.onclick = () => setTimeout(() => menuPop.classList.remove("show"), 80);
     this.$("#btnGraph").onclick = () => { this.hidePops(); this.openModal("mGraph"); setTimeout(() => this.drawGraphPreview(), 50); };
 
     this.$("#toolClear").onclick = () => {

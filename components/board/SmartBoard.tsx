@@ -78,57 +78,14 @@ export default function SmartBoard() {
       <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
 
       {/* ================= MAIN ================= */}
-      <div className="sb-main">
-        <aside className="sb-rail" id="rail" aria-label="Tools">
-          <div className="rail-brand" title="Smart Board"><Icon name="squarePen" size={17} /></div>
-          <div className="rail-tools">
-          {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
-          {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
-          <div className="rail-sep" />
-          <button className="tool on" data-tool="pen" title="Pen — 3 tip types, any color, any size (P)">
-            <Icon name="pencil" size={21} /><small>PEN</small>
-            <span className="tool-dot" id="penColorDot" style={{ background: "#dc2626" }} />
-          </button>
-          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
-          {tool("eraser", "eraser", "ERASE", "Eraser — stroke / pixel / area (E)")}
-          <div className="rail-sep" />
-          <button className="tool" id="toolShapes" title="Shapes (L/R/C...)"><Icon name="shapes" size={21} /><small>SHAPE</small></button>
-          {tool("text", "type", "TEXT", "Text (T)")}
-          {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
-          <div className="rail-sep" />
-          {tool("laser", "circleDot", "LASER", "Laser pointer")}
-          <button className="tool" data-tool="spotlight" title="Spotlight — dim everything except where you point (O)"><Icon name="sun" size={21} /><small>SPOT</small></button>
-          <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={21} /><small>SHADE</small></button>
-          <button className="tool" id="toolRuler" title="Ruler — drag to measure"><Icon name="ruler" size={21} /><small>RULER</small></button>
-          <button className="tool" id="toolProtractor" title="Protractor — drag to measure angles, double-tap to rotate"><Icon name="protractor" size={21} /><small>ANGLE</small></button>
-          <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={21} /><small>MATHS</small></button>
-          <div className="rail-sep" />
-          <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={21} /><small>CLEAR</small></button>
-            <div className="rail-sep" />
-            <div className="rail-pair">
-              <button className="tool half" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={18} /></button>
-              <button className="tool half" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={18} /></button>
-            </div>
-            <div className="rail-pair">
-              <button className="tool half" id="btnFiles" title="Files — open, phone upload, saved files (no re-uploading)"><Icon name="folder" size={18} /></button>
-              <button className="tool half" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={18} /></button>
-            </div>
-            <div className="rail-pair">
-              <button className="tool half" id="btnReplay" title="Replay — watch the board build itself like a video"><Icon name="rotateCcw" size={18} /></button>
-              <button className="tool half" id="btnWidgets" title="Class tools — timer, picker, attendance, dice, spinner"><Icon name="timer" size={18} /></button>
-            </div>
-            <div className="rail-pair">
-              <button className="tool half" id="btnPad" title="Phone Pad — use your phone as a writing tablet & touchpad for this board"><Icon name="smartphone" size={18} /></button>
-            </div>
-          </div>
-          <div className="rail-foot">
-            <button id="btnSettings" title="Settings"><Icon name="settings" size={16} /></button>
-            <button id="btnHelp" title="Guide &amp; shortcuts"><Icon name="circleHelp" size={16} /></button>
-            <button id="btnFull" title="Fullscreen (F)"><Icon name="maximize" size={16} /></button>
-            <a href="/" title="Back to Learning Hub"><Icon name="home" size={16} /></a>
-          </div>
-        </aside>
+      <aside className="sb-side">
+        <a href="/" title="Back to Learning Hub"><Icon name="home" size={17} /></a>
+        <button id="btnSettings" title="Settings"><Icon name="settings" size={17} /></button>
+        <button id="btnHelp" title="Guide &amp; shortcuts"><Icon name="circleHelp" size={17} /></button>
+        <button id="btnFull" title="Fullscreen (F)"><Icon name="maximize" size={17} /></button>
+      </aside>
 
+      <div className="sb-main">
         <div className="sb-work">
           <div id="shade" style={{ display: "none" }}>
             <div id="shadeHint">Screen hidden — drag the bar to reveal, double-tap to close</div>
@@ -173,36 +130,63 @@ export default function SmartBoard() {
         </div>
       </div>
 
-      {/* ================= BOTTOM BAR ================= */}
-      <footer className="sb-bottom">
-        <div className="bb-group">Board&nbsp;
-          <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
-            <option value="white">White</option>
-            <option value="black">Blackboard</option>
-            <option value="grid">Grid</option>
-            <option value="graph">Graph (Maths)</option>
-            <option value="ruled">Ruled</option>
-            <option value="dotted">Dotted</option>
-          </select>
-          <div className="swatches" id="bgColors" title="Board background color" style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6 }} />
+      {/* ================= BOTTOM DOCK — everything within thumb reach ================= */}
+      <footer className="sb-dock">
+        <div className="dock-cluster">
+          <button className="tool" id="btnMenu" title="More tools & board options"><Icon name="menu" size={20} /><small>MENU</small></button>
+          <button className="tool" id="btnFiles" title="Open file / saved sessions / phone upload"><Icon name="folder" size={20} /><small>OPEN</small></button>
+          <button className="tool" id="btnSave" title="Save session (auto-save is always on)"><Icon name="save" size={20} /><small>SAVE</small></button>
+          <button className="tool" id="btnExport" title="Export PNG / print / session JSON"><Icon name="download" size={20} /><small>EXPORT</small></button>
         </div>
-        <button className="sb-btn" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={16} /></button>
-        <div className="sb-group sb-seg" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
-          <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={15} /></button>
-          <button className="sb-btn on" data-layout="split" title="Document + Board (2)"><Icon name="columns2" size={15} /></button>
-          <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={15} /></button>
+        <div className="dock-sep" />
+        <div className="dock-cluster">
+          {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
+          {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
+          <button className="tool on" data-tool="pen" title="Pen — 3 tip types, any color, any size (P)">
+            <Icon name="pencil" size={20} /><small>PEN</small>
+            <span className="tool-dot" id="penColorDot" style={{ background: "#dc2626" }} />
+          </button>
+          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
+          {tool("eraser", "eraser", "ERASE", "Eraser — stroke / pixel / area (E)")}
+          <button className="tool" id="toolShapes" title="Shapes (L/R/C...)"><Icon name="shapes" size={20} /><small>SHAPE</small></button>
+          {tool("text", "type", "TEXT", "Text (T)")}
+          {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
+          {tool("laser", "circleDot", "LASER", "Laser pointer")}
+          <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={20} /><small>MATHS</small></button>
+          <div className="dock-sep" />
+          <button className="tool half" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={18} /></button>
+          <button className="tool half" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={18} /></button>
         </div>
-        <div className="page-ctl">
-          <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
-          <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
-          <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
-          <button className="sb-btn" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
-          <button className="sb-btn" id="btnBoardDup" title="Duplicate this board page"><Icon name="layers" size={16} /></button>
-          <button className="sb-btn" id="btnBoardDel" title="Delete this board page"><Icon name="trash" size={16} /></button>
-          <span className="pg" id="targetLbl" style={{ minWidth: "auto" }}>Board</span>
-          <button className="sb-btn" id="pgPrev" title="Previous page (←)"><Icon name="chevronLeft" size={16} /></button>
-          <span className="pg" id="pgLbl">– / –</span>
-          <button className="sb-btn" id="pgNext" title="Next page (→)"><Icon name="chevronRight" size={16} /></button>
+        <div className="dock-sep" />
+        <div className="dock-cluster">
+          <div className="sb-group sb-seg" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
+            <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={15} /></button>
+            <button className="sb-btn on" data-layout="split" title="Document + Board (2)"><Icon name="columns2" size={15} /></button>
+            <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={15} /></button>
+          </div>
+          <div className="page-ctl">
+            <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
+            <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
+            <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
+            <button className="sb-btn" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
+            <button className="sb-btn" id="btnBoardDup" title="Duplicate this board page"><Icon name="layers" size={16} /></button>
+            <button className="sb-btn" id="btnBoardDel" title="Delete this board page"><Icon name="trash" size={16} /></button>
+            <span className="pg" id="targetLbl" style={{ minWidth: "auto" }}>Board</span>
+            <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
+            <span className="pg" id="pgLbl">– / –</span>
+            <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
+          </div>
+          <div className="bb-group">Board&nbsp;
+            <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
+              <option value="white">White</option>
+              <option value="black">Blackboard</option>
+              <option value="grid">Grid</option>
+              <option value="graph">Graph (Maths)</option>
+              <option value="ruled">Ruled</option>
+              <option value="dotted">Dotted</option>
+            </select>
+            <div className="swatches" id="bgColors" title="Board background color" style={{ display: "inline-flex", gap: 4, alignItems: "center", marginLeft: 6 }} />
+          </div>
         </div>
       </footer>
 
@@ -298,6 +282,21 @@ export default function SmartBoard() {
         <div className="mrow">
           <button className="mbtn primary" id="btnGraph"><Icon name="activity" size={17} /> Graph plotter (y = f(x))</button>
           <button className="mbtn" id="btnCalc"><Icon name="sigma" size={17} /> Calculator</button>
+        </div>
+      </div>
+      <div className="pop" id="menuPop">
+        <h5>More tools</h5>
+        <div className="menu-grid">
+          <button className="tool" data-tool="spotlight" title="Spotlight — dim everything except where you point (O)"><Icon name="sun" size={20} /><small>SPOT</small></button>
+          <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={20} /><small>SHADE</small></button>
+          <button className="tool" id="toolRuler" title="Ruler — drag to measure"><Icon name="ruler" size={20} /><small>RULER</small></button>
+          <button className="tool" id="toolProtractor" title="Protractor — drag to measure angles"><Icon name="protractor" size={20} /><small>ANGLE</small></button>
+          <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={20} /><small>CLEAR</small></button>
+          <button className="tool" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={20} /><small>PAGES</small></button>
+          <button className="tool" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={20} /><small>TEMPL</small></button>
+          <button className="tool" id="btnReplay" title="Replay — watch the board build itself"><Icon name="rotateCcw" size={20} /><small>REPLAY</small></button>
+          <button className="tool" id="btnWidgets" title="Class tools — timer, picker, attendance"><Icon name="timer" size={20} /><small>CLASS</small></button>
+          <button className="tool" id="btnPad" title="Phone Pad — phone as writing tablet"><Icon name="smartphone" size={20} /><small>PAD</small></button>
         </div>
       </div>
 
@@ -419,8 +418,6 @@ export default function SmartBoard() {
           <button className="mbtn" id="btnUpload" title="Scan the QR code with your phone and send any file"><Icon name="scan" size={17} /> From phone</button>
         </div>
         <div className="mrow">
-          <button className="mbtn" id="btnSave" title="Save session (auto-save is always on)"><Icon name="save" size={17} /> Save now</button>
-          <button className="mbtn" id="btnExport" title="Export PNG / print / session JSON"><Icon name="download" size={17} /> Export</button>
         </div>
         <label style={{ marginTop: 16 }}>Saved on this device</label>
         <div className="fl-list" id="fileList" />
