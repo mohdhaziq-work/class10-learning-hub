@@ -101,9 +101,9 @@ export default function ChapterPage({ params }: { params: { subjectId: string; g
  </div>
  {pdf && bHref && (
  <div className="flex gap-2 mt-4 flex-wrap">
- <a href={pdf.direct} target="_blank" rel="noopener noreferrer" className="btn-g btn-g-blue text-[13.5px]">
- <Icon name="fileText" size={17} /> NCERT PDF
- </a>
+ <Link href={`/smart-board?pdf=${encodeURIComponent(pdf.direct)}&name=${encodeURIComponent(pdf.name)}`} className="btn-g btn-g-blue text-[13.5px]">
+ <Icon name="columns2" size={17} /> NCERT PDF + Whiteboard
+ </Link>
  <Link href={bHref} className="btn-g btn-g-white text-[13.5px]">
  <Icon name="squarePen" size={17} /> Open in Board
  </Link>

@@ -6,6 +6,11 @@ import { chapterDetail, autoDetail, type ChapterDetail, type QuizQ } from "@/lib
 import { useMergedDetail } from "@/lib/overrides";
 import { useProgress } from "@/lib/progress";
 import { Icon } from "@/components/ui/Icon";
+import MindMapInteractive from "@/components/chapter/MindMapInteractive";
+import ActivityArt from "@/components/chapter/ActivityArt";
+import { EXTRA_QUIZ } from "@/lib/content/quizExtra";
+import { FORMULA_GUIDE } from "@/lib/content/formulaGuide";
+import { ACTIVITIES } from "@/lib/content/activities";
 
 const TABMETA: Record<string, { label: string; icon: string }> = {
  slides: { label: "Slides", icon: "presentation" },
@@ -15,7 +20,8 @@ const TABMETA: Record<string, { label: string; icon: string }> = {
  notes: { label: "Notes", icon: "notebookPen" },
  formulas: { label: "Formulas", icon: "sigma" },
  examples: { label: "Examples", icon: "lightbulb" },
- diagrams: { label: "Activities", icon: "flaskConical" },
+ diagrams: { label: "Diagrams", icon: "flaskConical" },
+ activities: { label: "Activities", icon: "flask" },
  words: { label: "Words", icon: "languages" },
  quiz: { label: "Quiz", icon: "puzzle" },
  pyq: { label: "PYQ", icon: "trophy" },
@@ -188,18 +194,20 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
  const D: ChapterDetail = detail || autoDetail(ch.title, sub.name, ch.n);
  const isAuto = !detail;
 
+ /* Slides tab temporarily deactivated platform-wide (Slides renderer preserved for reinstatement). */
+ const acts = ACTIVITIES[key] || D.activities;
  const tabs = [
- "slides",
  ...(sub.features.includes("mindmap") && D.mindmap ? ["mindmap"] : []),
  ...(sub.features.includes("flow") && D.flowchart?.length ? ["flow"] : []),
  ...(D.timeline?.length ? ["timeline"] : []),
- "notes",
- ...(sub.features.includes("formulas") && D.formulas?.length ? ["formulas"] : []),
+ ...(sub.id === "maths" ? [] : ["notes"]),
+ ...(sub.features.includes("formulas") && (D.formulas?.length || FORMULA_GUIDE[key]?.length) ? ["formulas"] : []),
  ...(D.examples?.length ? ["examples"] : []),
+ ...(acts?.length ? ["activities"] : []),
  ...(D.diagrams?.length ? ["diagrams"] : []),
  ...(D.words?.length ? ["words"] : []),
  "quiz",
- ...(D.pyq?.length ? ["pyq"] : []),
+ ...(sub.id === "maths" ? [] : D.pyq?.length ? ["pyq"] : []),
  ];
  const [tab, setTab] = useState("slides");
  const active = tabs.includes(tab) ? tab : tabs[0];
@@ -244,19 +252,8 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
  {active === "mindmap" && D.mindmap && (
  <div>
- <PHead icon="brain">Mind Map — the whole chapter at a glance</PHead>
- <div className="mm-wrap"><div className="mm">
- <div className="mm-center">{D.mindmap.central}</div>
- <div className="mm-trunk" />
- <div className="mm-branches">
- {D.mindmap.branches.map((b, i) => (
- <div key={i} className="mm-branch" style={{ ["--bc" as string]: b.color || "#1a73e8" }}>
- <h4>{b.label}</h4>
- <ul>{(b.children || []).map((k, j) => <li key={j}>{k}</li>)}</ul>
- </div>
- ))}
- </div>
- </div></div>
+ <PHead icon="brain">Mind Map — explore node by node</PHead>
+ <MindMapInteractive data={D.mindmap} />
  <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm">
  <b>Classroom tip:</b> open it on the smart board, cover the branches one by one, and ask the class.
  {" "}<Link href="/smart-board" className="font-bold text-brand-600 inline-flex items-center gap-1">Open in Smart Board <Icon name="arrowRight" size={14} /></Link>
@@ -311,9 +308,12 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
  {active === "notes" && (
  <div>
  <PHead icon="notebookPen">Exam-ready Notes</PHead>
- <div className="grid gap-2.5">
+ <div className="pw-stack">
  {(D.notes || []).map((n, i) => (
- <div key={i} className="bg-white border border-slate-200 rounded-2xl px-4 py-3 text-[14.5px] shadow-card [&_b]:text-brand-600" dangerouslySetInnerHTML={{ __html: n }} />
+ <div key={i} className="pw-note">
+ <span className="pw-no">{String(i + 1).padStart(2, "0")}</span>
+ <div className="pw-body" dangerouslySetInnerHTML={{ __html: n }} />
+ </div>
  ))}
  </div>
  <div className="flex gap-2 mt-3.5 flex-wrap">
@@ -325,15 +325,29 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
  {active === "formulas" && D.formulas && (
  <div>
- <PHead icon="sigma">Formula Bank</PHead>
+ <PHead icon="sigma">Formula Bank — with application guide</PHead>
  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
- {D.formulas.map((f, i) => (
+ {(D.formulas || []).map((f, i) => (
  <div key={i} className="form-card">
  <small className="block font-sans font-bold text-xs mb-1.5 uppercase tracking-wider opacity-70">{f.name}</small>
  <div className="text-[19px]">{f.expr}</div>
+ {f.use && <p className="form-use">{f.use}</p>}
  </div>
  ))}
  </div>
+ {(FORMULA_GUIDE[key] || []).length > 0 && (
+ <div className="mt-5">
+ <h3 className="font-extrabold text-[17px] tracking-tight mb-3">How &amp; where to apply — chapter guide</h3>
+ <div className="grid gap-3 sm:grid-cols-2">
+ {FORMULA_GUIDE[key].map((g, i) => (
+ <div key={i} className="fg-card">
+ <b className="fg-t">{g.t}</b>
+ <p>{g.use}</p>
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
  </div>
  )}
 
@@ -351,6 +365,24 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
  </div>
  </div>
  ))}
+
+ {active === "activities" && acts && (
+ <div>
+ <PHead icon="flask">NCERT Activities — visual lab</PHead>
+ <div className="grid gap-4 lg:grid-cols-2">
+ {acts.map((a, i) => (
+ <div key={i} className="act-card">
+ <div className="act-head"><span className="act-no">Activity {i + 1}</span><h3>{a.title}</h3></div>
+ <ActivityArt art={a.art} />
+ {a.aim && <p className="act-aim"><b>Aim:</b> {a.aim}</p>}
+ <ol className="act-steps">{a.steps.map((st, j) => <li key={j}>{st}</li>)}</ol>
+ {a.observe && <div className="act-box"><b>Observe:</b> {a.observe}</div>}
+ {a.conclusion && <div className="act-box ok"><b>Conclusion:</b> {a.conclusion}</div>}
+ </div>
+ ))}
+ </div>
+ </div>
+ )}
 
  {active === "diagrams" && D.diagrams?.map((d, i) => (
  <div key={i} className="card-g p-4 sm:p-5 mb-3.5">
@@ -383,8 +415,8 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
  {active === "quiz" && (
  <div>
- <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length} questions)</PHead>
- <Quiz quiz={D.quiz || []} />
+ <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length + (EXTRA_QUIZ[key] || []).length} questions)</PHead>
+ <Quiz quiz={[...(D.quiz || []), ...(EXTRA_QUIZ[key] || [])]} />
  </div>
  )}
 

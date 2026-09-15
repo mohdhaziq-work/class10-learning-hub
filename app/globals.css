@@ -111,3 +111,46 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 .pyq-sub{display:block;background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:18px;transition:transform .18s,box-shadow .18s,border-color .18s}
 .pyq-sub:hover{transform:translateY(-3px);box-shadow:0 16px 40px rgba(15,23,42,.12);border-color:#c9d8f2}
 .pyq-sub-ic{display:grid;place-items:center;width:46px;height:46px;border-radius:14px;background:#f1f5f9}
+
+/* ===== Subject overhaul 2026-09-16: interactive mind map, PW notes, activity lab, formula guide ===== */
+.mmx{background:#fff;border:1px solid #e2e8f0;border-radius:20px;overflow:hidden}
+.mmx-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #eef2f7;font-size:12px;font-weight:700;color:#5f6b7a}
+.mmx-bar button{width:30px;height:30px;border:1px solid #e2e8f0;background:#f8fafc;border-radius:9px;display:grid;place-items:center;cursor:pointer;color:#334155}
+.mmx-bar button:hover{background:#eef2f7}
+.mmx-hint{margin-left:auto;font-weight:600;color:#94a3b8}
+.mmx-canvas{position:relative;height:440px;transform-origin:50% 50%;transition:transform .2s ease;overflow:hidden;
+  background:radial-gradient(#e7edf5 1px,transparent 1px);background-size:22px 22px}
+.mmx-lines{position:absolute;inset:0;width:100%;height:100%}
+.mmx-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0f172a;color:#fff;
+  padding:12px 18px;border-radius:16px;font-weight:800;font-size:14px;max-width:180px;text-align:center;box-shadow:0 10px 30px rgba(15,23,42,.25)}
+.mmx-node{position:absolute;transform:translate(-50%,-50%);background:#fff;border:2px solid var(--bc);color:#0f172a;
+  border-radius:99px;padding:7px 14px;font-size:12.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(15,23,42,.10);transition:all .15s}
+.mmx-node:hover{transform:translate(-50%,-50%) scale(1.06)}
+.mmx-node.on{background:var(--bc);color:#fff}
+.mmx-kids{position:absolute;left:12px;bottom:12px;max-width:340px;background:#fff;border:1px solid #e2e8f0;border-left:4px solid var(--bc);
+  border-radius:14px;padding:12px 14px;box-shadow:0 12px 30px rgba(15,23,42,.14);animation:fadeUp .18s ease}
+.mmx-kids h5{font-size:13px;font-weight:800;margin-bottom:6px}
+.mmx-kids ul{list-style:disc;padding-left:18px;font-size:13px;color:#334155;display:grid;gap:3px}
+/* PW-style notes */
+.pw-stack{display:grid;gap:12px}
+.pw-note{position:relative;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:14px 16px 14px 58px;box-shadow:0 4px 14px rgba(15,23,42,.06)}
+.pw-note::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(#1a73e8,#5aa2f8);border-radius:16px 0 0 16px}
+.pw-no{position:absolute;left:16px;top:14px;font-family:ui-monospace,Menlo,monospace;font-weight:800;font-size:13px;color:#94a3b8}
+.pw-body{font-size:14.5px;line-height:1.65}
+.pw-body b{color:#1a73e8}
+/* formula guide */
+.fg-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:12px 14px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
+.fg-t{display:block;font-size:14px;margin-bottom:4px}
+.fg-card p{font-size:13px;color:#5f6b7a;line-height:1.55}
+.form-use{margin-top:8px;font-size:12px;color:#5f6b7a;line-height:1.5;border-top:1px dashed #e2e8f0;padding-top:7px}
+/* activity lab */
+.act-card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,.07)}
+.act-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.act-no{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#1a73e8;background:#e8f0fe;border-radius:99px;padding:4px 10px;flex:none}
+.act-head h3{font-weight:800;font-size:15.5px}
+.act-art{width:100%;max-width:260px;height:auto;display:block;margin:4px auto 10px;background:#f8fafc;border:1px solid #eef2f7;border-radius:14px}
+.act-aim{font-size:13.5px;color:#334155;margin-bottom:8px}
+.act-steps{list-style:decimal;padding-left:20px;font-size:13.5px;color:#334155;display:grid;gap:5px}
+.act-box{margin-top:10px;font-size:13px;background:#f1f5f9;border-radius:10px;padding:8px 12px;line-height:1.5}
+.act-box.ok{background:#eefaf0}
+.act-box b{color:#0f172a}
