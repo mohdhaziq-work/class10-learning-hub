@@ -60,8 +60,9 @@ class MainActivity : AppCompatActivity() {
             allowFileAccess = true
             databaseEnabled = true
 
-            /* Push frames to the GPU with top priority (legacy flag, still honored) */
-            renderPriority = WebSettings.RenderPriority.HIGH
+            /* Push frames to the GPU with top priority (legacy flag, still honored).
+               No Kotlin synthetic property here — setRenderPriority has no getter. */
+            setRenderPriority(WebSettings.RenderPriority.HIGH)
 
             cacheMode = WebSettings.LOAD_DEFAULT
             mediaPlaybackRequiresUserGesture = false
