@@ -428,9 +428,16 @@ export class BoardEngine {
 
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
-    this.bctx = this.boardCanvas.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
+    this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
-    this.lctx = this.boardLive.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
+    this.lctx = this.boardLive.getContext("2d")!;
+    /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
+       The vector store (boardStore.objects) is the source of truth, so a
+       restore is just: preventDefault + full history repaint. */
+    for (const cv of [this.boardCanvas, this.boardLive]) {
+      cv.addEventListener("contextlost", (e) => { e.preventDefault(); }, false);
+      cv.addEventListener("contextrestored", () => { if (!this.destroyed) this.renderBoard(); }, false);
+    }
     this.cleanups.push(() => this.stopUpPoll());
     this.cleanups.push(() => { if (this.textPenT) clearTimeout(this.textPenT); });
 
@@ -463,9 +470,13 @@ export class BoardEngine {
     if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
     if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
     else this.refreshEmpty();
-    const ro = new ResizeObserver(() => this.sizeBoard());
+    let roRaf = 0;
+    const ro = new ResizeObserver(() => {
+      if (roRaf) return;
+      roRaf = requestAnimationFrame(() => { roRaf = 0; if (!this.destroyed) this.sizeBoard(); });
+    });
     ro.observe(this.boardScroll);
-    this.cleanups.push(() => ro.disconnect());
+    this.cleanups.push(() => { cancelAnimationFrame(roRaf); ro.disconnect(); });
 
     let rzT: ReturnType<typeof setTimeout>;
     this.on(window, "resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
@@ -717,11 +728,19 @@ export class BoardEngine {
     this.boardLive.style.width = this.boardW + "px";
     this.boardLive.style.height = this.boardH + "px";
     if (!this.inkC || !this.bgC) {
-      this.inkC = document.createElement("canvas"); this.inkX = this.inkC.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
-      this.bgC = document.createElement("canvas"); this.bgX = this.bgC.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
+      this.inkC = document.createElement("canvas"); this.inkX = this.inkC.getContext("2d")!;
+      this.bgC = document.createElement("canvas"); this.bgX = this.bgC.getContext("2d")!;
     }
     this.inkC.width = this.bgC.width = this.boardCanvas.width;
     this.inkC.height = this.bgC.height = this.boardCanvas.height;
+    /* width/height assignment resets context state — re-assert immediately */
+    for (const c of [this.bctx, this.lctx, this.inkX, this.bgX]) {
+      if (!c) continue;
+      c.imageSmoothingEnabled = true;
+      (c as any).imageSmoothingQuality = "high";
+      c.lineCap = "round";
+      c.lineJoin = "round";
+    }
     this.renderBoard();
   }
   private renderBoard() {
@@ -1274,7 +1293,7 @@ export class BoardEngine {
     annot.className = "annot";
     wrap.appendChild(base); wrap.appendChild(annot);
     (this.$("#docScroll") as HTMLElement).appendChild(wrap);
-    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d", { desynchronized: true, willReadFrequently: false })!, rendered: false, dirty: true, rendering: false, scale: 1, cssScale: 1 };
+    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1, cssScale: 1 };
     this.pages.push(pg);
     this.pageObserver?.observe(wrap);
     this.wireAnnotCanvas(annot, n, () => pg.cssScale, null);
@@ -1698,7 +1717,7 @@ export class BoardEngine {
     (this.$("#docScroll") as HTMLElement).appendChild(box);
     if (!annot) { this.htmlAnnot = null; requestAnimationFrame(() => this.applyHtmlZoom()); return; }
     box.appendChild(cv);
-    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d", { desynchronized: true, willReadFrequently: false })! };
+    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d")! };
     requestAnimationFrame(() => { this.sizeHtmlAnnot(); this.applyHtmlZoom(); });
     const ro = new ResizeObserver(() => this.sizeHtmlAnnot());
     ro.observe(box.querySelector(".doc-html-inner") as HTMLElement);
