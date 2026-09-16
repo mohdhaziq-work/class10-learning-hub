@@ -11,6 +11,8 @@ import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
+/* set true on verified high-end boards to enable the OffscreenCanvas worker */
+const INK_WORKER_ENABLED = false;
 
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
 
@@ -436,21 +438,25 @@ export class BoardEngine {
     this.boardCanvas = this.$("#boardCanvas");
     /* desynchronized + opaque static layer: ink blits straight toward the
        hardware frame buffer, skipping the compositor timeline and alpha-blend */
-    this.bctx = this.boardCanvas.getContext("2d", { desynchronized: true, alpha: false, willReadFrequently: false })!;
+    this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.boardFx = this.$("#boardFx");
     this.fctx = this.boardFx.getContext("2d")!;
-    /* Dual-threaded pipeline: the live stroke layer moves to a dedicated worker
-       on an OffscreenCanvas so pane scrolls / iframe loads never fight pen
-       tracking. Main-thread incremental path is the automatic fallback. */
-    try {
-      if (typeof Worker !== "undefined" && "transferControlToOffscreen" in HTMLCanvasElement.prototype) {
-        const off = this.boardLive.transferControlToOffscreen();
-        this.inkWorker = new Worker(URL.createObjectURL(new Blob([INK_WORKER_SOURCE], { type: "text/javascript" })));
-        this.inkWorker.postMessage({ t: "init", canvas: off }, [off]);
-      }
-    } catch { this.inkWorker = null; }
-    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
+    /* Dual-threaded pipeline is implemented but DISABLED by default: on
+       low-end classroom SoCs the cross-thread messaging + extra compositor
+       layer cost more than they save, and it caused live-ink mapping bugs.
+       The tuned steady state is main-thread incremental pooled rendering.
+       Flip INK_WORKER_ENABLED on known fast boards to re-evaluate. */
+    if (INK_WORKER_ENABLED) {
+      try {
+        if (typeof Worker !== "undefined" && "transferControlToOffscreen" in HTMLCanvasElement.prototype) {
+          const off = this.boardLive.transferControlToOffscreen();
+          this.inkWorker = new Worker(URL.createObjectURL(new Blob([INK_WORKER_SOURCE], { type: "text/javascript" })));
+          this.inkWorker.postMessage({ t: "init", canvas: off }, [off]);
+        }
+      } catch { this.inkWorker = null; }
+    }
+    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d")!;
     /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
        The vector store (boardStore.objects) is the source of truth, so a
        restore is just: preventDefault + full history repaint. */
@@ -2367,9 +2373,18 @@ export class BoardEngine {
     });
     this.on(div, "pointerup", () => { drag = false; this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); });
 
-    this.$("#btnFull").onclick = () => {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else document.documentElement.requestFullscreen().catch(() => this.toast("Fullscreen not allowed"));
+    this.$("#btnFull").onclick = async () => {
+      try {
+        const so = screen.orientation as unknown as { type?: string; lock?: (o: string) => Promise<void>; unlock?: () => void };
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+          so.unlock?.();
+        } else {
+          await document.documentElement.requestFullscreen();
+          /* stay in the orientation the teacher is holding — no sensor flip */
+          if (so.type) so.lock?.(so.type).catch(() => undefined);
+        }
+      } catch { this.toast("Fullscreen not allowed"); }
     };
     this.$("#btnSave").onclick = () => {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }

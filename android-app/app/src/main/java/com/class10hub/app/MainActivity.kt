@@ -102,7 +102,6 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 enterImmersiveMode()
-                if (url.contains("/smart-board")) injectContainmentCss(view)
             }
         }
 
@@ -153,21 +152,6 @@ class MainActivity : AppCompatActivity() {
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         runCatching { webView.freeMemory() }
-    }
-
-    /** Force strict compositor-layer containment on the board's flex panes so
-        Chromium never re-rasterizes the whole viewport on pane toggles. */
-    private fun injectContainmentCss(view: WebView) {
-        /* Single-line CSS, no quotes inside — safe to embed straight into JS */
-        val css = "html,body{overflow:hidden;height:100%!important;position:relative}" +
-            ".sb-root,.sb-main,.sb-work,#paneDoc,#paneBoard,#docScroll,#boardCanvas,#boardLive{" +
-            "-webkit-backface-visibility:hidden;backface-visibility:hidden;" +
-            "-webkit-perspective:1000px;perspective:1000px;" +
-            "-webkit-transform:translate3d(0,0,0);transform:translate3d(0,0,0);}"
-        val js = "(function(){if(document.getElementById('apkContainCss'))return;" +
-            "var s=document.createElement('style');s.id='apkContainCss';s.textContent='" +
-            css + "';document.head.appendChild(s);})();"
-        view.evaluateJavascript(js, null)
     }
 
     /** Persistent immersive sticky: strip status bar, nav bar and system pill. */
