@@ -53,14 +53,15 @@ class MainActivity : AppCompatActivity() {
            queue instead of sharing the native UI thread's software loop. */
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-            /* Pre-render off-viewport split panes so split toggling is instant */
-            webView.setOffscreenPreRaster(true)
         }
         webView.setBackgroundColor(Color.WHITE)
         webView.overScrollMode = View.OVER_SCROLL_NEVER
-        webView.setEnableSmoothTransition(true)
         webView.setVerticalScrollBarEnabled(false)
         webView.setHorizontalScrollBarEnabled(false)
+        /* Optional raster tuning — present on most WebView providers but absent
+           from some SDK stub jars, so invoke defensively at runtime. */
+        invokeWebView("setOffscreenPreRaster", true)   /* pre-render off-viewport split panes */
+        invokeWebView("setEnableSmoothTransition", true)
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -136,6 +137,15 @@ class MainActivity : AppCompatActivity() {
         })
 
         webView.loadUrl(HOME_URL)
+    }
+
+    /** Invoke an optional WebView tuning method when the installed provider has it. */
+    private fun invokeWebView(method: String, value: Boolean) {
+        runCatching {
+            WebView::class.java
+                .getMethod(method, Boolean::class.javaPrimitiveType)
+                .invoke(webView, value)
+        }
     }
 
     /** Flush stale canvas textures from the WebView's VRAM cache when the OS
