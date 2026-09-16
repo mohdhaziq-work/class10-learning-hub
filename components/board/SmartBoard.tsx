@@ -111,7 +111,9 @@ export default function SmartBoard() {
           <div id="divider" title="Drag to resize"><span className="grip" /></div>
 
           <section className="pane" id="paneBoard">
-            <div className="pane-head"><span className="dot" style={{ background: "#1a73e8" }} /> Whiteboard <span className="pane-sub">write / solve here</span></div>
+            <div className="pane-head"><span className="dot" style={{ background: "#1a73e8" }} /> Whiteboard <span className="pane-sub">write / solve here</span>
+              <span className="live-chip" id="liveChip" style={{ display: "none", marginLeft: "auto" }}><span className="lc-dot" /> Live Syncing Board</span>
+            </div>
             <div className="pane-body">
               <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><div id="brushRing" /></div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>

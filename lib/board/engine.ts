@@ -455,6 +455,7 @@ export class BoardEngine {
     this.wireExport();
     this.wirePages();
     this.wireDocPinch();
+    this.wireLiveSync();
     this.wireUpload();
     this.wirePad();
     this.wireFiles();
@@ -2731,6 +2732,31 @@ export class BoardEngine {
       attendance: this.attendance, timerMin: (this.$("#timerMin") as HTMLInputElement).value,
     };
   }
+  private liveSyncOn = false;
+  private lastCloudSync = 0;
+  private wireLiveSync() {
+    const chip = this.$("#liveChip") as HTMLElement | null;
+    const apply = (on: boolean) => {
+      this.liveSyncOn = on;
+      if (chip) chip.style.display = on ? "inline-flex" : "none";
+    };
+    apply(!!(window as any).__sbLive);
+    window.addEventListener("sb-live", ((e: CustomEvent) => apply(!!e.detail?.authorized)) as EventListener);
+  }
+  /* Secure conditional auto-save: only teacher-authorized sessions may write to
+     the public classwork archive (server re-verifies the flag as well). */
+  private maybeCloudSync() {
+    if (!this.liveSyncOn) return;
+    const now = Date.now();
+    if (now - this.lastCloudSync < 60_000) return;
+    this.lastCloudSync = now;
+    try {
+      const sid = (window as any).__sbSid || sessionStorage.getItem("sb-sid") || "";
+      if (!sid) return;
+      const png = this.boardCanvas.toDataURL("image/png");
+      fetch("/api/classwork", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sid, png }) }).catch(() => undefined);
+    } catch { /* canvas tainted or storage blocked */ }
+  }
   private scheduleSave() {
     this.dirtySave = true;
     if (this.saveT) clearTimeout(this.saveT);
@@ -2738,6 +2764,7 @@ export class BoardEngine {
       this.saveT = null;
       const run = () => {
         try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.dirtySave = false; } catch { /* quota full */ }
+        this.maybeCloudSync();
       };
       /* stringify off the interaction path — never stutters a stroke */
       if (typeof (window as any).requestIdleCallback === "function") (window as any).requestIdleCallback(run, { timeout: 2000 });
