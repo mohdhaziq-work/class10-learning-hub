@@ -22,6 +22,10 @@ export default function Header() {
         <nav className="ml-auto hidden md:flex items-center gap-1 text-[14.5px] font-medium">
           <Link href="/#subjects" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">Subjects</Link>
           <Link href="/pyq" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">PYQs</Link>
+          <a href="/downloads/class10-learning-hub.apk" download title="Class 10 Hub Android app (APK)"
+            className="ml-1 inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold border border-[#1a73e8]/40 text-[#1a73e8] hover:bg-[#1a73e8]/5 hover:-translate-y-px transition-all">
+            <Icon name="smartphone" size={16} /> Download App
+          </a>
           <Link href="/smart-board" className="ml-1 inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-[14px] font-semibold bg-slate-900 text-white hover:bg-black transition">
             <Icon name="squarePen" size={16} /> Smart Board
           </Link>
@@ -42,6 +46,7 @@ export default function Header() {
             { href: "/#subjects", icon: "layoutGrid", label: "Subjects" },
             { href: "/pyq", icon: "trophy", label: "PYQs" },
             { href: "/smart-board", icon: "squarePen", label: "Smart Board" },
+            { href: "/downloads/class10-learning-hub.apk", icon: "download", label: "Download App" },
           ].map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setOpen(false)}
               className="flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-[15px] text-ink hover:bg-slate-100">

@@ -112,6 +112,9 @@ export default function HomePage() {
  <Link href="/smart-board" className="btn-g btn-g-dark text-[15px]">
  <Icon name="squarePen" size={18} /> Open Smart Board
  </Link>
+ <a href="/downloads/class10-learning-hub.apk" download className="btn-g text-[15px] text-white hover:-translate-y-0.5 transition-transform" style={{ background: "#1a73e8" }}>
+ <Icon name="smartphone" size={18} /> Download App
+ </a>
  <Link href="#subjects" className="btn-g btn-g-white text-[15px]">
  <Icon name="layoutGrid" size={18} /> Browse subjects
  </Link>
