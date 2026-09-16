@@ -82,7 +82,7 @@
 .sb-root[data-layout="doc"] #divider,.sb-root[data-layout="board"] #divider{display:none}
 
 /* ================= DOCUMENT PANE ================= */
-#docScroll{position:absolute;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;
+#docScroll{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;
   padding:20px 14px 60px;gap:18px}
 .page-wrap{position:relative;border-radius:8px;line-height:0;box-shadow:var(--sh-md)}
 .page-wrap canvas{display:block;border-radius:8px}

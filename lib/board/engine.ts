@@ -1,7 +1,7 @@
 /* ============================================================================
    SMART BOARD ENGINE v2 — TypeScript class, React-safe (mount/unmount clean).
    PDF (pdfjs-dist) • DOCX (mammoth) • TXT • Images • Split view • Shapes •
-   Maths tools • Laser • Class widgets • Auto-save • Touch ready
+   Maths tools • Class widgets • Auto-save • Touch ready
    ========================================================================== */
 import * as pdfjsLib from "pdfjs-dist";
 import QRCode from "qrcode";
@@ -405,9 +405,6 @@ export class BoardEngine {
   private editingObj: { store: Store; obj: BoardObject; surface: "board" | "doc"; page?: number } | null = null;
 
   private textColor = "#141414";
-  /* laser trail */
-  private trail: { x: number; y: number; t: number }[] = [];
-  private trailCv!: HTMLCanvasElement; private trailCtx!: CanvasRenderingContext2D;
 
   /* widgets */
   private timerInt: ReturnType<typeof setInterval> | null = null;
@@ -434,11 +431,6 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.lctx = this.boardLive.getContext("2d")!;
-    this.trailCv = document.createElement("canvas");
-    this.trailCv.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:149";
-    document.body.appendChild(this.trailCv);
-    this.trailCtx = this.trailCv.getContext("2d")!;
-    this.cleanups.push(() => this.trailCv.remove());
     this.cleanups.push(() => this.stopUpPoll());
     this.cleanups.push(() => { if (this.textPenT) clearTimeout(this.textPenT); });
 
@@ -449,7 +441,6 @@ export class BoardEngine {
     this.wireToolbar();
     this.wireBoard();
     this.wireDoc();
-    this.wireLaser();
     this.wireModals();
     this.wireWidgets();
     this.wireExport();
@@ -472,13 +463,12 @@ export class BoardEngine {
     if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
     if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
     else this.refreshEmpty();
-    this.sizeTrail();
     const ro = new ResizeObserver(() => this.sizeBoard());
     ro.observe(this.boardScroll);
     this.cleanups.push(() => ro.disconnect());
 
     let rzT: ReturnType<typeof setTimeout>;
-    this.on(window, "resize", () => { this.sizeTrail(); clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
+    this.on(window, "resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
     this.on(window, "sb-board-dirty", () => this.renderBoard());
     this.on(window, "pagehide", () => this.flushSave());
     this.on(document, "visibilitychange", () => { if (document.visibilityState === "hidden") this.flushSave(); });
@@ -2301,7 +2291,14 @@ export class BoardEngine {
     this.layout = l;
     this.root.dataset.layout = l;
     this.$all("#layoutGroup .sb-btn").forEach((b: HTMLElement) => b.classList.toggle("on", (b as HTMLButtonElement).dataset.layout === l));
-    setTimeout(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); } }, 80);
+    /* Divider drags write inline flex ratios; layout CSS must win again or the
+       surviving pane freezes at its previous split width (the 50% lock bug). */
+    (this.$("#paneDoc") as HTMLElement).style.flex = "";
+    (this.$("#paneBoard") as HTMLElement).style.flex = "";
+    /* Two measurement passes: immediately, and after the browser finishes the
+       flex reflow — the canvas buffer must absorb the new viewport bounds. */
+    requestAnimationFrame(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); } });
+    setTimeout(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); } }, 250);
   }
 
   private doUndo() {
@@ -2321,25 +2318,7 @@ export class BoardEngine {
     } else this.toast("Nothing to redo");
   }
 
-  /* ==========================================================================
-     LASER
-     ========================================================================== */
-  private sizeTrail() { this.trailCv.width = window.innerWidth; this.trailCv.height = window.innerHeight; }
-
-  private wireLaser() {
-    this.on(window, "pointermove", (e: PointerEvent) => {
-      if (e.buttons) this.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
-    });
-    this.on(window, "pointerdown", (e: PointerEvent) => {
-      if (this.tool === "laser") this.trail.push({ x: e.clientX, y: e.clientY, t: performance.now() });
-    });
-  }
-
   /* ==================== Replay / Spotlight / Fun ==================== */
-  private moveSpot(cx: number, cy: number) {
-    const sp = this.$("#spotOverlay") as HTMLElement | null;
-    if (sp) { sp.style.display = "block"; sp.style.setProperty("--sx", cx + "px"); sp.style.setProperty("--sy", cy + "px"); }
-  }
   private openReplay() {
     this.stopReplay();
     const n = this.boardStore.objects.length;
@@ -3144,7 +3123,7 @@ export class BoardEngine {
         return;
       }
       const k = e.key.toLowerCase();
-      const map: Record<string, string> = { v: "select", h: "pan", p: "pen", m: "highlighter", e: "eraser", t: "text", s: "sticky", o: "spotlight" };
+      const map: Record<string, string> = { v: "select", h: "pan", p: "pen", m: "highlighter", e: "eraser", t: "text", s: "sticky" };
       if (map[k]) { this.setTool(map[k]); return; }
       if (k === "l") { this.shape = "line"; this.setTool("shape"); this.paintShapeGrid(); }
       else if (k === "r") { this.shape = "rect"; this.setTool("shape"); this.paintShapeGrid(); }

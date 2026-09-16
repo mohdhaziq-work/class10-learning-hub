@@ -65,6 +65,24 @@ export default function SmartBoard() {
     syncSide();
   }, []);
 
+  /* Viewport zoom isolation: block browser pinch / ctrl-wheel page zoom so the
+     board owns all gestures (canvas pan-zoom still works inside the engine). */
+  useEffect(() => {
+    const wheel = (e: WheelEvent) => { if (e.ctrlKey) e.preventDefault(); };
+    const touch = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
+    const gest = (e: Event) => e.preventDefault();
+    document.addEventListener("wheel", wheel, { passive: false });
+    document.addEventListener("touchstart", touch, { passive: false });
+    document.addEventListener("gesturestart", gest);
+    document.addEventListener("gesturechange", gest);
+    return () => {
+      document.removeEventListener("wheel", wheel);
+      document.removeEventListener("touchstart", touch);
+      document.removeEventListener("gesturestart", gest);
+      document.removeEventListener("gesturechange", gest);
+    };
+  }, []);
+
   const tool = (t: string, icon: string, label: string, title: string) => (
     <button key={t} className={`tool${t === "pen" ? " on" : ""}`} data-tool={t} title={title}>
       <Icon name={icon} size={21} /><small>{label}</small>
