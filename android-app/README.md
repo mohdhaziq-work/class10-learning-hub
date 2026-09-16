@@ -13,6 +13,17 @@ and phones.
 - `FLAG_KEEP_SCREEN_ON` for classroom sessions
 - In-app navigation only; hardware back = web history back
 - File-upload support for board session imports
+- `offscreenPreRaster` pre-renders off-viewport split panes (instant toggle)
+- `setEnableSmoothTransition`, hidden scrollbars, `LayoutAlgorithm.NORMAL`
+- Split-screen VRAM management: `onTrimMemory` flushes stale canvas textures
+- Smart-board route gets an injected compositor-containment stylesheet
+  (backface-visibility/translate3d layer hints) so pane switches never
+  re-rasterize the full viewport
+
+Note: the app uses the device's Android System WebView (Chromium). For peak
+canvas performance on older boards, keep "Android System WebView" / Chrome
+updated from the Play Store — the wrapper always drives whatever Chromium is
+installed at its highest render priority.
 
 ## Build the APK
 

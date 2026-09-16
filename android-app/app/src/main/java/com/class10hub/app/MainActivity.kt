@@ -49,10 +49,18 @@ class MainActivity : AppCompatActivity() {
 
         webView = findViewById(R.id.webview)
 
-        /* Force an isolated hardware rendering layer for the whole web surface */
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        /* Isolated hardware rendering layer — WebView composes on its own GPU
+           queue instead of sharing the native UI thread's software loop. */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webView.setLayerType(View.LAYER_TYPE_HARDWARE, null)
+            /* Pre-render off-viewport split panes so split toggling is instant */
+            webView.offscreenPreRaster = true
+        }
         webView.setBackgroundColor(Color.WHITE)
         webView.overScrollMode = View.OVER_SCROLL_NEVER
+        webView.setEnableSmoothTransition(true)
+        webView.isVerticalScrollBarEnabled = false
+        webView.isHorizontalScrollBarEnabled = false
 
         webView.settings.apply {
             javaScriptEnabled = true
@@ -65,6 +73,7 @@ class MainActivity : AppCompatActivity() {
             setRenderPriority(WebSettings.RenderPriority.HIGH)
 
             cacheMode = WebSettings.LOAD_DEFAULT
+            layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
             mediaPlaybackRequiresUserGesture = false
 
             /* Stylus/pen fidelity: let the page own every gesture */
@@ -92,6 +101,7 @@ class MainActivity : AppCompatActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 enterImmersiveMode()
+                if (url.contains("/smart-board")) injectContainmentCss(view)
             }
         }
 
@@ -126,6 +136,34 @@ class MainActivity : AppCompatActivity() {
         })
 
         webView.loadUrl(HOME_URL)
+    }
+
+    /** Flush stale canvas textures from the WebView's VRAM cache when the OS
+        asks for memory back — prevents split-screen texture stacking freezes. */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        runCatching { webView.freeMemory() }
+    }
+
+    /** Force strict compositor-layer containment on the board's flex panes so
+        Chromium never re-rasterizes the whole viewport on pane toggles. */
+    private fun injectContainmentCss(view: WebView) {
+        val css = """
+            html,body{overflow:hidden;height:100%!important;position:relative}
+            .sb-root,.sb-main,.sb-work,#paneDoc,#paneBoard,#docScroll,#boardCanvas,#boardLive{
+              -webkit-backface-visibility:hidden;backface-visibility:hidden;
+              -webkit-perspective:1000px;perspective:1000px;
+              -webkit-transform:translate3d(0,0,0);transform:translate3d(0,0,0);
+            }
+        """.trimIndent().replace("
+", "")
+        view.evaluateJavascript(
+            "(function(){if(document.getElementById('apkContainCss'))return;" +
+            "var s=document.createElement('style');s.id='apkContainCss';" +
+            "s.textContent='" + css.replace("'", "\'") + "';" +
+            "document.head.appendChild(s);})();",
+            null
+        )
     }
 
     /** Persistent immersive sticky: strip status bar, nav bar and system pill. */
