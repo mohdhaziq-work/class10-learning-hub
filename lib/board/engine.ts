@@ -746,9 +746,13 @@ export class BoardEngine {
     if (!this.inkWorker) {
       this.boardLive.width = this.boardCanvas.width;
       this.boardLive.height = this.boardCanvas.height;
-      this.boardLive.style.width = this.boardW + "px";
-      this.boardLive.style.height = this.boardH + "px";
     }
+    /* CSS size must ALWAYS track the container — in worker mode the element
+       delegates its bitmap to the OffscreenCanvas, and without explicit CSS
+       dimensions it renders at raw buffer-pixel size (DPR× too large), which
+       shifted live ink to the right of the stylus until commit. */
+    this.boardLive.style.width = this.boardW + "px";
+    this.boardLive.style.height = this.boardH + "px";
     this.boardFx.width = this.boardCanvas.width;
     this.boardFx.height = this.boardCanvas.height;
     this.boardFx.style.width = this.boardW + "px";
