@@ -40,6 +40,21 @@ export default function SessionTracker() {
     }
     const meta = detect();
 
+    /* Retroactive harvest: report the oldest local artifact (first-seen stamp
+       or an old saved board session) so Day-1 devices merge into the ledger. */
+    let legacy = 0;
+    try {
+      let fs = +localStorage.getItem("sb-first-seen")!;
+      if (!fs) { fs = Date.now(); localStorage.setItem("sb-first-seen", String(fs)); }
+      legacy = fs;
+      const saved = localStorage.getItem("sb-session-v2");
+      if (saved) {
+        const j = JSON.parse(saved) as { savedAt?: number; t?: number };
+        const st = j.savedAt || j.t || 0;
+        if (st && st < legacy) legacy = st;
+      }
+    } catch { /* private mode */ }
+
     /* instant unlock from the cached handshake; the poll corrects it */
     let authorized = localStorage.getItem("sb-live-auth") === "1";
     (window as any).__sbLive = authorized;
@@ -50,7 +65,7 @@ export default function SessionTracker() {
       fetch("/api/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sid, device_uuid: dev, ...meta, page: location.pathname, bye }),
+        body: JSON.stringify({ session_id: sid, device_uuid: dev, ...meta, page: location.pathname, legacy_first_seen: legacy || undefined, bye }),
         keepalive: bye,
       }).catch(() => undefined);
     };

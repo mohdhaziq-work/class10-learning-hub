@@ -7,6 +7,9 @@ interface Log {
   device_uuid: string;
   session_id: string;
   device_metadata: { operating_system: string; browser_name: string; device_type: string; screen: string };
+  ip?: string;
+  geo?: string;
+  source?: "live" | "backfill";
   first_connection_time: number;
   last_seen_time: number;
   approval_status: "PENDING" | "AUTHORIZED_TEACHER" | "REVOKED";
@@ -86,8 +89,20 @@ export default function DeviceDashboard() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map((h) => {
+      {(() => {
+        const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+        const groups: [string, string, Log[]][] = [
+          ["Active This Morning / Today", "every device seen since midnight", rows.filter((r) => r.last_seen_time >= +dayStart)],
+          ["Historical Connections", "complete ledger since the platform's first day", rows.filter((r) => r.last_seen_time < +dayStart)],
+        ];
+        return groups.filter(([, , g]) => g.length > 0).map(([title, sub, g]) => (
+          <section key={title} className="mb-8">
+            <div className="flex items-baseline gap-3 mb-4">
+              <h3 className="text-[17px] font-extrabold tracking-tight">{title}</h3>
+              <span className="text-[12.5px] font-semibold text-ink-mute">{sub} · {g.length}</span>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              {g.map((h) => {
           const online = liveUuids.has(h.device_uuid);
           const approved = h.approval_status === "AUTHORIZED_TEACHER";
           return (
@@ -105,6 +120,11 @@ export default function DeviceDashboard() {
               <div className="dev-meta">
                 <span>First seen {fmt(h.first_connection_time)}</span>
                 <span>Last active {ago(h.last_seen_time)}</span>
+              </div>
+              <div className="dev-meta">
+                {h.ip && <span className="font-mono" style={{ fontSize: 11.5 }}>{h.ip}</span>}
+                {h.geo ? <span><Icon name="mapPin" size={14} /> {h.geo}</span> : h.ip ? <span>geo resolving…</span> : null}
+                {h.source === "backfill" && <span>backfilled</span>}
               </div>
               <div className="flex items-center gap-2 mt-3">
                 <span className={`st-chip ${approved ? "ok" : h.approval_status === "REVOKED" ? "no" : "wait"}`}>
@@ -124,9 +144,12 @@ export default function DeviceDashboard() {
                 )}
               </div>
             </div>
-          );
-        })}
-      </div>
+              );
+              })}
+            </div>
+          </section>
+        ));
+      })()}
     </div>
   );
 }

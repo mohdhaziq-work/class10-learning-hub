@@ -13,6 +13,8 @@ export async function POST(req: NextRequest) {
   if (!sid) return NextResponse.json({ error: "missing session_id" }, { status: 400 });
   if (b.bye) { byeSession(sid); return NextResponse.json({ ok: true }); }
   if (!dev) return NextResponse.json({ error: "missing device_uuid" }, { status: 400 });
+  const fwd = req.headers.get("x-forwarded-for") || "";
+  const ip = (fwd.split(",")[0] || req.headers.get("x-real-ip") || "").trim().slice(0, 45);
   const log = touch({
     session_id: sid,
     device_uuid: dev,
@@ -21,6 +23,8 @@ export async function POST(req: NextRequest) {
     browser_name: b.browser_name,
     screen: b.screen,
     page: b.page,
+    ip,
+    legacy_first_seen: typeof b.legacy_first_seen === "number" ? b.legacy_first_seen : undefined,
   });
   return NextResponse.json({ ok: true, authorized: log.approval_status === "AUTHORIZED_TEACHER", status: log.approval_status });
 }

@@ -96,6 +96,7 @@ const ICONS: Record<string, React.ReactNode> = {
  monitorSmartphone: (<><rect x="2" y="4" width="13" height="9" rx="2" /><path d="M6 17h5" /><path d="M8.5 13v4" /><rect x="16" y="10" width="6" height="11" rx="2" /></>),
  radio: (<><circle cx="12" cy="12" r="2.5" /><path d="M7.5 7.5a6.4 6.4 0 0 0 0 9M16.5 7.5a6.4 6.4 0 0 1 0 9" /><path d="M4.8 4.8a10.2 10.2 0 0 0 0 14.4M19.2 4.8a10.2 10.2 0 0 1 0 14.4" /></>),
  galleryHorizontal: (<><rect x="2" y="5" width="20" height="14" rx="3" /><path d="M2 12h20" /><path d="M8 5v14" /></>),
+ mapPin: (<><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></>),
  globe: (<><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18" /><path d="M12 3a15 15 0 0 0 0 18" /></>),
  bot: (<><path d="M12 8V4H8" /><rect x="4" y="8" width="16" height="12" rx="2" /><path d="M2 14h2" /><path d="M20 14h2" /><path d="M9 13h.01" /><path d="M15 13h.01" /></>),
  languages: (<><path d="m5 8 6 6" /><path d="m4 14 6-6 2-3" /><path d="M2 5h12" /><path d="M7 2h1" /><path d="m22 22-5-10-5 10" /><path d="M14 18h6" /></>),

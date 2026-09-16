@@ -34,6 +34,9 @@ export interface DeviceLog {
     device_type: string;
     screen: string;
   };
+  ip: string;
+  geo: string;
+  source: "live" | "backfill";
   first_connection_time: number;
   last_seen_time: number;
   approval_status: ApprovalStatus;
@@ -62,6 +65,7 @@ function store() {
     const t = { sessions: new Map<string, TrackedSession>(), history: new Map<string, DeviceLog>(), classwork: [] as ClassworkEntry[], listeners: new Set<() => void>() };
     G.__track = t;
     loadVault();
+    runBackfill();
   }
   return G.__track!;
 }
@@ -106,6 +110,7 @@ export function prune() {
 export function touch(p: {
   session_id: string; device_uuid: string;
   device_type?: string; operating_system?: string; browser_name?: string; screen?: string; page?: string;
+  ip?: string; legacy_first_seen?: number;
 }) {
   const t = store();
   const now = Date.now();
@@ -122,8 +127,10 @@ export function touch(p: {
     opened_at: oldS?.opened_at || now,
     last_active: now,
   });
-  /* permanent ledger */
+  /* permanent ledger — first_connection_time adopts the EARLIEST known stamp
+     (live heartbeat vs client-reported legacy artifact vs backfill) */
   const old = t.history.get(p.device_uuid);
+  const first = Math.min(old?.first_connection_time || now, p.legacy_first_seen || now, now);
   t.history.set(p.device_uuid, {
     device_uuid: p.device_uuid,
     session_id: p.session_id,
@@ -133,10 +140,14 @@ export function touch(p: {
       device_type: p.device_type || old?.device_metadata.device_type || "Unknown",
       screen: p.screen || old?.device_metadata.screen || "",
     },
-    first_connection_time: old?.first_connection_time || now,
+    ip: p.ip || old?.ip || "",
+    geo: old?.geo || "",
+    source: old?.source || "live",
+    first_connection_time: first,
     last_seen_time: now,
     approval_status: old?.approval_status || "PENDING",
   });
+  if (p.ip) enrichGeo(p.ip);
   schedulePersist();
   notify();
   return t.history.get(p.device_uuid)!;
@@ -185,6 +196,50 @@ export function archiveClasswork(e: Omit<ClassworkEntry, "id" | "saved_at">) {
   notify();
 }
 export function classworkList() { return store().classwork; }
+
+/* ---------------- IP footprint + best-effort geo (cached, non-blocking) ---------------- */
+const geoCache = new Map<string, string>();
+function enrichGeo(ip: string) {
+  if (!ip || geoCache.has(ip)) return;
+  geoCache.set(ip, "");
+  fetch(`http://ip-api.com/json/${ip}?fields=status,city,regionName,countryName`, { signal: AbortSignal.timeout(2500) })
+    .then((r) => r.json())
+    .then((j: any) => {
+      if (j?.status === "success") {
+        const g = [j.city, j.regionName, j.countryName].filter(Boolean).join(", ");
+        geoCache.set(ip, g);
+        for (const h of store().history.values()) if (h.ip === ip && !h.geo) h.geo = g;
+        schedulePersist();
+        notify();
+      }
+    })
+    .catch(() => { /* offline / rate-limited — IP alone still recorded */ });
+}
+
+/* ---------------- retroactive backfill migration ----------------
+   Scans every recoverable historical source and merges unique devices into
+   the global_device_analytics ledger. Runs at store init; safe to re-run.
+   Sources: vault file (loaded earlier), classwork archive device strings,
+   and client-reported legacy artifacts (oldest local board-session stamp). */
+export function runBackfill() {
+  const t = store();
+  let added = 0;
+  for (const c of t.classwork) {
+    /* archived boards carry a device label but no uuid — attributed to their session's device if known */
+    const sess = [...t.sessions.values()].find((s) => s.session_id === c.session_id);
+    if (sess && !t.history.has(sess.device_uuid)) {
+      t.history.set(sess.device_uuid, {
+        device_uuid: sess.device_uuid, session_id: sess.session_id,
+        device_metadata: { operating_system: sess.operating_system, browser_name: sess.browser_name, device_type: sess.device_type, screen: sess.screen },
+        ip: sess ? "" : "", geo: "", source: "backfill",
+        first_connection_time: c.saved_at, last_seen_time: c.saved_at, approval_status: "PENDING",
+      });
+      added++;
+    }
+  }
+  if (added) { schedulePersist(); notify(); }
+  return added;
+}
 
 /* ---------------- live push (SSE) ---------------- */
 export function subscribe(fn: () => void) {
