@@ -428,9 +428,9 @@ export class BoardEngine {
 
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
-    this.bctx = this.boardCanvas.getContext("2d")!;
+    this.bctx = this.boardCanvas.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
     this.boardLive = this.$("#boardLive");
-    this.lctx = this.boardLive.getContext("2d")!;
+    this.lctx = this.boardLive.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
     this.cleanups.push(() => this.stopUpPoll());
     this.cleanups.push(() => { if (this.textPenT) clearTimeout(this.textPenT); });
 
@@ -694,8 +694,14 @@ export class BoardEngine {
   /* ==========================================================================
      WHITEBOARD
      ========================================================================== */
+  private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
+  }
+  private toWorldInto(cx: number, cy: number) {
+    this.worldPt.x = (cx - this.boardPan.x) / this.boardZoom;
+    this.worldPt.y = (cy - this.boardPan.y) / this.boardZoom;
+    return this.worldPt;
   }
   private sizeBoard() {
     const r = this.boardScroll.getBoundingClientRect();
@@ -711,8 +717,8 @@ export class BoardEngine {
     this.boardLive.style.width = this.boardW + "px";
     this.boardLive.style.height = this.boardH + "px";
     if (!this.inkC || !this.bgC) {
-      this.inkC = document.createElement("canvas"); this.inkX = this.inkC.getContext("2d")!;
-      this.bgC = document.createElement("canvas"); this.bgX = this.bgC.getContext("2d")!;
+      this.inkC = document.createElement("canvas"); this.inkX = this.inkC.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
+      this.bgC = document.createElement("canvas"); this.bgX = this.bgC.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
     }
     this.inkC.width = this.bgC.width = this.boardCanvas.width;
     this.inkC.height = this.bgC.height = this.boardCanvas.height;
@@ -898,10 +904,20 @@ export class BoardEngine {
       }
       if (!this.pointers.has(e.pointerId)) return;
       const r = this.boardRectC || cv.getBoundingClientRect();
-      /* high-frequency pens/tablets: use every coalesced point for a silky, lag-free stroke */
-      const gce = (e as any).getCoalescedEvents ? (e as any).getCoalescedEvents() as PointerEvent[] : [];
-      const evs = (gce && gce.length && (this.tool === "pen" || this.tool === "highlighter")) ? gce : [e];
-      for (const ev of evs) this.boardStroke(ev, this.toWorld(ev.clientX - r.left, ev.clientY - r.top), "move");
+      /* High-frequency digitizers: pull EVERY hardware sub-sample between frames
+         (getCoalescedEvents) and pipe straight into the ink path — zero allocations. */
+      const coalesce = this.tool === "pen" || this.tool === "highlighter" || this.tool === "eraser";
+      if (coalesce && (e as any).getCoalescedEvents) {
+        const gce = (e as any).getCoalescedEvents() as PointerEvent[];
+        if (gce.length > 1) {
+          for (let i = 0; i < gce.length; i++) {
+            const ev = gce[i];
+            this.boardStroke(ev, this.toWorldInto(ev.clientX - r.left, ev.clientY - r.top), "move");
+          }
+          return;
+        }
+      }
+      this.boardStroke(e, this.toWorldInto(e.clientX - r.left, e.clientY - r.top), "move");
     });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
@@ -1258,7 +1274,7 @@ export class BoardEngine {
     annot.className = "annot";
     wrap.appendChild(base); wrap.appendChild(annot);
     (this.$("#docScroll") as HTMLElement).appendChild(wrap);
-    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d")!, rendered: false, dirty: true, rendering: false, scale: 1, cssScale: 1 };
+    const pg: PdfPage = { num: n, wrap, base, annot, actx: annot.getContext("2d", { desynchronized: true, willReadFrequently: false })!, rendered: false, dirty: true, rendering: false, scale: 1, cssScale: 1 };
     this.pages.push(pg);
     this.pageObserver?.observe(wrap);
     this.wireAnnotCanvas(annot, n, () => pg.cssScale, null);
@@ -1682,7 +1698,7 @@ export class BoardEngine {
     (this.$("#docScroll") as HTMLElement).appendChild(box);
     if (!annot) { this.htmlAnnot = null; requestAnimationFrame(() => this.applyHtmlZoom()); return; }
     box.appendChild(cv);
-    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d")! };
+    this.htmlAnnot = { box, cv, ctx: cv.getContext("2d", { desynchronized: true, willReadFrequently: false })! };
     requestAnimationFrame(() => { this.sizeHtmlAnnot(); this.applyHtmlZoom(); });
     const ro = new ResizeObserver(() => this.sizeHtmlAnnot());
     ro.observe(box.querySelector(".doc-html-inner") as HTMLElement);
