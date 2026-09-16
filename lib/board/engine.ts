@@ -10,6 +10,7 @@ export interface EngineOpts { layout?: string; bg?: string; pdfUrl?: string; pdf
 import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
+import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 
 export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
 
@@ -377,7 +378,12 @@ export class BoardEngine {
 
   /* board canvas */
   private boardScroll!: HTMLElement; private boardCanvas!: HTMLCanvasElement; private bctx!: CanvasRenderingContext2D;
-  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0; private boardRectC: DOMRect | null = null; private dirtySave = false;
+  private boardLive!: HTMLCanvasElement; private lctx?: CanvasRenderingContext2D; private liveRaf = 0; private boardRectC: DOMRect | null = null; private dirtySave = false;
+  private boardFx!: HTMLCanvasElement; private fctx!: CanvasRenderingContext2D;
+  private inkWorker: Worker | null = null;
+  /* zero-allocation hot path: pooled stroke vectors (x, y, pressure triples) */
+  private strokePool = new Float32Array(16384); private workerBuf = new Float32Array(16384);
+  private liveIdx = 1; private liveHas = false; private lp0x = 0; private lp0y = 0; private lp1x = 0; private lp1y = 0;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -428,9 +434,23 @@ export class BoardEngine {
 
     this.boardScroll = this.$("#boardScroll");
     this.boardCanvas = this.$("#boardCanvas");
-    this.bctx = this.boardCanvas.getContext("2d")!;
+    /* desynchronized + opaque static layer: ink blits straight toward the
+       hardware frame buffer, skipping the compositor timeline and alpha-blend */
+    this.bctx = this.boardCanvas.getContext("2d", { desynchronized: true, alpha: false, willReadFrequently: false })!;
     this.boardLive = this.$("#boardLive");
-    this.lctx = this.boardLive.getContext("2d")!;
+    this.boardFx = this.$("#boardFx");
+    this.fctx = this.boardFx.getContext("2d")!;
+    /* Dual-threaded pipeline: the live stroke layer moves to a dedicated worker
+       on an OffscreenCanvas so pane scrolls / iframe loads never fight pen
+       tracking. Main-thread incremental path is the automatic fallback. */
+    try {
+      if (typeof Worker !== "undefined" && "transferControlToOffscreen" in HTMLCanvasElement.prototype) {
+        const off = this.boardLive.transferControlToOffscreen();
+        this.inkWorker = new Worker(URL.createObjectURL(new Blob([INK_WORKER_SOURCE], { type: "text/javascript" })));
+        this.inkWorker.postMessage({ t: "init", canvas: off }, [off]);
+      }
+    } catch { this.inkWorker = null; }
+    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", { desynchronized: true, willReadFrequently: false })!;
     /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
        The vector store (boardStore.objects) is the source of truth, so a
        restore is just: preventDefault + full history repaint. */
@@ -723,10 +743,17 @@ export class BoardEngine {
     this.boardCanvas.height = this.boardH * this.DPR;
     this.boardCanvas.style.width = this.boardW + "px";
     this.boardCanvas.style.height = this.boardH + "px";
-    this.boardLive.width = this.boardCanvas.width;
-    this.boardLive.height = this.boardCanvas.height;
-    this.boardLive.style.width = this.boardW + "px";
-    this.boardLive.style.height = this.boardH + "px";
+    if (!this.inkWorker) {
+      this.boardLive.width = this.boardCanvas.width;
+      this.boardLive.height = this.boardCanvas.height;
+      this.boardLive.style.width = this.boardW + "px";
+      this.boardLive.style.height = this.boardH + "px";
+    }
+    this.boardFx.width = this.boardCanvas.width;
+    this.boardFx.height = this.boardCanvas.height;
+    this.boardFx.style.width = this.boardW + "px";
+    this.boardFx.style.height = this.boardH + "px";
+    if (this.inkWorker) this.inkWorker.postMessage({ t: "size", w: this.boardCanvas.width, h: this.boardCanvas.height, dpr: this.DPR });
     if (!this.inkC || !this.bgC) {
       this.inkC = document.createElement("canvas"); this.inkX = this.inkC.getContext("2d")!;
       this.bgC = document.createElement("canvas"); this.bgX = this.bgC.getContext("2d")!;
@@ -734,7 +761,7 @@ export class BoardEngine {
     this.inkC.width = this.bgC.width = this.boardCanvas.width;
     this.inkC.height = this.bgC.height = this.boardCanvas.height;
     /* width/height assignment resets context state — re-assert immediately */
-    for (const c of [this.bctx, this.lctx, this.inkX, this.bgX]) {
+    for (const c of [this.bctx, this.lctx, this.fctx, this.inkX, this.bgX]) {
       if (!c) continue;
       c.imageSmoothingEnabled = true;
       (c as any).imageSmoothingQuality = "high";
@@ -745,6 +772,7 @@ export class BoardEngine {
   }
   private renderBoard() {
     if (this.destroyed) return;
+    if (this.inkWorker) this.inkWorker.postMessage({ t: "view", px: this.boardPan.x, py: this.boardPan.y, z: this.boardZoom });
     const z = this.boardZoom, px = this.boardPan.x, py = this.boardPan.y;
     /* background layer */
     const bx = this.bgX;
@@ -817,10 +845,11 @@ export class BoardEngine {
     this.liveRaf = requestAnimationFrame(() => { this.liveRaf = 0; this.drawLive(); });
   }
   private drawLive() {
-    const ctx = this.lctx;
+    /* fx layer: lasso + shape previews (main thread, normal context) */
+    const ctx = this.fctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
-    if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
+    ctx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
+    if (this.lasso && this.lasso.length > 1) {
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       ctx.save();
       ctx.translate(this.boardPan.x, this.boardPan.y);
@@ -828,7 +857,7 @@ export class BoardEngine {
       const z = this.boardZoom;
       ctx.beginPath();
       ctx.moveTo(this.lasso[0].x, this.lasso[0].y);
-      for (let i = 1; i < this.lasso.length; i++) ctx.lineTo(this.lasso[i].x, this.lasso[i].y);
+      for (let k = 1; k < this.lasso.length; k++) ctx.lineTo(this.lasso[k].x, this.lasso[k].y);
       ctx.closePath();
       ctx.globalAlpha = 0.12; ctx.fillStyle = "#dc2626"; ctx.fill();
       ctx.globalAlpha = 1; ctx.setLineDash([7 / z, 5 / z]);
@@ -837,15 +866,72 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    if (!this.boardDraft || this.boardDraft.type === "erase") return;
+    const d = this.boardDraft;
+    if (!d || d.type === "erase") return;
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
-    drawObject(ctx, this.boardDraft);
+    if (d.type === "shape") { drawObject(ctx, d); ctx.restore(); return; }
     ctx.restore();
+    if (d.type === "stroke" && !this.inkWorker) {
+      /* main-thread incremental fallback: draw ONLY the segments appended
+         since the last frame — O(new points), never O(stroke) */
+      const dd = d as BoardObject & { pool?: Float32Array; n?: number };
+      const pool = dd.pool!, n = dd.n!;
+      const l = this.lctx!;
+      l.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      l.save();
+      l.translate(this.boardPan.x, this.boardPan.y);
+      l.scale(this.boardZoom, this.boardZoom);
+      const st = this.liveStyle(d);
+      l.lineCap = "round"; l.lineJoin = "round"; l.strokeStyle = st.color; l.globalAlpha = st.alpha * st.opacity;
+      while (this.liveIdx < n) {
+        const x = pool[this.liveIdx * 3], y = pool[this.liveIdx * 3 + 1], pr = pool[this.liveIdx * 3 + 2];
+        const dist = Math.hypot(x - this.lp1x, y - this.lp1y);
+        l.lineWidth = pr > 0 && pr !== 0.5
+          ? st.size * (0.3 + 0.7 * Math.min(1, pr * 1.5))
+          : Math.max(st.size * (1 - 0.62 * Math.min(dist / 26, 1)), 0.7);
+        l.beginPath();
+        if (this.liveHas) {
+          l.moveTo((this.lp0x + this.lp1x) / 2, (this.lp0y + this.lp1y) / 2);
+          l.quadraticCurveTo(this.lp1x, this.lp1y, (this.lp1x + x) / 2, (this.lp1y + y) / 2);
+        }
+        l.stroke();
+        this.lp0x = this.lp1x; this.lp0y = this.lp1y; this.lp1x = x; this.lp1y = y; this.liveHas = true;
+        this.liveIdx++;
+      }
+      l.restore();
+    }
   }
-  /* paint just the newest object straight onto the static canvas — no full redraw */
+  private liveStyle(o: BoardObject) {
+    const kind = o.tool === "highlighter" ? "highlighter" : (o.kind || "ball");
+    return { color: o.color || "#111", size: o.size || 4, opacity: o.opacity ?? 1, alpha: kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1 };
+  }
+  private pushPool(x: number, y: number, pr: number) {
+    const d = this.boardDraft as BoardObject & { pool?: Float32Array; n?: number };
+    let pool = d.pool!; const n = d.n!;
+    if ((n + 1) * 3 > pool.length) { const np = new Float32Array(pool.length * 2); np.set(pool); d.pool = pool = np; }
+    pool[n * 3] = x; pool[n * 3 + 1] = y; pool[n * 3 + 2] = pr; d.n = n + 1;
+  }
+  private resetLiveState() {
+    this.clearLive();
+    const pool = (this.boardDraft as any).pool as Float32Array;
+    this.lp0x = this.lp1x = pool[0]; this.lp0y = this.lp1y = pool[1];
+    this.liveHas = false; this.liveIdx = 1;
+  }
+  private drawLiveDot(x: number, y: number) {
+    const l = this.lctx!; const st = this.liveStyle(this.boardDraft!);
+    l.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    l.save(); l.translate(this.boardPan.x, this.boardPan.y); l.scale(this.boardZoom, this.boardZoom);
+    l.globalAlpha = st.alpha * st.opacity; l.fillStyle = st.color;
+    l.beginPath(); l.arc(x, y, st.size / 2, 0, 7); l.fill(); l.restore();
+  }
+  private clearLive() {
+    if (this.inkWorker) this.inkWorker.postMessage({ t: "clear" });
+    else if (this.lctx) { this.lctx.setTransform(1, 0, 0, 1, 0, 0); this.lctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height); }
+    this.liveHas = false; this.liveIdx = 1;
+  }
   private paintIncremental() {
     this.drawLive(); /* clears the live layer */
     const o = this.boardStore.objects[this.boardStore.objects.length - 1];
@@ -919,6 +1005,7 @@ export class BoardEngine {
         const p = [...this.pointers.values()];
         const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
         this.boardZoom = Math.min(4, Math.max(0.3, this.pinch.z * d / this.pinch.d));
+        if (this.boardDraft?.type === "stroke") this.clearLive();
         this.renderBoard(); return;
       }
       if (!this.pointers.has(e.pointerId)) return;
@@ -953,6 +1040,7 @@ export class BoardEngine {
       this.boardZoom = Math.min(4, Math.max(0.3, this.boardZoom * (e.deltaY < 0 ? 1.1 : 0.9)));
       this.boardPan.x = mx - before.x * this.boardZoom;
       this.boardPan.y = my - before.y * this.boardZoom;
+      if (this.boardDraft?.type === "stroke") this.clearLive();
       this.renderBoard();
     }, { passive: false });
     this.on(cv, "dblclick", (e: MouseEvent) => {
@@ -1048,10 +1136,15 @@ export class BoardEngine {
       this.boardStore.pushHistory();
       if (tool === "pen" || tool === "highlighter") {
         this.boardDraft = {
-          id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined, points: [{ x: w.x, y: w.y }],
+          id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined, points: [],
           color: tool === "highlighter" ? this.hlColor : this.color,
           size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
-        };
+        } as BoardObject & { pool?: Float32Array; n?: number };
+        (this.boardDraft as any).pool = this.strokePool; (this.boardDraft as any).n = 0;
+        this.pushPool(w.x, w.y, (e as PointerEvent).pressure || 0);
+        this.resetLiveState();
+        if (this.inkWorker) this.inkWorker.postMessage({ t: "down", x: w.x, y: w.y, style: this.liveStyle(this.boardDraft) });
+        else this.drawLiveDot(w.x, w.y);
       } else {
         this.boardDraft = {
           id: uid(), type: "shape", shape: this.shape, x1: w.x, y1: w.y, x2: w.x, y2: w.y,
@@ -1060,16 +1153,39 @@ export class BoardEngine {
       }
     } else if (phase === "move" && w && this.boardDraft) {
       if (this.boardDraft.type === "stroke") {
-        const pts = this.boardDraft.points!;
-        const last = pts[pts.length - 1];
-        if (Math.hypot(w.x - last.x, w.y - last.y) >= 0.75) {
+        const d = this.boardDraft as BoardObject & { pool?: Float32Array; n?: number };
+        const pool = d.pool!, n0 = d.n!;
+        const lx = pool[(n0 - 1) * 3], ly = pool[(n0 - 1) * 3 + 1];
+        if (Math.hypot(w.x - lx, w.y - ly) >= 0.75) {
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
-          pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
+          this.pushPool(w.x, w.y, pr || 0);
+          if (this.inkWorker) {
+            /* flush this coalesced micro-batch to the worker thread */
+            const cnt = d.n! - n0;
+            for (let i = 0; i < cnt; i++) {
+              this.workerBuf[i * 3] = pool[(n0 + i) * 3];
+              this.workerBuf[i * 3 + 1] = pool[(n0 + i) * 3 + 1];
+              this.workerBuf[i * 3 + 2] = pool[(n0 + i) * 3 + 2];
+            }
+            this.inkWorker.postMessage({ t: "batch", buf: this.workerBuf, n: cnt });
+          }
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
-      this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
+      if (!this.inkWorker || this.boardDraft.type !== "stroke") this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
     } else if (phase === "up" && this.boardDraft) {
+      if (this.boardDraft.type === "stroke") {
+        const d = this.boardDraft as BoardObject & { pool?: Float32Array; n?: number };
+        const pool = d.pool!, n = d.n!;
+        const pts: { x: number; y: number; w?: number }[] = new Array(n);
+        for (let i = 0; i < n; i++) {
+          const x = pool[i * 3], y = pool[i * 3 + 1], pr = pool[i * 3 + 2];
+          pts[i] = pr > 0 && pr !== 0.5 ? { x, y, w: pr } : { x, y };
+        }
+        d.points = pts;
+        if (this.inkWorker) this.inkWorker.postMessage({ t: "end" });
+        this.clearLive();
+      }
       let replaced = false;
       if (this.boardDraft.type === "shape" && Math.abs((this.boardDraft.x2 || 0) - (this.boardDraft.x1 || 0)) < 4 && Math.abs((this.boardDraft.y2 || 0) - (this.boardDraft.y1 || 0)) < 4) {
         this.boardStore.undo.pop();

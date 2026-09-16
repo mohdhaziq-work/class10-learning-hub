@@ -133,7 +133,7 @@ export default function SmartBoard() {
               <span className="live-chip" id="liveChip" style={{ display: "none", marginLeft: "auto" }}><span className="lc-dot" /> School Board Mode — Auto-Saving Live</span>
             </div>
             <div className="pane-body">
-              <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><div id="brushRing" /></div>
+              <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><canvas id="boardFx" /><div id="brushRing" /></div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
               <div id="protractor" className="measure">
                 <svg id="protractorSvg" width="260" height="150" />

@@ -105,6 +105,11 @@
    toggles and caused the black-canvas freeze. */
 #boardCanvas{position:absolute;left:0;top:0;touch-action:none;cursor:crosshair}
 #boardLive{position:absolute;left:0;top:0;pointer-events:none;touch-action:none}
+#boardFx{position:absolute;left:0;top:0;pointer-events:none;touch-action:none}
+/* strict pointer trapping on every ink surface — no gesture loops, no click
+   delay. NOTE: no content-visibility / translate3d layer forcing here — that
+   combination previously broke Chromium compositing (black-canvas injunction). */
+#boardCanvas,#boardLive,#boardFx{touch-action:none !important;-webkit-tap-highlight-color:transparent;-webkit-backface-visibility:hidden;backface-visibility:hidden}
 #paneBoard{background:#ffffff}
 #thumbs{position:absolute;left:78px;top:12px;bottom:12px;width:136px;background:var(--panel);
   border:1px solid var(--line);border-radius:14px;padding:10px;display:none;flex-direction:column;gap:8px;
