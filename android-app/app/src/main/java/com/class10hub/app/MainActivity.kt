@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     @SuppressLint("SetJavaScriptEnabled", "Deprecated")
+    @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -60,7 +61,6 @@ class MainActivity : AppCompatActivity() {
             databaseEnabled = true
 
             /* Push frames to the GPU with top priority (legacy flag, still honored) */
-            @Suppress("DEPRECATION")
             renderPriority = WebSettings.RenderPriority.HIGH
 
             cacheMode = WebSettings.LOAD_DEFAULT
