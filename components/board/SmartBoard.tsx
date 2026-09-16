@@ -130,7 +130,7 @@ export default function SmartBoard() {
 
           <section className="pane" id="paneBoard">
             <div className="pane-head"><span className="dot" style={{ background: "#1a73e8" }} /> Whiteboard <span className="pane-sub">write / solve here</span>
-              <span className="live-chip" id="liveChip" style={{ display: "none", marginLeft: "auto" }}><span className="lc-dot" /> Live Syncing Board</span>
+              <span className="live-chip" id="liveChip" style={{ display: "none", marginLeft: "auto" }}><span className="lc-dot" /> School Board Mode — Auto-Saving Live</span>
             </div>
             <div className="pane-body">
               <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><div id="brushRing" /></div>

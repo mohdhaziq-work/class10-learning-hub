@@ -174,3 +174,14 @@ body { @apply bg-gbg text-ink font-sans antialiased; text-rendering: optimizeLeg
 .live-chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#b3261e;background:#fdecec;border-radius:99px;padding:4px 10px}
 .lc-dot{width:8px;height:8px;border-radius:99px;background:#e5484d;animation:lcPulse 1.2s infinite}
 @keyframes lcPulse{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.4)}50%{box-shadow:0 0 0 5px rgba(229,72,77,0)}}
+
+
+/* ===== persistent device ledger (2026-09-16) ===== */
+.f-chip{border:1px solid #e2e8f0;background:#fff;color:#5f6b7a;font-weight:700;font-size:12.5px;border-radius:99px;padding:7px 14px;cursor:pointer;transition:all .15s}
+.f-chip:hover{border-color:#94a3b8}
+.f-chip.on{background:#0f172a;border-color:#0f172a;color:#fff}
+.st-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;border-radius:99px;padding:3px 10px}
+.st-chip.wait{background:#fff7e0;color:#9a6700}
+.st-chip.ok{background:#eefaf0;color:#146c2e}
+.st-chip.no{background:#fdecec;color:#b3261e}
+.st-chip.live{background:#e8f0fe;color:#1a73e8}

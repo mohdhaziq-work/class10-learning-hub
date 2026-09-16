@@ -1,8 +1,8 @@
-import { list, subscribe } from "@/lib/track/store";
+import { liveList, historyList, subscribe } from "@/lib/track/store";
 
 export const dynamic = "force-dynamic";
 
-/* Server-Sent Events feed for the live device dashboard. */
+/* SSE feed: live pool + permanent history ledger. */
 export async function GET() {
   const enc = new TextEncoder();
   let unsub: (() => void) | null = null;
@@ -13,8 +13,9 @@ export async function GET() {
       const send = (data: unknown) => {
         try { controller.enqueue(enc.encode(`data: ${JSON.stringify(data)}\n\n`)); } catch { /* closed */ }
       };
-      send({ type: "snapshot", sessions: list() });
-      unsub = subscribe(() => send({ type: "snapshot", sessions: list() }));
+      const snap = () => send({ type: "snapshot", sessions: liveList(), history: historyList() });
+      snap();
+      unsub = subscribe(snap);
       ping = setInterval(() => send({ type: "ping" }), 20000);
     },
     cancel() {

@@ -19,3 +19,4 @@ Thumbs.db
 tsconfig.tsbuildinfo
 
 jarvis-app/app/build/
+.data/

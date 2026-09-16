@@ -2766,9 +2766,10 @@ export class BoardEngine {
     this.lastCloudSync = now;
     try {
       const sid = (window as any).__sbSid || sessionStorage.getItem("sb-sid") || "";
+      const dev = localStorage.getItem("sb-device-uuid") || "";
       if (!sid) return;
       const png = this.boardCanvas.toDataURL("image/png");
-      fetch("/api/classwork", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sid, png }) }).catch(() => undefined);
+      fetch("/api/classwork", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sid, device_uuid: dev, png }) }).catch(() => undefined);
     } catch { /* canvas tainted or storage blocked */ }
   }
   private scheduleSave() {
