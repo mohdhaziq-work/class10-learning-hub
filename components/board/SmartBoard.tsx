@@ -83,11 +83,6 @@ export default function SmartBoard() {
     };
   }, []);
 
-  const tool = (t: string, icon: string, label: string, title: string) => (
-    <button key={t} className={`tool${t === "pen" ? " on" : ""}`} data-tool={t} title={title}>
-      <Icon name={icon} size={21} /><small>{label}</small>
-    </button>
-  );
 
   return (
     <div ref={rootRef} className="sb-root" data-layout="split">
@@ -187,6 +182,7 @@ export default function SmartBoard() {
           <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
           <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
           <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
+          <button className="sb-btn dock-add" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
           <span className="pg" id="pgLbl">– / –</span>
           <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
           <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
@@ -197,7 +193,7 @@ export default function SmartBoard() {
           <button className="tool" id="btnMenuLegacy" hidden />
           <button className="tool" id="btnSave" hidden /><button className="tool" id="btnExport" hidden />
           <button className="tool" id="toolClear" hidden />
-          <button className="tool" id="btnBoardAdd" hidden /><button className="tool" id="btnBoardDup" hidden />
+          <button className="tool" id="btnBoardDup" hidden />
           <button className="tool" id="btnBoardDel" hidden />
           <span className="pg" id="targetLbl" />
         </span>
@@ -305,28 +301,38 @@ export default function SmartBoard() {
         </div>
       </div>
       <div className="pop" id="menuPop">
-        <h5>More tools</h5>
-        <div className="menu-grid">
-          {tool("pan", "hand", "PAN", "Pan / Hand (H)")}
-          {tool("highlighter", "highlighter", "HIGH", "Highlighter — colors & width (M)")}
-          <button className="tool" id="toolShapes" title="Advanced shapes — 2D + 3D"><Icon name="shapes" size={20} /><small>SHAPE</small></button>
-          {tool("text", "type", "TEXT", "Text (T)")}
-          {tool("sticky", "stickyNote", "NOTE", "Sticky note (S)")}
-          <button className="tool" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={20} /><small>MATHS</small></button>
-          <button className="tool" id="toolRuler" title="Ruler — drag, wheel to rotate, edge to resize"><Icon name="ruler" size={20} /><small>SCALE</small></button>
-          <button className="tool" id="toolProtractor" title="Protractor — precise angles, 15-degree snap"><Icon name="protractor" size={20} /><small>ANGLE</small></button>
-          <button className="tool" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={20} /><small>SHADE</small></button>
-          <button className="tool" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={20} /><small>PAGES</small></button>
-          <button className="tool" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={20} /><small>TEMPL</small></button>
-          <button className="tool" id="btnReplay" title="Replay — watch the board build itself"><Icon name="rotateCcw" size={20} /><small>REPLAY</small></button>
-          <button className="tool" id="btnWidgets" title="Class tools — timer, picker, attendance"><Icon name="timer" size={20} /><small>CLASS</small></button>
-          <button className="tool" id="btnPad" title="Phone Pad — phone as writing tablet"><Icon name="smartphone" size={20} /><small>PAD</small></button>
-          <button className="tool" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={20} /><small>SPEED</small></button>
-          <button className="tool" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={20} /><small>REC</small></button>
-          <button className="mbtn" id="mExport" style={{ textAlign: "left" }}><Icon name="download" size={17} /> Export PNG / print</button>
-          <button className="mbtn" id="mClear" style={{ textAlign: "left" }}><Icon name="trash2" size={17} /> Clear this page</button>
-          <button className="mbtn" id="mAddPage" style={{ textAlign: "left" }}><Icon name="plus" size={17} /> Add board page</button>
-          <button className="tool" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={20} /><small>CLIPS</small></button>
+        <div className="mp-head"><Icon name="menu" size={16} /> <b>More tools</b></div>
+        <div className="mp-sec">Write & draw</div>
+        <div className="menu-list">
+          <button className="tool mitem" data-tool="pan" title="Pan / Hand (H)"><Icon name="hand" size={17} /><span className="mlbl">Pan / Hand</span></button>
+          <button className="tool mitem" data-tool="highlighter" title="Highlighter — colors & width (M)"><Icon name="highlighter" size={17} /><span className="mlbl">Highlighter</span></button>
+          <button className="mitem" id="toolShapes" title="Advanced shapes — 2D + 3D"><Icon name="shapes" size={17} /><span className="mlbl">Shapes 2D+3D</span></button>
+          <button className="tool mitem" data-tool="text" title="Text (T)"><Icon name="type" size={17} /><span className="mlbl">Text</span></button>
+          <button className="tool mitem" data-tool="sticky" title="Sticky note (S)"><Icon name="stickyNote" size={17} /><span className="mlbl">Sticky note</span></button>
+          <button className="mitem" id="toolMath" title="Maths symbols + graph plotter"><Icon name="sigma" size={17} /><span className="mlbl">Maths</span></button>
+        </div>
+        <div className="mp-sec">Measure & teach</div>
+        <div className="menu-list">
+          <button className="mitem" id="toolRuler" title="Ruler — drag, wheel to rotate, edge to resize"><Icon name="ruler" size={17} /><span className="mlbl">Ruler / Scale</span></button>
+          <button className="mitem" id="toolProtractor" title="Protractor — precise angles, 15-degree snap"><Icon name="protractor" size={17} /><span className="mlbl">Protractor</span></button>
+          <button className="mitem" id="toolShade" title="Screen shade — hide and reveal (quiz mode)"><Icon name="eyeOff" size={17} /><span className="mlbl">Screen shade</span></button>
+          <button className="mitem" id="btnThumbs" title="Page thumbnails"><Icon name="images" size={17} /><span className="mlbl">Thumbnails</span></button>
+          <button className="mitem" id="btnTemplates" title="Ready-made lesson templates"><Icon name="layoutGrid" size={17} /><span className="mlbl">Templates</span></button>
+          <button className="mitem" id="btnReplay" title="Replay — watch the board build itself"><Icon name="rotateCcw" size={17} /><span className="mlbl">Replay</span></button>
+          <button className="mitem" id="btnWidgets" title="Class tools — timer, picker, attendance"><Icon name="timer" size={17} /><span className="mlbl">Class tools</span></button>
+          <button className="mitem" id="btnPad" title="Phone Pad — phone as writing tablet"><Icon name="smartphone" size={17} /><span className="mlbl">Phone pad</span></button>
+        </div>
+        <div className="mp-sec">Board</div>
+        <div className="menu-list">
+          <button className="mitem" id="mExport" title="Export PNG / print"><Icon name="download" size={17} /><span className="mlbl">Export / print</span></button>
+          <button className="mitem" id="mClear" title="Clear this page"><Icon name="trash2" size={17} /><span className="mlbl">Clear page</span></button>
+          <button className="mitem" id="mAddPage" title="Add a new board page"><Icon name="plus" size={17} /><span className="mlbl">Add page</span></button>
+        </div>
+        <div className="mp-sec" id="mpAdminSec" style={{ display: "none" }}>Admin device</div>
+        <div className="menu-list">
+          <button className="mitem" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={17} /><span className="mlbl">Speed test</span></button>
+          <button className="mitem" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={17} /><span className="mlbl">Record</span></button>
+          <button className="mitem" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={17} /><span className="mlbl">Recordings</span></button>
         </div>
       </div>
 

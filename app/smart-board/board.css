@@ -549,7 +549,7 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .admin-who{position:absolute;bottom:86px;left:14px;z-index:40;font:600 11px Google Sans,Arial,sans-serif;color:#80868b;background:rgba(255,255,255,.85);border-radius:8px;padding:3px 8px;pointer-events:none;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ---- decluttered dock: only essentials on the bar; the rest live in MENU ---- */
-#btnSave,#btnExport,#toolClear,#btnBoardAdd,#btnBoardDup,#btnBoardDel{display:none}
+#btnSave,#btnExport,#toolClear,#btnBoardDup,#btnBoardDel{display:none}
 .sb-dragging{cursor:col-resize;user-select:none}
 .sb-dragging iframe{pointer-events:none}
 
@@ -583,3 +583,30 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
   .dock-cap{width:50px;height:50px;border-radius:15px}
   .sb-dock .dock-minor .sb-btn{width:34px;height:34px}
 }
+
+/* latency HUD must stay invisible until admin explicitly turns it on (display:flex was beating [hidden]) */
+.lat-hud[hidden]{display:none}
+
+/* ================= DOCK v3.1 (2026-09-18) — no glow, soft neutral shadows ================= */
+.sb-dock .tool{box-shadow:0 4px 12px rgba(15,23,42,.10)}
+.sb-dock .tool:hover{box-shadow:0 8px 18px rgba(15,23,42,.14)}
+.sb-dock .tool.on{box-shadow:0 4px 12px rgba(15,23,42,.10)}
+.dock-cap{box-shadow:0 8px 20px rgba(15,23,42,.28)}
+.dock-cap:hover{box-shadow:0 10px 24px rgba(15,23,42,.32)}
+.sb-dock .dock-minor .sb-btn{box-shadow:0 3px 10px rgba(15,23,42,.08)}
+.sb-dock .dock-minor .sb-btn.on{box-shadow:0 3px 10px rgba(15,23,42,.08)}
+.sb-dock .dock-add{background:#e8f0fe;border-color:#aecbfa;color:#1a73e8}
+
+/* ================= MENU v2 — clean sectioned list ================= */
+#menuPop{width:308px;padding:12px 12px 14px}
+.mp-head{display:flex;align-items:center;gap:8px;color:var(--ink);font-size:13px;font-weight:700;padding:2px 4px 4px}
+.mp-sec{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:11px 4px 6px}
+.menu-list{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mitem{width:auto;height:auto;display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:11px;
+  background:#fff;border:1px solid var(--line);color:var(--ink-soft);font-size:12px;font-weight:650;
+  box-shadow:0 2px 8px rgba(15,23,42,.06);cursor:pointer;transition:transform .12s ease, background .12s ease, color .12s ease}
+.mitem:hover{transform:translateY(-1px);background:#f8fafc;color:var(--ink)}
+.mitem.on{background:#e8f0fe;border-color:#aecbfa;color:#1a73e8;box-shadow:none}
+.mitem .mlbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mitem small{display:none}
+@media (max-width:480px){#menuPop{width:calc(100vw - 24px)}}

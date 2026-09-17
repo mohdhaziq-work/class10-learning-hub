@@ -901,6 +901,8 @@ export class BoardEngine {
         const b = this.$(id) as HTMLElement | null;
         if (b) b.style.display = on ? "" : "none";
       }
+      const ah = this.$("#mpAdminSec") as HTMLElement | null;
+      if (ah) ah.style.display = on ? "" : "none";
       const si = this.$("#btnSignIn") as HTMLElement | null;
       if (si) si.style.display = on ? "none" : "";
       const who = this.$("#adminWho") as HTMLElement | null;
