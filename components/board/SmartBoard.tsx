@@ -91,6 +91,7 @@ export default function SmartBoard() {
 
   return (
     <div ref={rootRef} className="sb-root" data-layout="split">
+      <div id="latencyHud" className="lat-hud" hidden><span id="latText" /> <small>input: OS to JS | draw: JS to canvas | est adds one display frame</small></div>
 
       {/* hidden file input (opened from Files / empty pane) */}
       <input type="file" id="fileInput" accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.gif,.bmp" hidden />
@@ -317,6 +318,7 @@ export default function SmartBoard() {
           <button className="tool" id="btnReplay" title="Replay — watch the board build itself"><Icon name="rotateCcw" size={20} /><small>REPLAY</small></button>
           <button className="tool" id="btnWidgets" title="Class tools — timer, picker, attendance"><Icon name="timer" size={20} /><small>CLASS</small></button>
           <button className="tool" id="btnPad" title="Phone Pad — phone as writing tablet"><Icon name="smartphone" size={20} /><small>PAD</small></button>
+          <button className="tool" id="btnLatency" title="Pen latency test — measure input-to-ink speed"><Icon name="timer" size={20} /><small>SPEED</small></button>
         </div>
       </div>
 

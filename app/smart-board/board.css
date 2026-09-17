@@ -518,3 +518,12 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .set-seg.wide select{width:100%;border:1px solid var(--line);border-radius:10px;background:var(--panel2);padding:8px 10px;font-size:13px;color:var(--ink)}
 #mSettings input[type=range]{width:100%}
 #mSettings .sw{width:26px;height:26px;border-radius:8px;border:1px solid #d7dde6}
+
+/* ---- pen latency HUD ---- */
+.lat-hud{position:absolute;top:12px;right:12px;z-index:70;background:#fff;border:1px solid #dadce0;border-radius:12px;box-shadow:0 2px 12px rgba(60,64,67,.12);padding:10px 14px;display:flex;flex-direction:column;gap:3px;pointer-events:none}
+.lat-hud #latText{font:700 14px ui-monospace,Menlo,Consolas,monospace;color:#202124;letter-spacing:.2px;white-space:nowrap}
+.lat-hud small{font-size:10.5px;color:#80868b;white-space:nowrap}
+.lat-hud[data-grade="a"] #latText{color:#188038}
+.lat-hud[data-grade="b"] #latText{color:#1a73e8}
+.lat-hud[data-grade="c"] #latText{color:#b06000}
+.lat-hud[data-grade="d"] #latText{color:#d93025}

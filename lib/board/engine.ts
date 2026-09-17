@@ -387,6 +387,10 @@ export class BoardEngine {
   private strokePool = new Float32Array(16384); private workerBuf = new Float32Array(16384);
   private liveIdx = 1; private liveHas = false; private lp0x = 0; private lp0y = 0; private lp1x = 0; private lp1y = 0;
   private touchPending: { x: number; y: number; pr: number } | null = null; private palmPointer = -1; private palmErased = false;
+  /* pen latency diagnostic (MENU > Pen latency test) */
+  private latencyOn = false; private latencyEl: HTMLElement | null = null;
+  private latIn: number[] = []; private latDraw: number[] = [];
+  private latPendingT0 = 0; private latLastHud = 0;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -859,11 +863,31 @@ export class BoardEngine {
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
+    this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
   private scheduleLive() {
     if (this.liveRaf || this.destroyed) return;
     this.liveRaf = requestAnimationFrame(() => { this.liveRaf = 0; this.drawLive(); });
+  }
+  toggleLatency() {
+    this.latencyOn = !this.latencyOn;
+    this.latIn = []; this.latDraw = []; this.latPendingT0 = 0;
+    if (this.latencyEl) this.latencyEl.hidden = !this.latencyOn;
+    if (this.latencyOn) this.toast("Write on the board — numbers update live");
+    else this.toast("Latency test off");
+  }
+  private updateLatencyHud(force = false) {
+    if (!this.latencyOn || !this.latencyEl) return;
+    const now = performance.now();
+    if (!force && now - this.latLastHud < 250) return;
+    this.latLastHud = now;
+    const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
+    const i = avg(this.latIn), dr = avg(this.latDraw);
+    const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
+    const t = this.latencyEl.querySelector("#latText");
+    if (t) t.textContent = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
+    this.latencyEl.dataset.grade = est < 35 ? "a" : est < 60 ? "b" : est < 90 ? "c" : "d";
   }
   private drawLive() {
     const ctx = this.lctx;
@@ -893,6 +917,11 @@ export class BoardEngine {
     ctx.scale(this.boardZoom, this.boardZoom);
     drawObject(ctx, this.boardDraft);
     ctx.restore();
+    if (this.latencyOn && this.latPendingT0) {
+      const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
+      if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
+      this.updateLatencyHud();
+    }
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
   private paintIncremental() {
@@ -1037,6 +1066,10 @@ export class BoardEngine {
   }
 
   private boardStroke(e: PointerEvent, w: { x: number; y: number } | null, phase: "down" | "move" | "up") {
+    if (this.latencyOn) {
+      const d = performance.now() - e.timeStamp;
+      if (d >= 0 && d < 400) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); }
+    }
     const tool = this.tool;
     if (phase === "down") { this.hidePops(); this.erasedThisDrag = false; }
     if (tool === "pan") {
@@ -1139,6 +1172,7 @@ export class BoardEngine {
     }
     if (phase === "move" && w && this.boardDraft) {
       if (this.boardDraft.type === "stroke") {
+        this.latPendingT0 = performance.now();
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
         if (Math.hypot(w.x - last.x, w.y - last.y) >= 0.75) {
@@ -2339,6 +2373,8 @@ export class BoardEngine {
         }
       } catch { this.toast("Fullscreen not allowed"); }
     };
+    const btnLat = this.$("#btnLatency"); if (btnLat) btnLat.onclick = () => this.toggleLatency();
+    const latHud = this.$("#latencyHud"); if (latHud) this.latencyEl = latHud as HTMLElement;
     this.$("#btnSave").onclick = () => {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
       catch { this.toast("Save failed — the board has large images"); }
