@@ -938,17 +938,24 @@ export class BoardEngine {
        works everywhere captureStream exists, incl. phones without getDisplayMedia */
     if (typeof HTMLCanvasElement === "undefined" || !("captureStream" in HTMLCanvasElement.prototype)) throw new Error("no captureStream");
     const src = this.boardLive;
+    /* lightweight diagnostic capture: 0.75 scale + 30fps cap — the old
+       full-res every-frame composite was itself causing the stalls the
+       user felt while recording on phones */
     const rec = document.createElement("canvas");
-    rec.width = src.width; rec.height = src.height;
+    rec.width = Math.max(2, Math.round(src.width * 0.75));
+    rec.height = Math.max(2, Math.round(src.height * 0.75));
     const rctx = rec.getContext("2d");
     if (!rctx) throw new Error("no ctx");
-    const loop = () => {
-      rctx.clearRect(0, 0, rec.width, rec.height);
-      rctx.drawImage(this.boardCanvas, 0, 0);
-      rctx.drawImage(this.boardLive, 0, 0);
+    let last = 0;
+    const loop = (t: number) => {
       this.boardRecRaf = requestAnimationFrame(loop);
+      if (t - last < 33) return; /* 30fps cap — halves the composite load */
+      last = t;
+      rctx.clearRect(0, 0, rec.width, rec.height);
+      rctx.drawImage(this.boardCanvas, 0, 0, rec.width, rec.height);
+      rctx.drawImage(this.boardLive, 0, 0, rec.width, rec.height);
     };
-    loop();
+    loop(performance.now());
     const stream = rec.captureStream(30);
     const origStop = stopRecording;
     await startFromStream(stream);
