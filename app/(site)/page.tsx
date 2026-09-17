@@ -48,6 +48,21 @@ export default function HomePage() {
  data={[
  {
  "@context": "https://schema.org",
+ "@type": "WebSite",
+ name: "Class 10 Learning Hub",
+ alternateName: ["class 10 learning hub", "class10 learning hub", "Class10 Learning Hub", "class 10 learning hub onrender"],
+ url: SITE_URL,
+ description: "Free digital classroom for CBSE Class 10 — smart slides, notes, quizzes, PYQs and an advanced Smart Board.",
+ },
+ {
+ "@context": "https://schema.org",
+ "@type": "Organization",
+ name: "Class 10 Learning Hub",
+ url: SITE_URL,
+ logo: absoluteUrl("/favicon.svg"),
+ },
+ {
+ "@context": "https://schema.org",
  "@type": "ItemList",
  name: "Class 10 Subjects",
  url: SITE_URL,
@@ -99,11 +114,11 @@ export default function HomePage() {
  <span className="w-2 h-2 rounded-full bg-gold" />
  FREE FOREVER · NO LOGIN · EVERY DEVICE
  </span>
- <h1 className="text-[40px] leading-[1.05] sm:text-[60px] font-extrabold tracking-tight mt-6">
- Class 10, taught <span style={{ color: "#1a73e8" }}>the smart way.</span>
+ <h1 className="text-[38px] leading-[1.05] sm:text-[56px] font-extrabold tracking-tight mt-6">
+ Class 10 Learning Hub, taught <span style={{ color: "#1a73e8" }}>the smart way.</span>
  </h1>
  <p className="text-ink-soft text-[16.5px] sm:text-lg leading-relaxed mt-5 max-w-xl">
- NCERT chapters as smart slides, quizzes, and revision notes — plus a powerful Smart Board for classrooms. From phone to projector.
+ A free Class 10 learning hub for CBSE/NCERT students and teachers — chapters as smart slides, quizzes, revision notes, previous year questions, and a powerful Smart Board for classrooms. From phone to projector.
  </p>
  <div className="flex gap-3 mt-8 flex-wrap">
  <Link href="/pyq" className="btn-g btn-g-white text-[15px]">
