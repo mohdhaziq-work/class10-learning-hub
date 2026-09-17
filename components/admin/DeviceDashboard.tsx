@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { watchAdmin, signInWithGoogle, ADMIN_EMAIL } from "@/lib/firebase/admin";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
+import { fsListDevices, fsGetApproval, fsSetApproval, type DeviceDoc } from "@/lib/firebase/vault";
 
 interface Live { session_id: string; device_uuid: string; last_active: number; page: string }
 interface Log {
@@ -37,6 +38,22 @@ export default function DeviceDashboard() {
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
 
   /* admin-only page: requires Firebase Google sign-in with the owner account */
+  const [fsDevices, setFsDevices] = useState<DeviceDoc[]>([]);
+  const [fsApprovals, setFsApprovals] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const loadFs = async () => {
+      const devs = await fsListDevices();
+      setFsDevices(devs);
+      const ap: Record<string, string> = {};
+      for (const d of devs) ap[d.uuid] = await fsGetApproval(d.uuid);
+      setFsApprovals(ap);
+    };
+    void loadFs();
+    const t2 = setInterval(() => void loadFs(), 30_000);
+    return () => clearInterval(t2);
+  }, [unlocked]);
+
   useEffect(() => {
     if (!isFirebaseConfigured) { setUnlocked(false); return; }
     const un = watchAdmin((is) => setUnlocked(is));
@@ -57,6 +74,35 @@ export default function DeviceDashboard() {
     return () => { es.close(); clearInterval(tick); };
   }, []);
 
+  useEffect(() => {
+    if (!fsDevices.length) return;
+    setHistory((cur) => {
+      const have = new Set(cur.map((h) => h.device_uuid));
+      const extra: Log[] = fsDevices
+        .filter((d) => !have.has(d.uuid))
+        .map((d) => ({
+          device_uuid: d.uuid,
+          session_id: "fs",
+          device_metadata: { operating_system: d.os, browser_name: d.browser, device_type: d.device_type, screen: d.screen },
+          first_connection_time: d.first_seen,
+          last_seen_time: d.last_seen,
+          approval_status: ((fsApprovals[d.uuid] as Log["approval_status"]) || "PENDING"),
+          source: "backfill" as const,
+        }));
+      const merged = cur.map((h) => {
+        const fd = fsDevices.find((d) => d.uuid === h.device_uuid);
+        const st = fsApprovals[h.device_uuid];
+        return {
+          ...h,
+          first_connection_time: fd ? Math.min(h.first_connection_time || fd.first_seen, fd.first_seen) : h.first_connection_time,
+          last_seen_time: fd ? Math.max(h.last_seen_time, fd.last_seen) : h.last_seen_time,
+          approval_status: (st as Log["approval_status"]) || h.approval_status,
+        };
+      });
+      return [...merged, ...extra].sort((a, b) => b.last_seen_time - a.last_seen_time);
+    });
+  }, [fsDevices, fsApprovals]);
+
   const rows = useMemo(() => {
     /* vault arrives pre-sorted by last_seen_time desc (today's board on top) */
     const base = filter === "pending" ? history.filter((h) => h.approval_status === "PENDING")
@@ -66,6 +112,8 @@ export default function DeviceDashboard() {
   }, [history, filter]);
 
   const setStatus = async (deviceUuid: string, status: "AUTHORIZED_TEACHER" | "REVOKED") => {
+    try { await fsSetApproval(deviceUuid, status); } catch { /* rules: admin only */ }
+    setFsApprovals((cur) => ({ ...cur, [deviceUuid]: status }));
     setHistory((cur) => cur.map((h) => (h.device_uuid === deviceUuid ? { ...h, approval_status: status } : h)));
     await fetch("/api/session/authorize", {
       method: "POST",
@@ -163,7 +211,6 @@ export default function DeviceDashboard() {
                 <span className={`st-chip ${approved ? "ok" : h.approval_status === "REVOKED" ? "no" : "wait"}`}>
                   {approved ? "Authorized teacher" : h.approval_status === "REVOKED" ? "Revoked" : "Pending approval"}
                 </span>
-                {approved && <span className="st-chip" style={{ background: "#e8f0fe", color: "#1a73e8" }}>Admin device</span>}
                 {online && <span className="st-chip live">Online now</span>}
               </div>
               <div className="mt-3.5">

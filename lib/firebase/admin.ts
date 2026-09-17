@@ -35,8 +35,8 @@ export async function signInWithGoogle(): Promise<{ ok: boolean; message: string
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: "select_account" });
     const cred = await signInWithPopup(a, provider);
-    if (isAdminEmail(cred.user.email)) return { ok: true, message: "Signed in as admin" };
-    return { ok: false, message: "Signed in, but this Google account is not the admin" };
+    if (isAdminEmail(cred.user.email)) return { ok: true, message: "Signed in as admin — developer tools unlocked" };
+    return { ok: true, message: "Signed in — your progress now syncs on every device" };
   } catch {
     return { ok: false, message: "Google sign-in was cancelled or blocked" };
   }

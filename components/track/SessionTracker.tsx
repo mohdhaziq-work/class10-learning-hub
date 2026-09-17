@@ -1,5 +1,7 @@
 "use client";
 import { useEffect } from "react";
+import { fsUpsertDevice, fsGetApproval } from "@/lib/firebase/vault";
+import { bindProgressAuth } from "@/lib/progress";
 
 /* Persistent device tracker:
    - device_uuid: permanent fingerprint in localStorage (survives reboots)
@@ -40,6 +42,12 @@ export default function SessionTracker() {
     }
     const meta = detect();
 
+    /* permanent ledger on Firestore — survives every redeploy */
+    const fsMeta = { os: meta.os, browser: meta.browser, device_type: meta.device, screen: meta.screen };
+    void fsUpsertDevice(dev!, fsMeta);
+    const fsBeat = setInterval(() => void fsUpsertDevice(dev!, fsMeta), 5 * 60_000);
+    bindProgressAuth();
+
     /* Retroactive harvest: report the oldest local artifact (first-seen stamp
        or an old saved board session) so Day-1 devices merge into the ledger. */
     let legacy = 0;
@@ -71,17 +79,15 @@ export default function SessionTracker() {
     };
 
     const pollAuth = () =>
-      fetch(`/api/session?device=${encodeURIComponent(dev!)}`)
-        .then((r) => r.json())
-        .then((j) => {
-          const now = !!j.authorized;
+      fsGetApproval(dev!).then((st) => {
+          const now = st === "AUTHORIZED_TEACHER";
           try { localStorage.setItem("sb-live-auth", now ? "1" : "0"); } catch { /* private mode */ }
           if (now !== authorized) {
             authorized = now;
             (window as any).__sbLive = now;
             window.dispatchEvent(new CustomEvent("sb-live", { detail: { authorized: now } }));
           }
-        })
+      })
         .catch(() => undefined);
 
     beat();
@@ -96,6 +102,7 @@ export default function SessionTracker() {
     return () => {
       clearInterval(hb);
       clearInterval(pa);
+      clearInterval(fsBeat);
       window.removeEventListener("pointerdown", onAct);
       window.removeEventListener("pagehide", bye);
     };

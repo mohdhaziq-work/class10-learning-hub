@@ -14,6 +14,7 @@ import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
 import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
 import { uploadClip } from "@/lib/clipShare";
+import { fsAddClasswork } from "@/lib/firebase/vault";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -3060,7 +3061,7 @@ export class BoardEngine {
       const dev = localStorage.getItem("sb-device-uuid") || "";
       if (!sid) return;
       const png = this.boardCanvas.toDataURL("image/png");
-      fetch("/api/classwork", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ session_id: sid, device_uuid: dev, png }) }).catch(() => undefined);
+      void fsAddClasswork(dev ? dev.slice(0, 8) : "board", png);
     } catch { /* canvas tainted or storage blocked */ }
   }
   private scheduleSave() {

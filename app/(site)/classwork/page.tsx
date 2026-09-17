@@ -1,16 +1,21 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { fsListClasswork, fsDeleteClasswork } from "@/lib/firebase/vault";
+import { watchAdmin } from "@/lib/firebase/admin";
 
 interface E { id: string; device: string; saved_at: number; png: string }
 
 export default function ClassworkPage() {
   const [entries, setEntries] = useState<E[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [admin, setAdmin] = useState(false);
   useEffect(() => {
-    fetch("/api/classwork").then((r) => r.json()).then((j) => { setEntries(j.entries || []); setLoaded(true); }).catch(() => setLoaded(true));
-    const t = setInterval(() => fetch("/api/classwork").then((r) => r.json()).then((j) => setEntries(j.entries || [])).catch(() => undefined), 20_000);
-    return () => clearInterval(t);
+    const un = watchAdmin((is) => setAdmin(is));
+    const load = () => fsListClasswork().then((l) => { setEntries(l as E[]); setLoaded(true); }).catch(() => setLoaded(true));
+    void load();
+    const t = setInterval(() => void load(), 20_000);
+    return () => { un(); clearInterval(t); };
   }, []);
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
@@ -21,8 +26,8 @@ export default function ClassworkPage() {
         <div>
           <h1 className="text-2xl sm:text-[32px] font-extrabold tracking-tight">Student Classwork Archive</h1>
           <p className="text-ink-soft mt-1 max-w-2xl text-[15px]">
-            Boards auto-synced live from authorized teacher devices. Only teacher-authorized
-            sessions can write here.
+            Boards auto-synced from teacher-authorized devices and saved permanently.
+            Any student can view; only authorized teachers can publish.
           </p>
         </div>
       </div>
@@ -40,6 +45,10 @@ export default function ClassworkPage() {
             <figcaption>
               <b>{e.device}</b>
               <span>{new Date(e.saved_at).toLocaleString()}</span>
+              {admin && (
+                <button onClick={() => void fsDeleteClasswork(e.id).then(() => fsListClasswork().then((l) => setEntries(l as E[])))}
+                  className="ml-auto text-[11px] font-bold text-red-600 hover:underline">Remove</button>
+              )}
             </figcaption>
           </figure>
         ))}

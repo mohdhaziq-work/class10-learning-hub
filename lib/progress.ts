@@ -52,6 +52,31 @@ export function overallPct(): { done: number; total: number } {
   return { done: Object.keys(p).length, total };
 }
 
+/* When a Google account signs in, its UID becomes the sync key: pull the
+   account's cloud progress, merge (local wins), push back — same email on
+   any device now shows the same data. */
+export function bindProgressAuth() {
+  if (typeof window === "undefined") return;
+  import("./firebase/db").then(({ getFirebaseAuth, setUidOverride }) =>
+    import("firebase/auth").then(({ onAuthStateChanged }) => {
+      const a = getFirebaseAuth();
+      if (!a) return;
+      onAuthStateChanged(a, (u) => {
+        const google = u && !u.isAnonymous ? u.uid : null;
+        setUidOverride(google);
+        if (google) {
+          pullProgress().then((cloud) => {
+            if (!cloud) return;
+            const local = load();
+            save({ ...cloud, ...local });
+            window.dispatchEvent(new CustomEvent("c10-progress", { detail: { key: "*", done: true } }));
+          });
+        }
+      });
+    })
+  ).catch(() => undefined);
+}
+
 /* One-time merge from cloud (local wins — that is correct for classrooms) */
 export function mergeCloudOnce() {
   if (typeof window === "undefined") return;
