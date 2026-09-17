@@ -31,22 +31,31 @@ export interface BoardObject {
 
 class Store {
   objects: BoardObject[] = [];
-  undo: string[] = [];
-  redo: string[] = [];
-  private snap(): string {
-    return JSON.stringify(this.objects.map((o) => { const c: Record<string, unknown> = { ...o }; delete c.img; return c; }));
+  undo: BoardObject[][] = [];
+  redo: BoardObject[][] = [];
+  /* snap = native deep clone (no giant JSON strings): keeps stroke-start cost low
+     and avoids GC pauses mid-stroke on busy boards */
+  private snap(): BoardObject[] {
+    const out = new Array(this.objects.length);
+    for (let i = 0; i < this.objects.length; i++) {
+      const c = { ...(this.objects[i] as object) } as Record<string, unknown>;
+      delete c.img; /* live Image handles are not cloneable — src survives */
+      out[i] = c;
+    }
+    const sc = (globalThis as { structuredClone?: (v: unknown) => unknown }).structuredClone;
+    return (typeof sc === "function" ? sc(out) : JSON.parse(JSON.stringify(out))) as BoardObject[];
   }
   pushHistory() { this.undo.push(this.snap()); if (this.undo.length > 60) this.undo.shift(); this.redo.length = 0; }
   doUndo(): boolean {
     if (!this.undo.length) return false;
     this.redo.push(this.snap());
-    this.objects = rehydrate(JSON.parse(this.undo.pop() as string));
+    this.objects = rehydrate(this.undo.pop() as BoardObject[]);
     return true;
   }
   doRedo(): boolean {
     if (!this.redo.length) return false;
     this.undo.push(this.snap());
-    this.objects = rehydrate(JSON.parse(this.redo.pop() as string));
+    this.objects = rehydrate(this.redo.pop() as BoardObject[]);
     return true;
   }
 }
