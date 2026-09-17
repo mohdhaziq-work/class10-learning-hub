@@ -1,11 +1,13 @@
 name: Windows Desktop Build
 
 # Builds the Electron portable .exe and publishes it as a GitHub Release.
+# Runs automatically when desktop-app changes, or manually:
+# Actions tab -> "Windows Desktop Build" -> Run workflow.
 on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["desktop-app/**"]
+    paths: ["desktop-app/**", ".github/workflows/windows-exe.yml"]
 
 permissions:
   contents: write
@@ -24,14 +26,34 @@ jobs:
           node-version: "20"
 
       - name: Install deps
-        run: npm ci || npm install
+        run: npm install --no-audit --no-fund
 
       - name: Build portable exe
         run: npx electron-builder --win portable
 
-      - name: Publish release
-        uses: softprops/action-gh-release@v2
+      - name: Show dist output
+        run: dir dist
+
+      - name: Publish release (gh CLI, with retry)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd dist
+          EXE=$(ls Class10-Learning-Hub-Windows.exe 2>/dev/null || ls *.exe | head -1)
+          echo "uploading $EXE"
+          for i in 1 2 3; do
+            gh release create "desktop-v${{ github.run_number }}" \
+              --title "Windows App (build ${{ github.run_number }})" \
+              --notes "Portable Windows app for Class 10 Learning Hub. Download the exe and double-click to run." \
+              "$EXE" && exit 0
+            echo "attempt $i failed, retrying..."; sleep 5
+          done
+          exit 1
+
+      - name: Upload exe as artifact (fallback)
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: desktop-v${{ github.run_number }}
-          name: "Windows App v${{ github.run_number }}"
-          files: desktop-app/dist/Class10-Learning-Hub-Windows.exe
+          name: class10-learning-hub-windows
+          path: desktop-app/dist/*.exe
