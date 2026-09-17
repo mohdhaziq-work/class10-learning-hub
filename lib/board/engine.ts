@@ -386,6 +386,7 @@ export class BoardEngine {
   /* zero-allocation hot path: pooled stroke vectors (x, y, pressure triples) */
   private strokePool = new Float32Array(16384); private workerBuf = new Float32Array(16384);
   private liveIdx = 1; private liveHas = false; private lp0x = 0; private lp0y = 0; private lp1x = 0; private lp1y = 0;
+  private touchPending: { x: number; y: number; pr: number } | null = null; private palmPointer = -1;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -850,6 +851,16 @@ export class BoardEngine {
      Live canvas: ONLY the stroke being drawn — cleared + 1 object per frame.
      Pen moves NEVER trigger a full-board redraw, so speed stays constant
      no matter how full the board is. */
+  private startStroke(tool: string, w: { x: number; y: number }, pr: number) {
+    this.boardStore.pushHistory();
+    this.boardDraft = {
+      id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined,
+      points: [pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y }],
+      color: tool === "highlighter" ? this.hlColor : this.color,
+      size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
+    };
+    this.scheduleLive();
+  }
   private scheduleLive() {
     if (this.liveRaf || this.destroyed) return;
     this.liveRaf = requestAnimationFrame(() => { this.liveRaf = 0; this.drawLive(); });
@@ -932,6 +943,10 @@ export class BoardEngine {
 
   private wireBoard() {
     const cv = this.boardCanvas;
+    /* Finger tips are physically tilted: the capacitive contact centroid sits
+       down-right of the visible tip, so finger ink must be nudged up-left to
+       land where the user aims. Stylus/pen/mouse stay pixel-exact. */
+    const off = (ev: PointerEvent): readonly [number, number] => (ev.pointerType === "touch" ? [10, 8] as const : [0, 0] as const);
     this.on(cv, "pointerdown", (e: PointerEvent) => {
       try { cv.setPointerCapture(e.pointerId); } catch { /* noop */ }
       this.boardRectC = cv.getBoundingClientRect(); /* cache for the whole stroke — no layout thrash on move */
@@ -941,6 +956,8 @@ export class BoardEngine {
         this.pinch = { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), z: this.boardZoom };
         this.boardDraft = null; return;
       }
+      /* palm rejection: a broad flat contact rests/scrolls, never inks */
+      if (e.pointerType === "touch" && (((e as any).width || 0) > 26 || ((e as any).height || 0) > 26)) { this.palmPointer = e.pointerId; return; }
       /* select-drag snapshot */
       if (this.tool === "select") {
         const r0 = cv.getBoundingClientRect();
@@ -949,9 +966,11 @@ export class BoardEngine {
       }
       this.setActive("board", null);
       const r = cv.getBoundingClientRect();
-      this.boardStroke(e, this.toWorld(e.clientX - r.left, e.clientY - r.top), "down");
+      const [ox, oy] = off(e);
+      this.boardStroke(e, this.toWorld(e.clientX - r.left - ox, e.clientY - r.top - oy), "down");
     });
     this.on(cv, "pointermove", (e: PointerEvent) => {
+      if (e.pointerId === this.palmPointer) return;
       if (this.pinch && this.pointers.has(e.pointerId)) {
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const p = [...this.pointers.values()];
@@ -969,15 +988,18 @@ export class BoardEngine {
         if (gce.length > 1) {
           for (let i = 0; i < gce.length; i++) {
             const ev = gce[i];
-            this.boardStroke(ev, this.toWorldInto(ev.clientX - r.left, ev.clientY - r.top), "move");
+            const [ox, oy] = off(ev);
+            this.boardStroke(ev, this.toWorldInto(ev.clientX - r.left - ox, ev.clientY - r.top - oy), "move");
           }
           return;
         }
       }
-      this.boardStroke(e, this.toWorldInto(e.clientX - r.left, e.clientY - r.top), "move");
+      const [ox2, oy2] = off(e);
+      this.boardStroke(e, this.toWorldInto(e.clientX - r.left - ox2, e.clientY - r.top - oy2), "move");
     });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
+      if (e.pointerId === this.palmPointer) this.palmPointer = -1;
       if (this.pointers.size < 2) this.pinch = null;
       if (this.pointers.size === 0) this.boardStroke(e, null, "up");
     };
@@ -1082,21 +1104,29 @@ export class BoardEngine {
       if (phase === "down" && w) { this.pendingAnchor = { surface: "board", x: w.x, y: w.y }; this.openModal(tool === "text" ? "mText" : "mSticky"); }
       return;
     }
+    if (phase === "up") this.touchPending = null;
     if (phase === "down" && w) {
-      this.boardStore.pushHistory();
+      if ((tool === "pen" || tool === "highlighter") && (e as PointerEvent).pointerType === "touch") {
+        /* finger: deliberate 4px glide required before inking (no accidental marks) */
+        this.touchPending = { x: w.x, y: w.y, pr: (e as PointerEvent).pressure || 0 };
+        return;
+      }
       if (tool === "pen" || tool === "highlighter") {
-        this.boardDraft = {
-          id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined, points: [{ x: w.x, y: w.y }],
-          color: tool === "highlighter" ? this.hlColor : this.color,
-          size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
-        };
+        this.startStroke(tool, w, (e as PointerEvent).pressure || 0);
       } else {
+        this.boardStore.pushHistory();
         this.boardDraft = {
           id: uid(), type: "shape", shape: this.shape, x1: w.x, y1: w.y, x2: w.x, y2: w.y,
           color: this.color, size: this.size, opacity: this.opacity, fill: this.fill, dashed: this.dashed,
         };
       }
-    } else if (phase === "move" && w && this.boardDraft) {
+    } else if (phase === "move" && w && !this.boardDraft && this.touchPending && (tool === "pen" || tool === "highlighter")) {
+      const tp = this.touchPending;
+      if (Math.hypot(w.x - tp.x, w.y - tp.y) * this.boardZoom < 4) return;
+      this.touchPending = null;
+      this.startStroke(tool, tp, tp.pr);
+    }
+    if (phase === "move" && w && this.boardDraft) {
       if (this.boardDraft.type === "stroke") {
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
