@@ -11,7 +11,8 @@ import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
-import { startRecording, stopRecording, isRecording, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
+import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
+import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -403,6 +404,7 @@ export class BoardEngine {
   private latPendingT0 = 0; private latLastHud = 0;
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
+  private adminUnsub: (() => void) | null = null; private boardRecRaf = 0;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -700,6 +702,8 @@ export class BoardEngine {
   }
 
   destroy() {
+    if (this.adminUnsub) { this.adminUnsub(); this.adminUnsub = null; }
+    if (this.boardRecRaf) { cancelAnimationFrame(this.boardRecRaf); this.boardRecRaf = 0; }
     this.destroyed = true;
     if (this.timerInt) clearInterval(this.timerInt);
     if (this.saveT) clearTimeout(this.saveT);
@@ -884,26 +888,39 @@ export class BoardEngine {
   }
   /* ---------------- admin device features ---------------- */
   private startAdminWatch() {
-    /* an approved device (AUTHORIZED_TEACHER via /admin-devices) is an admin
-       device: only it sees SPEED diagnostics + screen recording controls */
-    const apply = () => {
-      let on = false;
-      try { on = localStorage.getItem("sb-live-auth") === "1"; } catch { /* private mode */ }
+    /* admin = signed in with the owner Google account (Firebase). Tools and
+       recording controls exist only on that signed-in session. */
+    const apply = (on: boolean, email: string | null) => {
       if (on === this.adminOn) return;
       this.adminOn = on;
-      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings"]) {
+      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut"]) {
         const b = this.$(id) as HTMLElement | null;
         if (b) b.style.display = on ? "" : "none";
       }
-      if (!on && this.latencyOn) this.toggleLatency();
-      if (!on && isRecording()) stopRecording();
+      const si = this.$("#btnSignIn") as HTMLElement | null;
+      if (si) si.style.display = on ? "none" : "";
+      const who = this.$("#adminWho") as HTMLElement | null;
+      if (who) who.textContent = on ? `Signed in as ${email || ADMIN_EMAIL}` : `Sign in with Google to unlock admin tools (${ADMIN_EMAIL})`;
+      if (!on) {
+        if (this.latencyOn) this.toggleLatency();
+        if (isRecording()) stopRecording();
+        const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;
+      }
     };
-    apply();
-    window.setInterval(apply, 2500);
+    this.adminUnsub = watchAdmin(apply);
   }
   private async toggleRec() {
+    if (!this.adminOn) return;
     if (isRecording()) { stopRecording(); this.toast("Saving recording…"); return; }
-    try { await startRecording(); } catch { this.toast("Screen share cancelled or not supported"); return; }
+    let started = false;
+    if (supportsScreenShare()) {
+      try { await startRecording(); started = true; } catch { started = false; }
+    }
+    if (!started) {
+      /* phones & unsupported browsers: record the board canvas itself */
+      try { await this.startBoardCapture(); started = true; this.toast("Recording the board"); }
+      catch { this.toast("Recording not supported on this browser"); return; }
+    }
     this.recStartTs = Date.now();
     const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = false;
     const tick = () => {
@@ -913,6 +930,29 @@ export class BoardEngine {
     };
     tick();
     this.recTimer = window.setInterval(tick, 500);
+  }
+  private async startBoardCapture() {
+    /* composite static + live layers onto an offscreen canvas and record it —
+       works everywhere captureStream exists, incl. phones without getDisplayMedia */
+    if (typeof HTMLCanvasElement === "undefined" || !("captureStream" in HTMLCanvasElement.prototype)) throw new Error("no captureStream");
+    const src = this.boardLive;
+    const rec = document.createElement("canvas");
+    rec.width = src.width; rec.height = src.height;
+    const rctx = rec.getContext("2d");
+    if (!rctx) throw new Error("no ctx");
+    const loop = () => {
+      rctx.clearRect(0, 0, rec.width, rec.height);
+      rctx.drawImage(this.boardCanvas, 0, 0);
+      rctx.drawImage(this.boardLive, 0, 0);
+      this.boardRecRaf = requestAnimationFrame(loop);
+    };
+    loop();
+    const stream = rec.captureStream(30);
+    const origStop = stopRecording;
+    await startFromStream(stream);
+    /* cancel the composite loop when the recorder stops */
+    window.addEventListener("sb-rec-saved", () => { if (this.boardRecRaf) { cancelAnimationFrame(this.boardRecRaf); this.boardRecRaf = 0; } }, { once: true });
+    void origStop;
   }
   private async openRecordings() {
     this.openModal("mRecordings");
@@ -2468,6 +2508,8 @@ export class BoardEngine {
     const btnRecStop = this.$("#btnRecStop"); if (btnRecStop) btnRecStop.onclick = () => { void this.toggleRec(); };
     const btnRecs = this.$("#btnRecordings"); if (btnRecs) btnRecs.onclick = () => { void this.openRecordings(); };
     const btnRecClose = this.$("#btnRecClose"); if (btnRecClose) btnRecClose.onclick = () => this.closeModal(this.$("#mRecordings") as HTMLElement);
+    const btnSignIn = this.$("#btnSignIn"); if (btnSignIn) btnSignIn.onclick = () => { void signInWithGoogle().then((r) => this.toast(r.message)); };
+    const btnSignOut = this.$("#btnSignOut"); if (btnSignOut) btnSignOut.onclick = () => { void signOutAdmin().then(() => this.toast("Signed out")); };
     this.on(window, "sb-rec-saved", () => {
       if (this.recTimer) { clearInterval(this.recTimer); this.recTimer = 0; }
       const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;

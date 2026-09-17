@@ -543,3 +543,6 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .rec-btn{border:1px solid #dadce0;background:#fff;border-radius:8px;padding:6px 12px;font:600 12px Google Sans,Arial,sans-serif;color:#1a73e8;cursor:pointer}
 .rec-btn:hover{background:#f1f6fe}
 .rec-empty{border:2px dashed #dadce0;border-radius:12px;padding:26px;text-align:center;color:#80868b;font-size:13.5px}
+
+.admin-who:empty{display:none}
+.admin-who{position:absolute;bottom:86px;left:14px;z-index:40;font:600 11px Google Sans,Arial,sans-serif;color:#80868b;background:rgba(255,255,255,.85);border-radius:8px;padding:3px 8px;pointer-events:none;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

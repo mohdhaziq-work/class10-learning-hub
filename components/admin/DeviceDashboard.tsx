@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { watchAdmin, signInWithGoogle, ADMIN_EMAIL } from "@/lib/firebase/admin";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
 
 interface Live { session_id: string; device_uuid: string; last_active: number; page: string }
 interface Log {
@@ -34,16 +36,11 @@ export default function DeviceDashboard() {
   const [, force] = useState(0);
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
 
-  /* admin-only page: visible on an authorized (admin) device, or once opened
-     with the access key (?key=class10-admin) which unlocks this browser */
+  /* admin-only page: requires Firebase Google sign-in with the owner account */
   useEffect(() => {
-    const key = new URLSearchParams(window.location.search).get("key");
-    let auth = false;
-    try {
-      auth = localStorage.getItem("sb-live-auth") === "1" || localStorage.getItem("sb-admin-unlock") === "1";
-      if (key === "class10-admin") { localStorage.setItem("sb-admin-unlock", "1"); auth = true; }
-    } catch { /* private mode */ }
-    setUnlocked(auth);
+    if (!isFirebaseConfigured) { setUnlocked(false); return; }
+    const un = watchAdmin((is) => setUnlocked(is));
+    return un;
   }, []);
 
   useEffect(() => {
@@ -86,11 +83,18 @@ export default function DeviceDashboard() {
         <div className="w-12 h-12 rounded-2xl grid place-items-center bg-slate-900 text-white mx-auto mb-4">
           <Icon name="shieldCheck" size={22} />
         </div>
-        <h2 className="text-lg font-extrabold tracking-tight">Admin access only</h2>
+        <h2 className="text-lg font-extrabold tracking-tight">Admin sign-in required</h2>
         <p className="text-ink-soft text-sm mt-2">
-          This dashboard lists every connected device, so it is locked to admin devices.
-          Open it once on an authorized device, or use the access key link you received.
+          This dashboard lists every connected device. Sign in with the owner Google
+          account to open it — signing in is optional for everyone else.
         </p>
+        <button
+          onClick={() => void signInWithGoogle().then((r) => { if (!r.ok) alert(r.message); })}
+          className="btn-g mt-5 text-sm"
+        >
+          <Icon name="users" size={16} /> Sign in with Google
+        </button>
+        <p className="text-[12px] text-ink-mute mt-3">Admin account: {ADMIN_EMAIL}</p>
       </div>
     );
   }

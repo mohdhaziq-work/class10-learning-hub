@@ -9,6 +9,11 @@ let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
 
+export function getFirebaseAuth(): Auth | null {
+  getDb();
+  return auth;
+}
+
 export function getDb(): Firestore | null {
   if (!isFirebaseConfigured) return null;
   try {

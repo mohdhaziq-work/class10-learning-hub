@@ -74,6 +74,11 @@ export function isRecording(): boolean {
   return !!mr && mr.state !== "inactive";
 }
 
+export function supportsScreenShare(): boolean {
+  return !!navigator.mediaDevices?.getDisplayMedia && typeof MediaRecorder !== "undefined";
+}
+
+/* Full screen / tab / window capture (desktop browsers). */
 export async function startRecording(): Promise<void> {
   if (isRecording()) return;
   if (!navigator.mediaDevices?.getDisplayMedia) throw new Error("unsupported");
@@ -81,6 +86,12 @@ export async function startRecording(): Promise<void> {
     video: { frameRate: 30, width: { ideal: 1920 }, height: { ideal: 1080 } },
     audio: false,
   });
+  await startFromStream(stream);
+}
+
+/* Core: record any MediaStream to the clip library. */
+export async function startFromStream(stream: MediaStream): Promise<void> {
+  if (isRecording()) return;
   activeMime = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]
     .find((m) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(m)) || "";
   const opts: MediaRecorderOptions = { videoBitsPerSecond: 3_500_000 };

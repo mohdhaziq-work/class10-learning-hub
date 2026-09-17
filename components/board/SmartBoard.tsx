@@ -91,6 +91,7 @@ export default function SmartBoard() {
 
   return (
     <div ref={rootRef} className="sb-root" data-layout="split">
+      <div id="adminWho" className="admin-who" />
       <div id="latencyHud" className="lat-hud" hidden><span id="latText" /> <small>input: OS to JS | draw: JS to canvas | est adds one display frame</small></div>
       <div id="recPill" className="rec-pill" hidden><span className="rec-dot" /><span id="recTime">00:00</span><button id="btnRecStop">Stop</button></div>
 
@@ -322,6 +323,8 @@ export default function SmartBoard() {
           <button className="tool" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={20} /><small>SPEED</small></button>
           <button className="tool" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={20} /><small>REC</small></button>
           <button className="tool" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={20} /><small>CLIPS</small></button>
+          <button className="tool" id="btnSignIn" title="Sign in with Google — admin tools unlock for the owner account"><Icon name="users" size={20} /><small>LOGIN</small></button>
+          <button className="tool" id="btnSignOut" style={{ display: "none" }} title="Sign out of the admin account"><Icon name="shieldCheck" size={20} /><small>ADMIN</small></button>
         </div>
       </div>
 
