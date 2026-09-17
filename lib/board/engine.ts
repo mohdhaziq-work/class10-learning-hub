@@ -13,7 +13,7 @@ import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } 
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
 import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
-import { uploadClip } from "@/lib/firebase/storage";
+import { uploadClip } from "@/lib/clipShare";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -1006,7 +1006,7 @@ export class BoardEngine {
           setTimeout(() => { shareBtn.disabled = false; shareBtn.textContent = "Share"; }, 1500);
         }).catch(() => {
           shareBtn.disabled = false; shareBtn.textContent = "Share";
-          this.toast("Upload failed — enable Firebase Storage once in console");
+          this.toast("Upload failed — check connection and try again");
         });
       };
       mk("Delete", () => {
