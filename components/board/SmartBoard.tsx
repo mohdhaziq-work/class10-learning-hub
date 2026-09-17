@@ -158,47 +158,49 @@ export default function SmartBoard() {
         </div>
       </div>
 
-      {/* ================= BOTTOM DOCK — everything within thumb reach ================= */}
+      {/* ================= BOTTOM DOCK — individual icon boxes, cap in the middle ================= */}
       <footer className="sb-dock">
         <div className="dock-cluster">
-          <button className="tool" id="btnMenu" title="More tools & board options"><Icon name="menu" size={20} /><small>MENU</small></button>
-          <button className="tool" id="btnFiles" title="Open file / saved sessions / phone upload"><Icon name="folder" size={20} /><small>OPEN</small></button>
-          <button className="tool" id="btnSave" title="Save session (auto-save is always on)"><Icon name="save" size={20} /><small>SAVE</small></button>
-          <button className="tool" id="btnExport" title="Export PNG / print / session JSON"><Icon name="download" size={20} /><small>EXPORT</small></button>
-        </div>
-        <div className="dock-sep" />
-        <div className="dock-cluster">
-          {tool("select", "mousePointer2", "MOVE", "Select / Move (V)")}
+          <button className="tool" id="btnFiles" title="Open file / saved sessions / phone upload"><Icon name="folder" size={20} /></button>
+          <button className="tool" data-tool="select" title="Select / Move (V)"><Icon name="mousePointer2" size={20} /></button>
           <button className="tool on" data-tool="pen" title="Pen — 3 tip types, any color, any size (P)">
-            <Icon name="pencil" size={20} /><small>PEN</small>
+            <Icon name="pencil" size={20} />
             <span className="tool-dot" id="penColorDot" style={{ background: "#dc2626" }} />
           </button>
-          {tool("eraser", "eraser", "ERASE", "Eraser — stroke / pixel / area (E)")}
-          <button className="tool" id="toolClear" title="Clear this page/board"><Icon name="trash2" size={20} /><small>CLEAR</small></button>
-          <div className="dock-sep" />
-          <button className="tool half" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={18} /></button>
-          <button className="tool half" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={18} /></button>
+          <button className="tool" data-tool="eraser" title="Eraser — stroke / pixel / area (E)"><Icon name="eraser" size={20} /></button>
         </div>
-        <div className="dock-sep" />
+
+        <button className="dock-cap" id="btnMenu" title="MENU — more tools & board options"><Icon name="graduationCap" size={27} /></button>
+
         <div className="dock-cluster">
-          <div className="sb-group sb-seg" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
-            <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={15} /></button>
-            <button className="sb-btn on" data-layout="split" title="Document + Board (2)"><Icon name="columns2" size={15} /></button>
-            <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={15} /></button>
-          </div>
-          <div className="page-ctl">
-            <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
-            <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
-            <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
-            <button className="sb-btn" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
-            <button className="sb-btn" id="btnBoardDup" title="Duplicate this board page"><Icon name="layers" size={16} /></button>
-            <button className="sb-btn" id="btnBoardDel" title="Delete this board page"><Icon name="trash" size={16} /></button>
-            <span className="pg" id="targetLbl" style={{ minWidth: "auto" }}>Board</span>
-            <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
-            <span className="pg" id="pgLbl">– / –</span>
-            <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
-          </div>
+          <button className="tool" id="btnUndo" title="Undo (Ctrl+Z)"><Icon name="undo2" size={19} /></button>
+          <button className="tool" id="btnRedo" title="Redo (Ctrl+Y)"><Icon name="redo2" size={19} /></button>
         </div>
+
+        <div className="dock-cluster dock-minor" id="layoutGroup" title="Layout — keys 1 / 2 / 3">
+          <button className="sb-btn" data-layout="doc" title="Document only (1)"><Icon name="fileText" size={15} /></button>
+          <button className="sb-btn on" data-layout="split" title="Document + Board (2)"><Icon name="columns2" size={15} /></button>
+          <button className="sb-btn" data-layout="board" title="Whiteboard only (3)"><Icon name="presentation" size={15} /></button>
+        </div>
+
+        <div className="dock-cluster dock-minor page-ctl">
+          <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
+          <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
+          <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
+          <span className="pg" id="pgLbl">– / –</span>
+          <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
+          <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
+        </div>
+
+        {/* engine-bound controls kept in DOM but hidden (live in MENU) */}
+        <span className="dock-hidden" aria-hidden="true">
+          <button className="tool" id="btnMenuLegacy" hidden />
+          <button className="tool" id="btnSave" hidden /><button className="tool" id="btnExport" hidden />
+          <button className="tool" id="toolClear" hidden />
+          <button className="tool" id="btnBoardAdd" hidden /><button className="tool" id="btnBoardDup" hidden />
+          <button className="tool" id="btnBoardDel" hidden />
+          <span className="pg" id="targetLbl" />
+        </span>
       </footer>
 
       {/* ================= POPOVERS ================= */}

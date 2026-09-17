@@ -33,6 +33,27 @@ export function getDb(): Firestore | null {
 let uidPromise: Promise<string | null> | null = null;
 let uidOverride: string | null = null;
 export function setUidOverride(v: string | null) { uidOverride = v; uidPromise = null; }
+
+/* IMPORTANT: Firebase restores the persisted (Google) session from IndexedDB
+   asynchronously. If we call signInAnonymously before that restore finishes,
+   the anonymous session OVERWRITES the saved Google session — the user comes
+   back to the site and finds themselves signed out. So always wait for the
+   first onAuthStateChanged event (the restore) before deciding to go anon. */
+let firstAuthPromise: Promise<unknown> | null = null;
+function firstAuthState(auth: Auth): Promise<unknown> {
+  if (!firstAuthPromise) {
+    firstAuthPromise = new Promise((resolve) => {
+      let settled = false;
+      const done = () => { if (!settled) { settled = true; resolve(auth.currentUser); } };
+      import("firebase/auth").then(({ onAuthStateChanged }) => {
+        const un = onAuthStateChanged(auth, () => { un(); done(); });
+        setTimeout(done, 1200); /* safety net if the event never fires */
+      }).catch(done);
+    });
+  }
+  return firstAuthPromise;
+}
+
 export function ensureUid(): Promise<string | null> {
   if (!uidPromise) {
     uidPromise = (async () => {
@@ -40,7 +61,7 @@ export function ensureUid(): Promise<string | null> {
         const d = getDb();
         if (!d || !auth) return null;
         if (uidOverride) return uidOverride;
-        if (auth.currentUser && !auth.currentUser.isAnonymous) return auth.currentUser.uid;
+        await firstAuthState(auth);
         if (auth.currentUser) return auth.currentUser.uid;
         const cred = await signInAnonymously(auth);
         return cred.user.uid;
