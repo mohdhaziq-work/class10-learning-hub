@@ -8,6 +8,25 @@ import { Icon } from "@/components/ui/Icon";
 import { watchAdmin, signInWithGoogle, signOutAdmin } from "@/lib/firebase/admin";
 import { isFirebaseConfigured } from "@/lib/firebase/config";
 
+function DevTools() {
+  const [devId, setDevId] = useState("");
+  useEffect(() => {
+    try { setDevId((localStorage.getItem("sb-device-uuid") || "").slice(0, 8)); } catch { /* noop */ }
+  }, []);
+  return (
+    <div className="rounded-xl border border-slate-200 p-3 mb-3">
+      <p className="text-[11px] font-bold uppercase tracking-wider text-ink-mute mb-2">Device tools</p>
+      <button
+        onClick={() => { try { void navigator.clipboard.writeText(localStorage.getItem("sb-device-uuid") || ""); } catch { /* noop */ } }}
+        className="w-full flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 hover:bg-slate-100 transition">
+        <span className="text-[12.5px] font-semibold text-slate-700">This device ID</span>
+        <span className="font-mono text-[11.5px] text-[#1a73e8]">{devId || "—"} · copy</span>
+      </button>
+      <p className="text-[11px] text-ink-mute mt-2">Board diagnostics: Smart Board → MENU → SPEED / REC / CLIPS (admin only).</p>
+    </div>
+  );
+}
+
 function GoogleG() {
   return (
     <svg width="15" height="15" viewBox="0 0 48 48" aria-hidden="true">
@@ -116,7 +135,8 @@ export default function AccountButton() {
                 <span className="block text-[11.5px] text-ink-mute mt-0.5">{l.d}</span>
               </Link>
             ))}
-            <div className="rounded-xl bg-slate-50 p-3 text-[11.5px] text-ink-mute">
+            <DevTools />
+            <div className="rounded-xl bg-slate-50 p-3 text-[11.5px] text-ink-mute mt-3">
               Firebase: {isFirebaseConfigured ? "connected" : "not configured"} · Admin gate: signed-in owner email
             </div>
           </aside>

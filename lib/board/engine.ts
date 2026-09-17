@@ -2517,17 +2517,22 @@ export class BoardEngine {
     this.on(div, "pointerup", () => { drag = false; this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); });
 
     this.$("#btnFull").onclick = async () => {
+      const el = document.documentElement as unknown as { requestFullscreen?: () => Promise<void>; webkitRequestFullscreen?: () => void };
+      const so = screen.orientation as unknown as { type?: string; lock?: (o: string) => Promise<void>; unlock?: () => void };
       try {
-        const so = screen.orientation as unknown as { type?: string; lock?: (o: string) => Promise<void>; unlock?: () => void };
         if (document.fullscreenElement) {
           await document.exitFullscreen();
           so.unlock?.();
-        } else {
-          await document.documentElement.requestFullscreen();
-          /* stay in the orientation the teacher is holding — no sensor flip */
-          if (so.type) so.lock?.(so.type).catch(() => undefined);
+          this.toast("Fullscreen off");
+          return;
         }
-      } catch { this.toast("Fullscreen not allowed"); }
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else { this.toast("Fullscreen not supported on this browser"); return; }
+        /* stay in the orientation the teacher is holding — no sensor flip */
+        if (so.type) so.lock?.(so.type).catch(() => undefined);
+        this.toast("Fullscreen on");
+      } catch { this.toast("Fullscreen blocked by browser"); }
     };
     const btnLat = this.$("#btnLatency"); if (btnLat) btnLat.onclick = () => this.toggleLatency();
     const latHud = this.$("#latencyHud"); if (latHud) this.latencyEl = latHud as HTMLElement;

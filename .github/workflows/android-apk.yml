@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ["android-app/**"]
+    paths: ["android-app/**", ".github/workflows/android-apk.yml"]
 
 permissions:
   contents: write
@@ -51,4 +51,4 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/downloads/class10-learning-hub.apk
-          git diff --cached --quiet || git commit -m "ci: fresh APK build [skip ci-apk]" && git push
+          git diff --cached --quiet || { git commit -m "ci: fresh APK build" && git pull --rebase origin main && git push; }

@@ -127,6 +127,9 @@ export default function HomePage() {
  <Link href="/smart-board" className="btn-g btn-g-dark text-[15px]">
  <Icon name="squarePen" size={18} /> Open Smart Board
  </Link>
+          <Link href="/classwork" className="btn-g btn-g-white text-[15px]">
+            <Icon name="galleryHorizontal" size={18} /> Student Classwork
+          </Link>
  <a href="/downloads/class10-learning-hub.apk" download className="btn-g text-[15px] text-white hover:-translate-y-0.5 transition-transform" style={{ background: "#1a73e8" }}>
  <Icon name="smartphone" size={18} /> Download App
  </a>
@@ -228,7 +231,21 @@ export default function HomePage() {
 
  {/* ---------- HOW ---------- */}
  <section className="pt-16">
- <SectionHead overline="How it works" title="From chapter to classroom in 4 steps" sub="Students revise at home. Teachers present in class. Same content, everywhere." />
+ <section className="max-w-7xl mx-auto px-4 sm:px-6 mt-14">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+          <span className="w-12 h-12 rounded-2xl grid place-items-center bg-[#e8f0fe] text-[#1a73e8] flex-none"><Icon name="galleryHorizontal" size={24} /></span>
+          <div className="flex-1">
+            <h3 className="text-[19px] font-extrabold tracking-tight">Classwork archive</h3>
+            <p className="text-ink-soft text-[14px] mt-1 max-w-2xl">
+              Whatever the teacher writes on an authorized board auto-syncs here — students can
+              reopen any class snapshot, on any device, forever.
+            </p>
+          </div>
+          <Link href="/classwork" className="btn-g btn-g-dark text-[14px] flex-none">Open classwork</Link>
+        </div>
+      </section>
+
+      <SectionHead overline="How it works" title="From chapter to classroom in 4 steps" sub="Students revise at home. Teachers present in class. Same content, everywhere." />
  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
  {STEPS.map((s) => (
  <div key={s.n} className="reveal card-g p-6">
