@@ -547,3 +547,8 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 
 .admin-who:empty{display:none}
 .admin-who{position:absolute;bottom:86px;left:14px;z-index:40;font:600 11px Google Sans,Arial,sans-serif;color:#80868b;background:rgba(255,255,255,.85);border-radius:8px;padding:3px 8px;pointer-events:none;max-width:70vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---- decluttered dock: only essentials on the bar; the rest live in MENU ---- */
+#btnSave,#btnExport,#toolClear,#btnBoardAdd,#btnBoardDup,#btnBoardDel{display:none}
+.sb-dragging{cursor:col-resize;user-select:none}
+.sb-dragging iframe{pointer-events:none}

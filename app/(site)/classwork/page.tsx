@@ -14,7 +14,7 @@ export default function ClassworkPage() {
     const un = watchAdmin((is) => setAdmin(is));
     const load = () => fsListClasswork().then((l) => { setEntries(l as E[]); setLoaded(true); }).catch(() => setLoaded(true));
     void load();
-    const t = setInterval(() => void load(), 20_000);
+    const t = setInterval(() => void load(), 6_000);
     return () => { un(); clearInterval(t); };
   }, []);
   return (

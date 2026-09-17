@@ -99,12 +99,15 @@ export default function SessionTracker() {
     window.addEventListener("pointerdown", onAct, { passive: true });
     const bye = () => beat(true);
     window.addEventListener("pagehide", bye);
+    const onVis = () => { if (document.visibilityState === "visible") { beat(); void fsUpsertDevice(dev!, fsMeta); } };
+    document.addEventListener("visibilitychange", onVis);
     return () => {
       clearInterval(hb);
       clearInterval(pa);
       clearInterval(fsBeat);
       window.removeEventListener("pointerdown", onAct);
       window.removeEventListener("pagehide", bye);
+      document.removeEventListener("visibilitychange", onVis);
     };
   }, []);
   return null;

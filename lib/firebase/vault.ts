@@ -61,6 +61,27 @@ export async function fsListDevices(): Promise<DeviceDoc[]> {
 
 export interface ClassworkEntry { id: string; device: string; saved_at: number; png: string }
 
+export async function fsUpsertClasswork(device: string, png: string): Promise<boolean> {
+  /* one LIVE entry per device — students always see the current board,
+     updated within seconds of the teacher writing */
+  try {
+    const db = getDb();
+    if (!db) return false;
+    let id = "";
+    try { id = localStorage.getItem("sb-cw-live") || ""; } catch { /* noop */ }
+    if (id) {
+      await setDoc(doc(db, "classwork", id), { device, png, saved_at: Date.now() });
+    } else {
+      const ref = await addDoc(collection(db, "classwork"), { device, png, saved_at: Date.now() });
+      id = ref.id;
+      try { localStorage.setItem("sb-cw-live", id); } catch { /* noop */ }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function fsAddClasswork(device: string, png: string): Promise<boolean> {
   try {
     const db = getDb();

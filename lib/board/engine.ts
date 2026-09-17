@@ -14,7 +14,7 @@ import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
 import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
 import { uploadClip } from "@/lib/clipShare";
-import { fsAddClasswork } from "@/lib/firebase/vault";
+import { fsUpsertClasswork } from "@/lib/firebase/vault";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -2035,8 +2035,22 @@ export class BoardEngine {
     return url;
   }
   private applyHtmlZoom() {
+    /* CSS zoom re-rasterizes the whole iframe every step (the EduRev lag).
+       transform:scale is compositor-only; the iframe is re-sized once per
+       finished step so text stays crisp. */
     const box = this.$("#docHtmlBox") as HTMLElement | null;
-    if (box) (box.style as unknown as Record<string, string>).zoom = String(this.docZoom);
+    if (!box) return;
+    const z = this.docZoom;
+    const st = box.style as unknown as Record<string, string>;
+    st.transition = "transform .12s ease-out";
+    st.transformOrigin = "0 0";
+    st.transform = z === 1 ? "" : `scale(${z})`;
+    st.width = z === 1 ? "" : `${100 / z}%`;
+    const ifr = box.querySelector("iframe");
+    if (ifr) {
+      ifr.style.width = z === 1 ? "100%" : `${100 / z}%`;
+      ifr.style.height = z === 1 ? "calc(100vh - 230px)" : `calc((100vh - 230px) / ${z})`;
+    }
   }
 
   private updatePgLabel() {
@@ -2071,11 +2085,12 @@ export class BoardEngine {
       this.setZoom(this.docZoom * (e.deltaY < 0 ? 1.1 : 0.9));
     }, { passive: false } as AddEventListenerOptions);
   }
+  private webZoomT = 0;
   private setZoom(z: number) {
     this.docZoom = Math.min(3, Math.max(0.5, Math.round(z * 10) / 10));
     this.$("#zoomLbl").textContent = Math.round(this.docZoom * 100) + "%";
     if (this.doc?.kind === "pdf") { this.pages.forEach((p) => (p.dirty = true)); this.renderVisiblePages(); }
-    else this.applyHtmlZoom();
+    else { clearTimeout(this.webZoomT); this.webZoomT = window.setTimeout(() => this.applyHtmlZoom(), 120); }
   }
 
   /* ==========================================================================
@@ -2506,15 +2521,19 @@ export class BoardEngine {
     const div = this.$("#divider") as HTMLElement;
     const docPane = this.$("#paneDoc") as HTMLElement;
     const boardPane = this.$("#paneBoard") as HTMLElement;
-    let drag = false;
-    this.on(div, "pointerdown", (e: PointerEvent) => { drag = true; try { div.setPointerCapture(e.pointerId); } catch { /* noop */ } });
+    let drag = false; let dragRaf = 0;
+    this.on(div, "pointerdown", (e: PointerEvent) => { drag = true; (document.querySelector(".sb-root") as HTMLElement).classList.add("sb-dragging"); try { div.setPointerCapture(e.pointerId); } catch { /* noop */ } });
     this.on(div, "pointermove", (e: PointerEvent) => {
-      if (!drag) return;
-      const r = (this.$(".sb-work") as HTMLElement).getBoundingClientRect();
-      const d = Math.min(0.85, Math.max(0.15, (e.clientX - r.left) / r.width));
-      docPane.style.flex = d.toFixed(3); boardPane.style.flex = (1 - d).toFixed(3);
+      if (!drag || dragRaf) return;
+      const x = e.clientX;
+      dragRaf = requestAnimationFrame(() => {
+        dragRaf = 0;
+        const r = (this.$(".sb-work") as HTMLElement).getBoundingClientRect();
+        const d = Math.min(0.85, Math.max(0.15, (x - r.left) / r.width));
+        docPane.style.flex = d.toFixed(3); boardPane.style.flex = (1 - d).toFixed(3);
+      });
     });
-    this.on(div, "pointerup", () => { drag = false; this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); });
+    this.on(div, "pointerup", () => { drag = false; (document.querySelector(".sb-root") as HTMLElement).classList.remove("sb-dragging"); this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); });
 
     this.$("#btnFull").onclick = async () => {
       const el = document.documentElement as unknown as { requestFullscreen?: () => Promise<void>; webkitRequestFullscreen?: () => void };
@@ -2540,6 +2559,9 @@ export class BoardEngine {
     const btnRecStop = this.$("#btnRecStop"); if (btnRecStop) btnRecStop.onclick = () => { void this.toggleRec(); };
     const btnRecs = this.$("#btnRecordings"); if (btnRecs) btnRecs.onclick = () => { void this.openRecordings(); };
     const btnRecClose = this.$("#btnRecClose"); if (btnRecClose) btnRecClose.onclick = () => this.closeModal(this.$("#mRecordings") as HTMLElement);
+    const mExport = this.$("#mExport"); if (mExport) mExport.onclick = () => (this.$("#btnExport") as HTMLElement).click();
+    const mClear = this.$("#mClear"); if (mClear) mClear.onclick = () => (this.$("#toolClear") as HTMLElement).click();
+    const mAddPage = this.$("#mAddPage"); if (mAddPage) mAddPage.onclick = () => (this.$("#btnBoardAdd") as HTMLElement).click();
     const btnSignIn = this.$("#btnSignIn"); if (btnSignIn) btnSignIn.onclick = () => { void signInWithGoogle().then((r) => this.toast(r.message)); };
     const btnSignOut = this.$("#btnSignOut"); if (btnSignOut) btnSignOut.onclick = () => { void signOutAdmin().then(() => this.toast("Signed out")); };
     this.on(window, "sb-rec-saved", () => {
@@ -3059,14 +3081,12 @@ export class BoardEngine {
   private maybeCloudSync() {
     if (!this.liveSyncOn) return;
     const now = Date.now();
-    if (now - this.lastCloudSync < 60_000) return;
+    if (now - this.lastCloudSync < 5_000) return; /* near-instant: 5s after last commit */
     this.lastCloudSync = now;
     try {
-      const sid = (window as any).__sbSid || sessionStorage.getItem("sb-sid") || "";
       const dev = localStorage.getItem("sb-device-uuid") || "";
-      if (!sid) return;
       const png = this.boardCanvas.toDataURL("image/png");
-      void fsAddClasswork(dev ? dev.slice(0, 8) : "board", png);
+      void fsUpsertClasswork(dev ? dev.slice(0, 8) : "board", png);
     } catch { /* canvas tainted or storage blocked */ }
   }
   private scheduleSave() {

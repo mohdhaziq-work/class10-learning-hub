@@ -321,6 +321,9 @@ export default function SmartBoard() {
           <button className="tool" id="btnPad" title="Phone Pad — phone as writing tablet"><Icon name="smartphone" size={20} /><small>PAD</small></button>
           <button className="tool" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={20} /><small>SPEED</small></button>
           <button className="tool" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={20} /><small>REC</small></button>
+          <button className="mbtn" id="mExport" style={{ textAlign: "left" }}><Icon name="download" size={17} /> Export PNG / print</button>
+          <button className="mbtn" id="mClear" style={{ textAlign: "left" }}><Icon name="trash2" size={17} /> Clear this page</button>
+          <button className="mbtn" id="mAddPage" style={{ textAlign: "left" }}><Icon name="plus" size={17} /> Add board page</button>
           <button className="tool" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={20} /><small>CLIPS</small></button>
         </div>
       </div>

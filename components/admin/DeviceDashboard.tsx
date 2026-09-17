@@ -184,7 +184,7 @@ export default function DeviceDashboard() {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {g.map((h) => {
-          const online = liveUuids.has(h.device_uuid);
+          const online = liveUuids.has(h.device_uuid) || Date.now() - h.last_seen_time < 5 * 60_000;
           const approved = h.approval_status === "AUTHORIZED_TEACHER";
           return (
             <div key={h.device_uuid} className={`dev-card${approved ? " auth" : ""}`}>
