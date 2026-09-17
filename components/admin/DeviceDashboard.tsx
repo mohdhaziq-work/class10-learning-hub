@@ -32,6 +32,19 @@ export default function DeviceDashboard() {
   const [connected, setConnected] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
   const [, force] = useState(0);
+  const [unlocked, setUnlocked] = useState<boolean | null>(null);
+
+  /* admin-only page: visible on an authorized (admin) device, or once opened
+     with the access key (?key=class10-admin) which unlocks this browser */
+  useEffect(() => {
+    const key = new URLSearchParams(window.location.search).get("key");
+    let auth = false;
+    try {
+      auth = localStorage.getItem("sb-live-auth") === "1" || localStorage.getItem("sb-admin-unlock") === "1";
+      if (key === "class10-admin") { localStorage.setItem("sb-admin-unlock", "1"); auth = true; }
+    } catch { /* private mode */ }
+    setUnlocked(auth);
+  }, []);
 
   useEffect(() => {
     const es = new EventSource("/api/session/stream");
@@ -65,6 +78,22 @@ export default function DeviceDashboard() {
   };
 
   const liveUuids = new Set(live.map((l) => l.device_uuid));
+
+  if (unlocked === null) return null;
+  if (!unlocked) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center max-w-xl mx-auto mt-8">
+        <div className="w-12 h-12 rounded-2xl grid place-items-center bg-slate-900 text-white mx-auto mb-4">
+          <Icon name="shieldCheck" size={22} />
+        </div>
+        <h2 className="text-lg font-extrabold tracking-tight">Admin access only</h2>
+        <p className="text-ink-soft text-sm mt-2">
+          This dashboard lists every connected device, so it is locked to admin devices.
+          Open it once on an authorized device, or use the access key link you received.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -130,6 +159,7 @@ export default function DeviceDashboard() {
                 <span className={`st-chip ${approved ? "ok" : h.approval_status === "REVOKED" ? "no" : "wait"}`}>
                   {approved ? "Authorized teacher" : h.approval_status === "REVOKED" ? "Revoked" : "Pending approval"}
                 </span>
+                {approved && <span className="st-chip" style={{ background: "#e8f0fe", color: "#1a73e8" }}>Admin device</span>}
                 {online && <span className="st-chip live">Online now</span>}
               </div>
               <div className="mt-3.5">

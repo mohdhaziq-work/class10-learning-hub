@@ -11,6 +11,7 @@ import { recognizeShape, fitBoard, confettiBurst, TEMPLATES } from "./extras";
 import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
+import { startRecording, stopRecording, isRecording, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -400,6 +401,8 @@ export class BoardEngine {
   private latencyOn = false; private latencyEl: HTMLElement | null = null;
   private latIn: number[] = []; private latDraw: number[] = [];
   private latPendingT0 = 0; private latLastHud = 0;
+  /* admin device features: latency tool + screen recording */
+  private adminOn = false; private recTimer = 0; private recStartTs = 0;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -878,6 +881,83 @@ export class BoardEngine {
   private scheduleLive() {
     if (this.liveRaf || this.destroyed) return;
     this.liveRaf = requestAnimationFrame(() => { this.liveRaf = 0; this.drawLive(); });
+  }
+  /* ---------------- admin device features ---------------- */
+  private startAdminWatch() {
+    /* an approved device (AUTHORIZED_TEACHER via /admin-devices) is an admin
+       device: only it sees SPEED diagnostics + screen recording controls */
+    const apply = () => {
+      let on = false;
+      try { on = localStorage.getItem("sb-live-auth") === "1"; } catch { /* private mode */ }
+      if (on === this.adminOn) return;
+      this.adminOn = on;
+      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings"]) {
+        const b = this.$(id) as HTMLElement | null;
+        if (b) b.style.display = on ? "" : "none";
+      }
+      if (!on && this.latencyOn) this.toggleLatency();
+      if (!on && isRecording()) stopRecording();
+    };
+    apply();
+    window.setInterval(apply, 2500);
+  }
+  private async toggleRec() {
+    if (isRecording()) { stopRecording(); this.toast("Saving recording…"); return; }
+    try { await startRecording(); } catch { this.toast("Screen share cancelled or not supported"); return; }
+    this.recStartTs = Date.now();
+    const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = false;
+    const tick = () => {
+      const sec = Math.floor((Date.now() - this.recStartTs) / 1000);
+      const t = this.$("#recTime");
+      if (t) t.textContent = `${String(Math.floor(sec / 60)).padStart(2, "0")}:${String(sec % 60).padStart(2, "0")}`;
+    };
+    tick();
+    this.recTimer = window.setInterval(tick, 500);
+  }
+  private async openRecordings() {
+    this.openModal("mRecordings");
+    const list = this.$("#recList") as HTMLElement; if (!list) return;
+    const player = this.$("#recPlayer") as HTMLVideoElement;
+    const recs = await listRecordings();
+    list.textContent = "";
+    if (!recs.length) {
+      const d = document.createElement("div");
+      d.className = "rec-empty";
+      d.textContent = "No recordings yet. Start one with MENU > REC — pick the screen or this tab, write normally, then Stop.";
+      list.appendChild(d);
+      return;
+    }
+    for (const r of recs) {
+      const row = document.createElement("div"); row.className = "rec-row";
+      const meta = document.createElement("div"); meta.className = "rec-meta";
+      const b = document.createElement("b"); b.textContent = r.name;
+      const sub = document.createElement("span");
+      sub.textContent = `${Math.floor(r.dur / 60)}m ${r.dur % 60}s · ${(r.size / 1048576).toFixed(1)} MB · saved on this device`;
+      meta.appendChild(b); meta.appendChild(sub);
+      const acts = document.createElement("div"); acts.className = "rec-acts";
+      const mk = (label: string, fn: () => void) => {
+        const btn = document.createElement("button"); btn.className = "rec-btn"; btn.textContent = label;
+        btn.onclick = fn; acts.appendChild(btn); return btn;
+      };
+      mk("Play", () => {
+        if (player.src) URL.revokeObjectURL(player.src);
+        player.src = URL.createObjectURL(r.blob);
+        player.style.display = "block";
+        void player.play();
+        player.scrollIntoView({ block: "nearest" });
+      });
+      const dl = mk("Download", () => undefined);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(r.blob);
+      a.download = `${r.name.replace(/[^a-z0-9]+/gi, "-")}.webm`;
+      dl.onclick = () => a.click();
+      mk("Delete", () => {
+        if (!window.confirm("Delete this recording?")) return;
+        void deleteRecording(r.id).then(() => void this.openRecordings());
+      });
+      row.appendChild(meta); row.appendChild(acts);
+      list.appendChild(row);
+    }
   }
   toggleLatency() {
     this.latencyOn = !this.latencyOn;
@@ -2384,6 +2464,16 @@ export class BoardEngine {
     };
     const btnLat = this.$("#btnLatency"); if (btnLat) btnLat.onclick = () => this.toggleLatency();
     const latHud = this.$("#latencyHud"); if (latHud) this.latencyEl = latHud as HTMLElement;
+    const btnRec = this.$("#btnRec"); if (btnRec) btnRec.onclick = () => { void this.toggleRec(); };
+    const btnRecStop = this.$("#btnRecStop"); if (btnRecStop) btnRecStop.onclick = () => { void this.toggleRec(); };
+    const btnRecs = this.$("#btnRecordings"); if (btnRecs) btnRecs.onclick = () => { void this.openRecordings(); };
+    const btnRecClose = this.$("#btnRecClose"); if (btnRecClose) btnRecClose.onclick = () => this.closeModal(this.$("#mRecordings") as HTMLElement);
+    this.on(window, "sb-rec-saved", () => {
+      if (this.recTimer) { clearInterval(this.recTimer); this.recTimer = 0; }
+      const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;
+      this.toast("Recording saved — MENU > CLIPS");
+    });
+    this.startAdminWatch();
     this.$("#btnSave").onclick = () => {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
       catch { this.toast("Save failed — the board has large images"); }
