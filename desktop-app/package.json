@@ -1,0 +1,21 @@
+{
+  "name": "class10-learning-hub-desktop",
+  "version": "1.0.0",
+  "description": "Class 10 Learning Hub — Windows desktop app",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.class10hub.desktop",
+    "productName": "Class 10 Learning Hub",
+    "files": ["main.js", "icon.png"],
+    "win": { "target": ["portable"], "icon": "icon.png" },
+    "portable": { "artifactName": "Class10-Learning-Hub-Windows.exe" }
+  },
+  "devDependencies": {
+    "electron": "31.3.1",
+    "electron-builder": "24.13.3"
+  }
+}

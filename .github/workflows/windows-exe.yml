@@ -1,0 +1,37 @@
+name: Windows Desktop Build
+
+# Builds the Electron portable .exe and publishes it as a GitHub Release.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["desktop-app/**"]
+
+permissions:
+  contents: write
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install deps
+        run: npm ci || npm install
+
+      - name: Build portable exe
+        run: npx electron-builder --win portable
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v${{ github.run_number }}
+          name: "Windows App v${{ github.run_number }}"
+          files: desktop-app/dist/Class10-Learning-Hub-Windows.exe
