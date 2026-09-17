@@ -13,6 +13,7 @@ import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } 
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
 import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
+import { uploadClip } from "@/lib/firebase/storage";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
@@ -405,6 +406,7 @@ export class BoardEngine {
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
   private adminUnsub: (() => void) | null = null; private boardRecRaf = 0;
+  private lastShareUrl = "";
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -991,6 +993,22 @@ export class BoardEngine {
       a.href = URL.createObjectURL(r.blob);
       a.download = `${r.name.replace(/[^a-z0-9]+/gi, "-")}.webm`;
       dl.onclick = () => a.click();
+      const shareBtn = mk("Share", () => undefined);
+      shareBtn.onclick = () => {
+        shareBtn.disabled = true; shareBtn.textContent = "Uploading…";
+        uploadClip(r.blob, r.name).then(async (url) => {
+          shareBtn.textContent = "Link copied";
+          try { await navigator.clipboard.writeText(url); } catch { /* user copies manually */ }
+          this.lastShareUrl = url;
+          const sh = this.$("#recShareUrl") as HTMLElement | null;
+          if (sh) { sh.textContent = url; sh.style.display = "block"; }
+          this.toast("Link copied — paste it in the AI chat");
+          setTimeout(() => { shareBtn.disabled = false; shareBtn.textContent = "Share"; }, 1500);
+        }).catch(() => {
+          shareBtn.disabled = false; shareBtn.textContent = "Share";
+          this.toast("Upload failed — enable Firebase Storage once in console");
+        });
+      };
       mk("Delete", () => {
         if (!window.confirm("Delete this recording?")) return;
         void deleteRecording(r.id).then(() => void this.openRecordings());

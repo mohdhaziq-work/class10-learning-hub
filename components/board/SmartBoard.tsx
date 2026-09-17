@@ -330,6 +330,7 @@ export default function SmartBoard() {
         <h2><Icon name="play" size={22} /> Screen recordings</h2>
         <p>Diagnostic clips, saved privately on this device (browser storage). Record from MENU when you need to show a problem.</p>
         <video id="recPlayer" controls playsInline style={{ width: "100%", borderRadius: 12, background: "#111", display: "none", marginTop: 12 }} />
+        <div id="recShareUrl" style={{ display: "none", marginTop: 10, wordBreak: "break-all", fontFamily: "ui-monospace,Menlo,monospace", fontSize: 11.5, background: "#f1f3f4", borderRadius: 8, padding: "8px 10px", color: "#1a73e8" }} />
         <div id="recList" style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }} />
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
           <button className="btn-g" id="btnRecClose">Close</button>
