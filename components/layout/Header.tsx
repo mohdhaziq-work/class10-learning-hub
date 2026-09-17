@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import AdminButton from "./AdminButton";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -20,6 +21,7 @@ export default function Header() {
 
         {/* desktop nav */}
         <nav className="ml-auto hidden md:flex items-center gap-1 text-[14.5px] font-medium">
+          <AdminButton />
           <Link href="/#subjects" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">Subjects</Link>
           <Link href="/pyq" className="px-4 py-2 rounded-full text-ink-soft hover:bg-slate-100 transition">PYQs</Link>
           <a href="/downloads/class10-learning-hub.apk" download title="Class 10 Hub Android app (APK)"
@@ -54,6 +56,9 @@ export default function Header() {
               <Icon name="chevronRight" size={16} className="ml-auto text-ink-mute" />
             </Link>
           ))}
+          <div className="px-4 pt-2 pb-1 border-t border-slate-100">
+            <AdminButton compact />
+          </div>
         </nav>
       )}
     </header>
