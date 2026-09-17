@@ -392,7 +392,8 @@ export class BoardEngine {
 
   /* board canvas */
   private boardScroll!: HTMLElement; private boardCanvas!: HTMLCanvasElement; private bctx!: CanvasRenderingContext2D;
-  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0; private boardRectC: DOMRect | null = null; private dirtySave = false;
+  private boardLive!: HTMLCanvasElement; private lctx!: CanvasRenderingContext2D; private liveRaf = 0;
+  private liveInc = false; private liveLen = 0; private livePanX = 0; private livePanY = 0; private liveZoom = 1; private boardRectC: DOMRect | null = null; private dirtySave = false;
   private boardFx!: HTMLCanvasElement; private fctx!: CanvasRenderingContext2D;
   private inkWorker: Worker | null = null;
   /* zero-allocation hot path: pooled stroke vectors (x, y, pressure triples) */
@@ -1045,9 +1046,18 @@ export class BoardEngine {
   }
   private drawLive() {
     const ctx = this.lctx;
+    const d0 = this.boardDraft;
+    const sameT = this.livePanX === this.boardPan.x && this.livePanY === this.boardPan.y && this.liveZoom === this.boardZoom;
+    const pts0 = d0?.points || [];
+    /* nothing new to show and transform unchanged — skip entirely */
+    if (this.liveInc && sameT && d0 && d0.type === "stroke" && pts0.length <= this.liveLen && !(this.latencyOn && this.latPendingT0)) {
+      return;
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    this.liveInc = this.liveInc && !!d0 && d0.type === "stroke";
     if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
+      this.liveInc = false; this.liveLen = 0;
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       ctx.save();
       ctx.translate(this.boardPan.x, this.boardPan.y);
@@ -1064,13 +1074,38 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    if (!this.boardDraft || this.boardDraft.type === "erase") return;
-    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-    ctx.save();
-    ctx.translate(this.boardPan.x, this.boardPan.y);
-    ctx.scale(this.boardZoom, this.boardZoom);
-    drawObject(ctx, this.boardDraft);
-    ctx.restore();
+    if (!this.boardDraft || this.boardDraft.type === "erase") { this.liveInc = false; this.liveLen = 0; return; }
+    const d = this.boardDraft;
+    const pts = d.points || [];
+    const ball = d.type === "stroke" && d.tool === "pen" && (d.kind || "ball") === "ball";
+    /* incremental: opaque constant-width ball strokes append only the new
+       segments instead of redrawing the whole stroke every frame — the
+       trailing-behind-finger fix. Alpha tools & transform changes fall back
+       to the proven full redraw, so live can never differ from committed. */
+    if (ball && this.liveInc && sameT && pts.length > this.liveLen && this.liveLen >= 1) {
+      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      ctx.save();
+      ctx.translate(this.boardPan.x, this.boardPan.y);
+      ctx.scale(this.boardZoom, this.boardZoom);
+      ctx.globalAlpha = (d.opacity ?? 100) / 100;
+      ctx.strokeStyle = d.color || "#111";
+      ctx.lineWidth = d.size || 3;
+      ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
+      const sub = pts.slice(Math.max(0, this.liveLen - 2));
+      ctx.beginPath(); pathSmooth(ctx, sub as { x: number; y: number }[]); ctx.stroke();
+      ctx.restore();
+      this.liveLen = pts.length;
+    } else {
+      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      ctx.save();
+      ctx.translate(this.boardPan.x, this.boardPan.y);
+      ctx.scale(this.boardZoom, this.boardZoom);
+      drawObject(ctx, d);
+      ctx.restore();
+      this.liveInc = ball;
+      this.liveLen = pts.length;
+      this.livePanX = this.boardPan.x; this.livePanY = this.boardPan.y; this.liveZoom = this.boardZoom;
+    }
     if (this.latencyOn && this.latPendingT0) {
       const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
       if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
@@ -1335,7 +1370,10 @@ export class BoardEngine {
           pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
-      this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
+      /* ball strokes paint synchronously (incremental is ~free) — removes the
+         one-frame rAF trail; alpha tools keep rAF batching */
+      if (this.boardDraft.type === "stroke" && this.boardDraft.tool === "pen" && (this.boardDraft.kind || "ball") === "ball") this.drawLive();
+      else this.scheduleLive();
     } else if (phase === "up" && this.boardDraft) {
       let replaced = false;
       if (this.boardDraft.type === "shape" && Math.abs((this.boardDraft.x2 || 0) - (this.boardDraft.x1 || 0)) < 4 && Math.abs((this.boardDraft.y2 || 0) - (this.boardDraft.y1 || 0)) < 4) {
