@@ -386,7 +386,7 @@ export class BoardEngine {
   /* zero-allocation hot path: pooled stroke vectors (x, y, pressure triples) */
   private strokePool = new Float32Array(16384); private workerBuf = new Float32Array(16384);
   private liveIdx = 1; private liveHas = false; private lp0x = 0; private lp0y = 0; private lp1x = 0; private lp1y = 0;
-  private touchPending: { x: number; y: number; pr: number } | null = null; private palmPointer = -1;
+  private touchPending: { x: number; y: number; pr: number } | null = null; private palmPointer = -1; private palmErased = false;
   private boardW = 800; private boardH = 600; private DPR = 1;
   /* board = 3 layers: bgC (background+pattern) + inkC (all ink; erases punch holes) -> visible canvas */
   private inkC: HTMLCanvasElement | null = null; private inkX: CanvasRenderingContext2D | null = null;
@@ -859,7 +859,7 @@ export class BoardEngine {
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
-    this.scheduleLive();
+    this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
   private scheduleLive() {
     if (this.liveRaf || this.destroyed) return;
@@ -956,8 +956,9 @@ export class BoardEngine {
         this.pinch = { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), z: this.boardZoom };
         this.boardDraft = null; return;
       }
-      /* palm rejection: a broad flat contact rests/scrolls, never inks */
-      if (e.pointerType === "touch" && (((e as any).width || 0) > 26 || ((e as any).height || 0) > 26)) { this.palmPointer = e.pointerId; return; }
+      /* object awareness (SMART/BenQ/Promethean parity): a broad flat contact
+         is a duster — it erases whatever it rubs, never inks */
+      if (e.pointerType === "touch" && (((e as any).width || 0) > 26 || ((e as any).height || 0) > 26)) { this.palmPointer = e.pointerId; this.palmErased = false; return; }
       /* select-drag snapshot */
       if (this.tool === "select") {
         const r0 = cv.getBoundingClientRect();
@@ -970,7 +971,17 @@ export class BoardEngine {
       this.boardStroke(e, this.toWorld(e.clientX - r.left - ox, e.clientY - r.top - oy), "down");
     });
     this.on(cv, "pointermove", (e: PointerEvent) => {
-      if (e.pointerId === this.palmPointer) return;
+      if (e.pointerId === this.palmPointer) {
+        const r = this.boardRectC || cv.getBoundingClientRect();
+        const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
+        const hit = hitErase(this.boardStore.objects, w.x, w.y, 34 / this.boardZoom);
+        if (hit) {
+          if (!this.palmErased) { this.boardStore.pushHistory(); this.palmErased = true; }
+          this.boardStore.objects.splice(hit.idx, 1);
+          this.renderBoard(); this.scheduleSave();
+        }
+        return;
+      }
       if (this.pinch && this.pointers.has(e.pointerId)) {
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const p = [...this.pointers.values()];
@@ -999,7 +1010,7 @@ export class BoardEngine {
     });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
-      if (e.pointerId === this.palmPointer) this.palmPointer = -1;
+      if (e.pointerId === this.palmPointer) { this.palmPointer = -1; this.palmErased = false; }
       if (this.pointers.size < 2) this.pinch = null;
       if (this.pointers.size === 0) this.boardStroke(e, null, "up");
     };
