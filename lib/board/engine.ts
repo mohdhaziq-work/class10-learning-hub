@@ -447,6 +447,7 @@ export class BoardEngine {
   private latIn: number[] = []; private latDraw: number[] = [];
   private latPendingT0 = 0; private latLastHud = 0;
   private recCanvas = false; /* recording via board-canvas fallback (phones) */
+  private recDirty = false; /* composite loop only blits when a layer actually changed */
   private hudL1 = ""; private hudL2 = ""; private hudL3 = "";
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
@@ -1045,6 +1046,8 @@ export class BoardEngine {
     const loop = (t: number) => {
       this.boardRecRaf = requestAnimationFrame(loop);
       if (t - last < 33) return; /* 30fps cap — halves the composite load */
+      if (!this.recDirty) return; /* idle board = zero composite cost, no lag */
+      this.recDirty = false;
       last = t;
       rctx.clearRect(0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardCanvas, 0, 0, rec.width, rec.height);
@@ -1148,6 +1151,7 @@ export class BoardEngine {
     }
   }
   private drawLive() {
+    this.recDirty = true;
     setEraseSurface(this.surfaceColor());
     const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
