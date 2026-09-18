@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "advanced select: marquee + resize + sel-bar",
+  lastCommit: "ink pixel-exact + tap makes dot",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "INK ACCURACY 2026-09-18 (class field report): (a) finger/stylus ink landed up-left of tip on big smart board — culprit was touch nudge off()=[10,8] applied to pointerType touch (board stylus reports touch); REMOVED, now [0,0] for all inputs, pixel-exact like built-in whiteboards. (b) plain tap made no dot because touchPending required 4px glide; now on pointerup with touchPending a single-point stroke is committed (drawObject p.length===1 draws the dot). Pushed 9b98df7.",
     "ADVANCED SELECT 2026-09-18: select tool upgraded — marquee drag on empty space multi-selects (rectsIntersect), corner handles resize (scaleObject uniform about opposite corner), floating #selBar (dup/front/back/del) positioned by syncSelBar in paneBoard, Delete/Backspace works on multi. KEY FIX user complained: setTool now clears selected/selMulti/marquee + hides selBar when leaving select, so outlines vanish instantly on pen/etc. Pushed 02f3459.",
     "ERASER v3 2026-09-18: clip mu6abb... showed white blobs on light-blue bg — v2 near-white heuristic wrong. Now efill stores \"auto\"; module ERASE_SURFACE + setEraseSurface() resolved at draw time in drawObject, synced at renderBoard/compositeVisible/drawLive; engine.surfaceColor() = bgColor || per-bg default. Erased areas now ALWAYS equal current background, follow later bg changes, and PNG export fills with surfaceColor too (export ignored bgColor before). Pushed 8e7b3bc.",
     "PIXEL ERASER v2 2026-09-18: user asked circle eraser to FILL with surface color instead of transparent holes. BoardObject gains efill?:string (fill was taken by shapes boolean). drawObject + eraseInkSegment use source-over + efill when present; legacy objects keep destination-out. eraserFillColor(): bg white or near-white grey (lum>=0.72, chroma<=24) -> #ffffff else bgColor. Doc-surface pixel eraser unchanged (must stay destination-out so PDF under annotations stays). Pushed ef97806. NOTE: node_modules vanished again mid-session (npm ci needed); git remote origin must be re-added EVERY session.",
