@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "Official CBSE board papers section on /pyq: 2022-2026 all sets main+compartment, 2011-2021 archive links (ae20543)",
+  lastCommit: "AI 417 important questions (50 long answers) in site + board split view; finger-ink sync fix for 300-gap",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -106,6 +106,7 @@ export const HANDOFF = {
   ],
 
   log: [
+    "AI IMPORTANT QUESTIONS + FINGER-INK SYNC 2026-09-19: user clip showed the HUD gap spiking to 300 on fast flicks. Root cause: coalesced hardware sub-samples pushed the ink ahead while lastPt (the red finger marker) only updated from the outer event coordinate; the engine now sets lastPt to the exact sample inked inside the stroke push, so FINGER == INK for every hardware sample and the HUD gap reads 0. New content batch: lib/content/ai-important.ts with all 50 CBSE 417 long-answer questions and full exam-ready answers parsed from the user-provided PDF; public SEO page /important-questions/ai (unit-wise expandable answers, ItemList JSON-LD, full-marks tips); compact sheet /embed/ai-qa that opens INSIDE the Smart Board split view via /smart-board?web=/embed/ai-qa&layout=split (SmartBoard now accepts relative same-origin web URLs, engine.webSrc passes them through); /subjects/ai shows an Important Questions card.",
     "ZERO-GAP INK + VOICE IN CLIPS 2026-09-19: user clip showed the ink tip trailing the finger by a frame during fast writing. engine.paintTip now paints the newest stroke segment onto the live layer synchronously inside the pointermove handler at exact pointer coords (no nudge, no prediction; the next rAF drawLive clears and replaces it, recDirty set so recordings capture it instantly). Fallback canvas recording (startBoardCapture) now adds the microphone via getUserMedia when permitted so clips carry the teacher's voice; recorder onstop already stops every stream track; denied mic = video-only clip exactly as before. Same batch shipped the official CBSE board papers section on /pyq (2022-2026 all sets main + compartment from cbse.gov.in, 2011-2021 archive mirror links).",
     "2026-09-14: took over from a stalled session. Added batch D (~175 questions), board-paper redesign of chapter PYQ pages, DPR-crisp PDF rendering, hidden /ai handoff page + rule to update it after every task.",
     "2026-09-14: batch E — downloaded all 14 EduRev Class 10 Maths chapter PYQ pages, parsed 481 unique questions (MCQ options inline, assertion-reason, 2025-26 sections), merged + deduped; bank 373 -> 854. Pushed 52b916f.",

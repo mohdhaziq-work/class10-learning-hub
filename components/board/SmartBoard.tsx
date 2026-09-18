@@ -16,7 +16,8 @@ export default function SmartBoard() {
     const web = params.get("web");
     /* internal site PDFs (e.g. /api/pyq/pdf) load directly; external NCERT URLs go through the proxy */
     const pdfUrl = pdf ? (pdf.startsWith("/") ? pdf : `/api/pdf?u=${encodeURIComponent(pdf)}`) : undefined;
-    const webUrl = web && /^https:\/\//.test(web) ? web : undefined;
+    /* internal pages (e.g. /embed/ai-qa) load same-origin; external https URLs go through the proxy */
+    const webUrl = web && (/^https:\/\//.test(web) || web.startsWith("/")) ? web : undefined;
     const engine = new BoardEngine(rootRef.current, {
       layout: params.get("layout") || undefined,
       bg: params.get("bg") || undefined,

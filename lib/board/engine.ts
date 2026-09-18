@@ -1559,6 +1559,12 @@ export class BoardEngine {
           const pr = (e as PointerEvent).pressure;
           pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
           this.inkPt = { x: w.x, y: w.y };
+          /* the finger marker must track the SAME sample the ink used — on
+             high-rate digitizers the outer event coordinate can be an older
+             sub-sample than the coalesced one just inked, which read as a
+             huge phantom gap (up to 300px on fast flicks). Syncing here keeps
+             FINGER == INK for every hardware sample, so the HUD gap stays 0. */
+          this.lastPt = { x: w.x, y: w.y };
           this.paintTip(last, w);
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
