@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "lat-hud admin-only on-select, no-glow, add-page plus, MENU v2",
+  lastCommit: "pixel eraser v2 paints surface color",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,8 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "PIXEL ERASER v2 2026-09-18: user asked circle eraser to FILL with surface color instead of transparent holes. BoardObject gains efill?:string (fill was taken by shapes boolean). drawObject + eraseInkSegment use source-over + efill when present; legacy objects keep destination-out. eraserFillColor(): bg white or near-white grey (lum>=0.72, chroma<=24) -> #ffffff else bgColor. Doc-surface pixel eraser unchanged (must stay destination-out so PDF under annotations stays). Pushed ef97806. NOTE: node_modules vanished again mid-session (npm ci needed); git remote origin must be re-added EVERY session.
+",
     "LAT-HUD + MENU v2 2026-09-18: root cause of INPUT/DRAW/EST box visible to everyone = .lat-hud display:flex beating [hidden] (same class as rec-pill bug) — added .lat-hud[hidden]{display:none}; HUD now appears ONLY when admin taps Speed test in MENU, gone otherwise. Glow removed (dock v3.1 neutral shadows, no blue glow on .on / cap). #btnBoardAdd (plus) back on dock page-ctl for adding board pages (removed from declutter hide list). MENU v2: sectioned 2-col labeled rows (Write & draw / Measure & teach / Board / Admin device) replacing 48px icon grid; admin section header #mpAdminSec gated in engine apply(). tool() helper deleted. Pushed 722c51e.",
     "DOCK v3 + SIGN-OUT FIX 2026-09-18: user ref = uploads/SmartSelect_20260915_234854_YouTube.jpg (YouTube screenshot of Ganita Manjari board — bottom toolbar of separate white icon boxes). Dock rebuilt in SmartBoard.tsx: no big rectangle; .dock-cluster groups of individual .tool white boxes (OPEN/MOVE/PEN/ERASE | UNDO/REDO | layout seg | page ctl), center .dock-cap = #btnMenu 56px blue graduationCap raised -7px; labels removed (icons only, titles kept); engine-bound hidden buttons (btnSave/btnExport/toolClear/btnBoardAdd/Dup/Del/targetLbl) kept in .dock-hidden so engine refs stay valid. CSS appended DOCK v3 section in board.css. SIGN-OUT BUG root cause: ensureUid called signInAnonymously before IndexedDB restore of persisted Google session completed, overwriting it; fix in lib/firebase/db.ts firstAuthState() gate (onAuthStateChanged first event + 1.2s safety). Pushed ae051a7.",
     "WINDOWS RELEASE FIX 2026-09-18: run #1 failed at softprops step with \"Error saving asset\" (no release created). windows-exe.yml rewritten: gh release create with 3 retries + dir dist debug + upload-artifact fallback (exe always retrievable from the run page even if release upload fails); self-triggers on its own path. Run #2 in flight at push be9da67. User asked \"kaise add karo\" — answered: automatic on desktop-app changes, or Actions tab > Windows Desktop Build > Run workflow. Pushed be9da67.",
