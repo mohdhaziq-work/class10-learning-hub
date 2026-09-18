@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "offset toggle removed; doc-only annotates; boot overlay gates docs",
+  lastCommit: "fixed canvas + lasso select + rotate + image send fix",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "ZOOM/SELECT OVERHAUL 2026-09-18: (1) FIXED whiteboard canvas: clampView() keeps boardZoom 1..6 and pan within board edges (no infinite canvas, zoom-out stops at 100% like a physical board); applied at pinch/wheel/pan-drag/fitBoard/sizeBoard/reset. (2) Selection marquee replaced with free-form LASSO (objectInsidePoly), loop preview drawn dashed blue. (3) ROTATE: BoardObject.rot; drawObject rotates about raw bbox center; bbox() returns rotated AABB; single-selection gets a rotate handle above top-center (drag to rotate). Corner resize kept (text scales via fontSize). (4) placeImageOnBoard: raster capped 1600, display size = 70% of current view min dimension, centered at view center (send-to-board now proportional, not fixed 900px at 60,60). Pushed 51a34d6.",
     "POST-TEST BATCH 2026-09-18: (1) nudgeTest toggle REMOVED after user A/B test done — off() constant [0,0] forever. (2) doc-only layout (key 1) now revives whiteboard tools ON the file: docReadOnly = (layout !== doc) set in setLayout; annot canvases always wired, runtime gate in pointerdown; toggling layout flips annotation live. (3) boot sequence: #bootOverlay (same design as page Loading) stays the only screen until board painted (2 rAF), then removed; session restore + PDF/EduRev iframe open deferred +250ms — kills the first-seconds EduRev-like lag on smart boards. Pushed 8814c48.",
     "REC POINTER RING 2026-09-18: while isRecording(), a red ring+dot at lastPt (exact input world coords) is drawn on the live layer each frame — recording video now shows hand/pen position vs ink for alignment verification. lastPt tracked on every pointermove over board canvas; scheduleLive() only when recording. Temporary debug aid, invisible when not recording. Push will follow.",
     "INK ACCURACY 2026-09-18 (class field report): (a) finger/stylus ink landed up-left of tip on big smart board — culprit was touch nudge off()=[10,8] applied to pointerType touch (board stylus reports touch); REMOVED, now [0,0] for all inputs, pixel-exact like built-in whiteboards. (b) plain tap made no dot because touchPending required 4px glide; now on pointerup with touchPending a single-point stroke is committed (drawObject p.length===1 draws the dot). Pushed 9b98df7.",
