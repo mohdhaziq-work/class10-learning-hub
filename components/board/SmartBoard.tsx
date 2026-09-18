@@ -336,6 +336,7 @@ export default function SmartBoard() {
         </div>
         <div className="mp-sec" id="mpAdminSec" style={{ display: "none" }}>Admin device</div>
         <div className="menu-list">
+          <button className="mitem" id="btnNudge" style={{ display: "none" }} title="Temporary test — re-apply the old finger offset to compare"><Icon name="crosshair" size={17} /><span className="mlbl">Offset test (old)</span></button>
           <button className="mitem" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={17} /><span className="mlbl">Speed test</span></button>
           <button className="mitem" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={17} /><span className="mlbl">Record</span></button>
           <button className="mitem" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={17} /><span className="mlbl">Recordings</span></button>

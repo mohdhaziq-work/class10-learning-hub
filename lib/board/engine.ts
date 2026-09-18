@@ -786,6 +786,7 @@ export class BoardEngine {
      ========================================================================== */
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
+  private nudgeTest = false; /* TEMPORARY admin test: re-applies the OLD finger offset for comparison */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -949,7 +950,7 @@ export class BoardEngine {
     const apply = (on: boolean, email: string | null) => {
       if (on === this.adminOn) return;
       this.adminOn = on;
-      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut"]) {
+      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut", "#btnNudge"]) {
         const b = this.$(id) as HTMLElement | null;
         if (b) b.style.display = on ? "" : "none";
       }
@@ -1198,7 +1199,7 @@ export class BoardEngine {
     /* Pixel-exact for EVERY input type. A per-input nudge (finger ink shifted
        up-left) read as a visible offset on large smart boards — built-in
        whiteboard apps land ink exactly under the tip, so we do the same. */
-    const off = (_ev: PointerEvent): readonly [number, number] => [0, 0] as const;
+    const off = (ev: PointerEvent): readonly [number, number] => (this.nudgeTest && ev.pointerType === "touch" ? [10, 8] as const : [0, 0] as const);
     this.on(cv, "pointerdown", (e: PointerEvent) => {
       try { cv.setPointerCapture(e.pointerId); } catch { /* noop */ }
       this.boardRectC = cv.getBoundingClientRect(); /* cache for the whole stroke — no layout thrash on move */
@@ -2733,6 +2734,10 @@ export class BoardEngine {
         if (so.type) so.lock?.(so.type).catch(() => undefined);
         this.toast("Fullscreen on");
       } catch { this.toast("Fullscreen blocked by browser"); }
+    };
+    const btnNudge = this.$("#btnNudge"); if (btnNudge) btnNudge.onclick = () => {
+      this.nudgeTest = !this.nudgeTest;
+      this.toast(this.nudgeTest ? "OLD finger offset ON (test) — touch ink shifts up-left" : "Offset test OFF — ink pixel-exact");
     };
     const btnLat = this.$("#btnLatency"); if (btnLat) btnLat.onclick = () => this.toggleLatency();
     const latHud = this.$("#latencyHud"); if (latHud) this.latencyEl = latHud as HTMLElement;
