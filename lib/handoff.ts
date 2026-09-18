@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "HUD painted into canvas recordings; speed test public",
+  lastCommit: "Official CBSE board papers section on /pyq: 2022-2026 all sets main+compartment, 2011-2021 archive links (ae20543)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
