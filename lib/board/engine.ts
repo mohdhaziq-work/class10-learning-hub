@@ -29,7 +29,7 @@ export interface BoardObject {
   shape?: string; x1?: number; y1?: number; x2?: number; y2?: number;
   x?: number; y?: number; w?: number; h?: number;
   text?: string; fontSize?: number; weight?: number; bg?: string; src?: string; img?: HTMLImageElement;
-  color?: string; size?: number; opacity?: number; fill?: boolean; dashed?: boolean;
+  color?: string; size?: number; opacity?: number; fill?: boolean; efill?: string; /* pixel eraser paints this surface color */ dashed?: boolean;
   _w?: number; _h?: number;
 }
 
@@ -229,10 +229,16 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.save();
   applyStyle(ctx, o);
   if (o.type === "erase") {
-    /* raster erase — punches holes in the ink layer only, never the background */
+    /* pixel eraser v2: paints the surface color (fill) like a real eraser;
+       legacy objects without fill punch transparent holes */
     const p = o.points || [], sz = o.size || 28;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.strokeStyle = "#000"; ctx.fillStyle = "#000";
+    if (o.efill) {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = o.efill; ctx.fillStyle = o.efill;
+    } else {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "#000"; ctx.fillStyle = "#000";
+    }
     ctx.lineWidth = sz; ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0].x, p[0].y, sz / 2, 0, 7); ctx.fill(); }
     else if (p.length > 1) {
@@ -856,7 +862,19 @@ export class BoardEngine {
     if (this.compRaf || this.destroyed) return;
     this.compRaf = requestAnimationFrame(() => { this.compRaf = 0; this.compositeVisible(); });
   }
-  /* live pixel-erase: punch the segment straight into the ink layer */
+  /* surface color for the pixel eraser: white (or near-white grey) surfaces
+     erase to pure white; coloured surfaces erase to their own color */
+  private eraserFillColor(): string {
+    const c = String(this.bgColor || "#ffffff").trim();
+    const m = /^#?([0-9a-f]{6})$/i.exec(c);
+    if (!m) return "#ffffff";
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    return (lum >= 0.72 && mx - mn <= 24) ? "#ffffff" : c;
+  }
+  /* live pixel-erase: paint the segment straight into the ink layer */
   private eraseInkSegment(a: { x: number; y: number }, b: { x: number; y: number }) {
     const ctx = this.inkX;
     if (!ctx || !this.boardDraft) return;
@@ -864,8 +882,9 @@ export class BoardEngine {
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.strokeStyle = "#000"; ctx.lineWidth = this.boardDraft.size || 28; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const fill = this.boardDraft.efill;
+    ctx.globalCompositeOperation = fill ? "source-over" : "destination-out";
+    ctx.strokeStyle = fill || "#000"; ctx.lineWidth = this.boardDraft.size || 28; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.restore();
   }
@@ -1253,7 +1272,7 @@ export class BoardEngine {
         /* rub like a real eraser — raster holes in the ink layer, recorded as objects so undo/save/reload all work */
         if (phase === "down" && w) {
           this.boardStore.pushHistory();
-          this.boardDraft = { id: uid(), type: "erase", points: [{ x: w.x, y: w.y }], size: this.eraserSize / this.boardZoom };
+          this.boardDraft = { id: uid(), type: "erase", points: [{ x: w.x, y: w.y }], size: this.eraserSize / this.boardZoom, efill: this.eraserFillColor() };
           this.eraseInkSegment(w, w);
           this.scheduleComposite();
         } else if (phase === "move" && w && this.boardDraft && this.boardDraft.type === "erase") {

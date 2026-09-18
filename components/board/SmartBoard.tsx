@@ -247,7 +247,7 @@ export default function SmartBoard() {
         <div className="tp-head"><h5>Eraser</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
         <div className="seg-row" id="eraserModeSeg">
           <button data-mode="stroke" title="Tap an object — the whole thing is deleted"><Icon name="slash" size={17} />Stroke</button>
-          <button data-mode="pixel" title="Rub to erase exactly where you touch"><Icon name="eraser" size={17} />Pixel</button>
+          <button data-mode="pixel" title="Rub like a real eraser — fills the circle with the board surface color (white on white/grey boards)"><Icon name="eraser" size={17} />Pixel</button>
           <button data-mode="area" title="Draw any loop — circle, square, any shape — everything inside is erased"><Icon name="circle" size={17} />Lasso</button>
         </div>
         <h5>Size</h5>
