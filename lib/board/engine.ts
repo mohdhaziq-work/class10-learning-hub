@@ -785,6 +785,7 @@ export class BoardEngine {
      WHITEBOARD
      ========================================================================== */
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
+  private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -1103,6 +1104,18 @@ export class BoardEngine {
     const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    if (isRecording() && this.lastPt) {
+      const z = this.boardZoom;
+      ctx.save();
+      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(z, z);
+      ctx.globalAlpha = 0.9; ctx.setLineDash([]);
+      ctx.strokeStyle = "#ea4335"; ctx.lineWidth = 2 / z;
+      ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 16 / z, 0, 7); ctx.stroke();
+      ctx.fillStyle = "#ea4335";
+      ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 2.5 / z, 0, 7); ctx.fill();
+      ctx.restore();
+    }
     if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       ctx.save();
@@ -1210,6 +1223,9 @@ export class BoardEngine {
       this.boardStroke(e, this.toWorld(e.clientX - r.left - ox, e.clientY - r.top - oy), "down");
     });
     this.on(cv, "pointermove", (e: PointerEvent) => {
+      /* debug aid: while recording, a red ring shows exactly where the input is —
+         compare it with the ink to verify alignment */
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording()) this.scheduleLive(); }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
