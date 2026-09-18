@@ -225,6 +225,10 @@ function penSizeFor(kind: string, size: number): number {
   const k = m[kind] || 1;
   return k > 1.3 ? Math.max(Math.round(size * k), 6) : Math.round(size * k);
 }
+/* current board surface color — pixel-eraser "auto" fills resolve to this at
+   draw time, so erased areas always match the background, even after a change */
+let ERASE_SURFACE = "#ffffff";
+export function setEraseSurface(c: string) { ERASE_SURFACE = c; }
 function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.save();
   applyStyle(ctx, o);
@@ -234,7 +238,8 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
     const p = o.points || [], sz = o.size || 28;
     if (o.efill) {
       ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = o.efill; ctx.fillStyle = o.efill;
+      const c = o.efill === "auto" ? ERASE_SURFACE : o.efill;
+      ctx.strokeStyle = c; ctx.fillStyle = c;
     } else {
       ctx.globalCompositeOperation = "destination-out";
       ctx.strokeStyle = "#000"; ctx.fillStyle = "#000";
@@ -812,6 +817,7 @@ export class BoardEngine {
     this.renderBoard();
   }
   private renderBoard() {
+    setEraseSurface(this.surfaceColor());
     if (this.destroyed) return;
     if (this.inkWorker) this.inkWorker.postMessage({ t: "view", px: this.boardPan.x, py: this.boardPan.y, z: this.boardZoom });
     const z = this.boardZoom, px = this.boardPan.x, py = this.boardPan.y;
@@ -841,6 +847,7 @@ export class BoardEngine {
   }
   /* visible board = background + ink, two fast GPU blits */
   private compositeVisible() {
+    setEraseSurface(this.surfaceColor());
     if (this.destroyed) return;
     const ctx = this.bctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -862,17 +869,10 @@ export class BoardEngine {
     if (this.compRaf || this.destroyed) return;
     this.compRaf = requestAnimationFrame(() => { this.compRaf = 0; this.compositeVisible(); });
   }
-  /* surface color for the pixel eraser: white (or near-white grey) surfaces
-     erase to pure white; coloured surfaces erase to their own color */
-  private eraserFillColor(): string {
-    const c = String(this.bgColor || "#ffffff").trim();
-    const m = /^#?([0-9a-f]{6})$/i.exec(c);
-    if (!m) return "#ffffff";
-    const n = parseInt(m[1], 16);
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    return (lum >= 0.72 && mx - mn <= 24) ? "#ffffff" : c;
+  /* exact visible board surface color — the pixel eraser paints this */
+  private surfaceColor(): string {
+    const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
+    return this.bgColor || def[this.bg] || "#ffffff";
   }
   /* live pixel-erase: paint the segment straight into the ink layer */
   private eraseInkSegment(a: { x: number; y: number }, b: { x: number; y: number }) {
@@ -882,7 +882,7 @@ export class BoardEngine {
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
-    const fill = this.boardDraft.efill;
+    const fill = this.boardDraft.efill ? this.surfaceColor() : undefined;
     ctx.globalCompositeOperation = fill ? "source-over" : "destination-out";
     ctx.strokeStyle = fill || "#000"; ctx.lineWidth = this.boardDraft.size || 28; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
@@ -1067,6 +1067,7 @@ export class BoardEngine {
     this.latencyEl.dataset.grade = est < 35 ? "a" : est < 60 ? "b" : est < 90 ? "c" : "d";
   }
   private drawLive() {
+    setEraseSurface(this.surfaceColor());
     const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
@@ -1272,7 +1273,7 @@ export class BoardEngine {
         /* rub like a real eraser — raster holes in the ink layer, recorded as objects so undo/save/reload all work */
         if (phase === "down" && w) {
           this.boardStore.pushHistory();
-          this.boardDraft = { id: uid(), type: "erase", points: [{ x: w.x, y: w.y }], size: this.eraserSize / this.boardZoom, efill: this.eraserFillColor() };
+          this.boardDraft = { id: uid(), type: "erase", points: [{ x: w.x, y: w.y }], size: this.eraserSize / this.boardZoom, efill: "auto" };
           this.eraseInkSegment(w, w);
           this.scheduleComposite();
         } else if (phase === "move" && w && this.boardDraft && this.boardDraft.type === "erase") {
@@ -3023,7 +3024,8 @@ export class BoardEngine {
       cv.width = this.boardW; cv.height = this.boardH;
       const ctx = cv.getContext("2d")!;
       const bgc: Record<string, string> = { white: "#fff", black: "#0d1526", grid: "#fff", graph: "#fff", ruled: "#fffef5", dotted: "#fff" };
-      ctx.fillStyle = bgc[this.bg] || "#fff"; ctx.fillRect(0, 0, this.boardW, this.boardH);
+      setEraseSurface(this.surfaceColor());
+      ctx.fillStyle = this.surfaceColor(); ctx.fillRect(0, 0, this.boardW, this.boardH);
       ctx.save();
       ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
       this.boardStore.objects.forEach((o) => drawObject(ctx, o));
