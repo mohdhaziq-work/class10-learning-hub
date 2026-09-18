@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "eraser v3 auto-fill tracks live background",
+  lastCommit: "advanced select: marquee + resize + sel-bar",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "ADVANCED SELECT 2026-09-18: select tool upgraded — marquee drag on empty space multi-selects (rectsIntersect), corner handles resize (scaleObject uniform about opposite corner), floating #selBar (dup/front/back/del) positioned by syncSelBar in paneBoard, Delete/Backspace works on multi. KEY FIX user complained: setTool now clears selected/selMulti/marquee + hides selBar when leaving select, so outlines vanish instantly on pen/etc. Pushed 02f3459.",
     "ERASER v3 2026-09-18: clip mu6abb... showed white blobs on light-blue bg — v2 near-white heuristic wrong. Now efill stores \"auto\"; module ERASE_SURFACE + setEraseSurface() resolved at draw time in drawObject, synced at renderBoard/compositeVisible/drawLive; engine.surfaceColor() = bgColor || per-bg default. Erased areas now ALWAYS equal current background, follow later bg changes, and PNG export fills with surfaceColor too (export ignored bgColor before). Pushed 8e7b3bc.",
     "PIXEL ERASER v2 2026-09-18: user asked circle eraser to FILL with surface color instead of transparent holes. BoardObject gains efill?:string (fill was taken by shapes boolean). drawObject + eraseInkSegment use source-over + efill when present; legacy objects keep destination-out. eraserFillColor(): bg white or near-white grey (lum>=0.72, chroma<=24) -> #ffffff else bgColor. Doc-surface pixel eraser unchanged (must stay destination-out so PDF under annotations stays). Pushed ef97806. NOTE: node_modules vanished again mid-session (npm ci needed); git remote origin must be re-added EVERY session.",
     "LAT-HUD + MENU v2 2026-09-18: root cause of INPUT/DRAW/EST box visible to everyone = .lat-hud display:flex beating [hidden] (same class as rec-pill bug) — added .lat-hud[hidden]{display:none}; HUD now appears ONLY when admin taps Speed test in MENU, gone otherwise. Glow removed (dock v3.1 neutral shadows, no blue glow on .on / cap). #btnBoardAdd (plus) back on dock page-ctl for adding board pages (removed from declutter hide list). MENU v2: sectioned 2-col labeled rows (Write & draw / Measure & teach / Board / Admin device) replacing 48px icon grid; admin section header #mpAdminSec gated in engine apply(). tool() helper deleted. Pushed 722c51e.",
