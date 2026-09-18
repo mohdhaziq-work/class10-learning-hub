@@ -95,7 +95,7 @@ export default function SmartBoard() {
           <div style={{ fontSize: 13.5, color: "#5f6b7a", marginTop: 4 }}>Preparing your board…</div>
         </div>
       </div>
-      <div id="latencyHud" className="lat-hud" hidden><span id="latText" /> <small>input: OS to JS | draw: JS to canvas | est adds one display frame</small></div>
+      <div id="latencyHud" className="lat-hud" hidden><span id="latText" /> <small>input: OS to JS | draw: JS to canvas | est adds one display frame</small><span id="latInPos" /><span id="latInkPos" /></div>
       <div id="recPill" className="rec-pill" hidden><span className="rec-dot" /><span id="recTime">00:00</span><button id="btnRecStop">Stop</button></div>
 
       {/* hidden file input (opened from Files / empty pane) */}
@@ -345,7 +345,7 @@ export default function SmartBoard() {
         </div>
         <div className="mp-sec" id="mpAdminSec" style={{ display: "none" }}>Admin device</div>
         <div className="menu-list">
-          <button className="mitem" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={17} /><span className="mlbl">Speed test</span></button>
+          <button className="mitem" id="btnLatency" title="Speed + accuracy test — anyone can run it"><Icon name="timer" size={17} /><span className="mlbl">Speed test</span></button>
           <button className="mitem" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={17} /><span className="mlbl">Record</span></button>
           <button className="mitem" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={17} /><span className="mlbl">Recordings</span></button>
         </div>

@@ -814,6 +814,7 @@ export class BoardEngine {
      ========================================================================== */
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
+  private inkPt: { x: number; y: number } | null = null; /* where ink actually lands */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -971,6 +972,7 @@ export class BoardEngine {
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
+    this.inkPt = { x: w.x, y: w.y };
     this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
@@ -985,7 +987,7 @@ export class BoardEngine {
     const apply = (on: boolean, email: string | null) => {
       if (on === this.adminOn) return;
       this.adminOn = on;
-      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut"]) {
+      for (const id of ["#btnRec", "#btnRecordings", "#btnSignOut"]) {
         const b = this.$(id) as HTMLElement | null;
         if (b) b.style.display = on ? "" : "none";
       }
@@ -996,7 +998,6 @@ export class BoardEngine {
       const who = this.$("#adminWho") as HTMLElement | null;
       if (who) who.textContent = on ? `Signed in as ${email || ADMIN_EMAIL}` : `Sign in with Google to unlock admin tools (${ADMIN_EMAIL})`;
       if (!on) {
-        if (this.latencyOn) this.toggleLatency();
         if (isRecording()) stopRecording();
         const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;
       }
@@ -1126,7 +1127,7 @@ export class BoardEngine {
   private updateLatencyHud(force = false) {
     if (!this.latencyOn || !this.latencyEl) return;
     const now = performance.now();
-    if (!force && now - this.latLastHud < 250) return;
+    if (!force && now - this.latLastHud < 100) return;
     this.latLastHud = now;
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
@@ -1134,13 +1135,20 @@ export class BoardEngine {
     const t = this.latencyEl.querySelector("#latText");
     if (t) t.textContent = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     this.latencyEl.dataset.grade = est < 35 ? "a" : est < 60 ? "b" : est < 90 ? "c" : "d";
+    const ip = this.lastPt, kp = this.inkPt;
+    const e1 = this.latencyEl.querySelector("#latInPos"), e2 = this.latencyEl.querySelector("#latInkPos");
+    if (e1 && ip) e1.textContent = `FINGER  x ${Math.round(ip.x)}   y ${Math.round(ip.y)}`;
+    if (e2 && kp) {
+      const gap = ip && this.boardDraft ? `   gap ${Math.abs(kp.x - ip.x).toFixed(1)}, ${Math.abs(kp.y - ip.y).toFixed(1)}` : "";
+      e2.textContent = `INK     x ${Math.round(kp.x)}   y ${Math.round(kp.y)}${gap}`;
+    }
   }
   private drawLive() {
     setEraseSurface(this.surfaceColor());
     const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
-    if (isRecording() && this.lastPt) {
+    if ((isRecording() || this.latencyOn) && this.lastPt) {
       const z = this.boardZoom;
       ctx.save();
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
@@ -1150,6 +1158,10 @@ export class BoardEngine {
       ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 16 / z, 0, 7); ctx.stroke();
       ctx.fillStyle = "#ea4335";
       ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 2.5 / z, 0, 7); ctx.fill();
+      if (this.latencyOn && this.inkPt) {
+        ctx.strokeStyle = "#188038"; ctx.lineWidth = 1.5 / z;
+        ctx.beginPath(); ctx.arc(this.inkPt.x, this.inkPt.y, 6 / z, 0, 7); ctx.stroke();
+      }
       ctx.restore();
     }
     if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
@@ -1261,7 +1273,7 @@ export class BoardEngine {
     this.on(cv, "pointermove", (e: PointerEvent) => {
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
-      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording()) this.scheduleLive(); }
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
@@ -1499,6 +1511,7 @@ export class BoardEngine {
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
           pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
+          this.inkPt = { x: w.x, y: w.y };
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
       this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */

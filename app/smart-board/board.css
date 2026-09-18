@@ -618,3 +618,5 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
   display:grid;place-items:center;color:var(--ink-soft);cursor:pointer;transition:background .12s ease}
 .sel-bar button:hover{background:#f1f3f4;color:var(--ink)}
 .sel-bar #selDel:hover{background:#fce8e6;color:#d93025}
+
+.lat-hud #latInPos,.lat-hud #latInkPos{font:600 11.5px ui-monospace,Menlo,Consolas,monospace;color:#5f6368;white-space:pre}
