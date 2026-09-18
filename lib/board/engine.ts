@@ -349,6 +349,20 @@ function moveObject(o: BoardObject, dx: number, dy: number) {
   else if (o.type === "shape") { o.x1 = (o.x1 || 0) + dx; o.y1 = (o.y1 || 0) + dy; o.x2 = (o.x2 || 0) + dx; o.y2 = (o.y2 || 0) + dy; }
   else { o.x = (o.x || 0) + dx; o.y = (o.y || 0) + dy; }
 }
+function scaleObject(o: BoardObject, k: number, ax: number, ay: number) {
+  const fx = (v: number) => ax + (v - ax) * k, fy = (v: number) => ay + (v - ay) * k;
+  if (o.type === "stroke" || o.type === "erase") { (o.points || []).forEach((pt) => { pt.x = fx(pt.x); pt.y = fy(pt.y); }); o.size = Math.max(1, (o.size || 4) * k); }
+  else if (o.type === "shape") { o.x1 = fx(o.x1 || 0); o.y1 = fy(o.y1 || 0); o.x2 = fx(o.x2 || 0); o.y2 = fy(o.y2 || 0); o.size = Math.max(1, (o.size || 3) * k); }
+  else if (o.type === "text") { o.x = fx(o.x || 0); o.y = fy(o.y || 0); o.fontSize = Math.max(8, (o.fontSize || 32) * k); }
+  else if (o.type === "sticky") { o.x = fx(o.x || 0); o.y = fy(o.y || 0); o._w = Math.max(60, (o._w || 230) * k); o._h = Math.max(40, (o._h || 90) * k); }
+  else if (o.type === "image") { o.x = fx(o.x || 0); o.y = fy(o.y || 0); o.w = Math.max(20, (o.w || 100) * k); o.h = Math.max(20, (o.h || 100) * k); }
+}
+function cloneObj(o: BoardObject): BoardObject {
+  const c: BoardObject = { ...o, id: uid() };
+  if (o.points) c.points = o.points.map((pt) => ({ ...pt }));
+  return c;
+}
+function rectsIntersect(a: BBox, r: BBox): boolean { return a.x < r.x + r.w && a.x + a.w > r.x && a.y < r.y + r.h && a.y + a.h > r.y; }
 function safeFn(expr: string): (x: number, m: typeof Math) => number {
   let e = " " + expr + " ";
   const map: Record<string, string> = { sin: "Math.sin", cos: "Math.cos", tan: "Math.tan", sqrt: "Math.sqrt", abs: "Math.abs", pow: "Math.pow", log: "Math.log", exp: "Math.exp", PI: "Math.PI", E: "Math.E", floor: "Math.floor", ceil: "Math.ceil" };
@@ -437,6 +451,9 @@ export class BoardEngine {
   private padCursorEl: HTMLElement | null = null;
   private boardDraft: BoardObject | null = null;
   private selected: { surface: "board" | "doc"; page?: number; obj: BoardObject } | null = null;
+  private selMulti: BoardObject[] | null = null;
+  private marquee: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  private resizeSel: { ax: number; ay: number; d0: number } | null = null;
   private dragSel: any = null; private pinch: { d: number; z: number } | null = null;
   private pointers = new Map<number, { x: number; y: number }>();
 
@@ -854,15 +871,30 @@ export class BoardEngine {
     ctx.clearRect(0, 0, this.boardCanvas.width, this.boardCanvas.height);
     if (this.bgC) ctx.drawImage(this.bgC, 0, 0);
     if (this.inkC) ctx.drawImage(this.inkC, 0, 0);
-    if (this.selected && this.selected.surface === "board") {
-      const b = bbox(this.selected.obj);
+    {
+      const z = this.boardZoom;
       ctx.save();
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
-      ctx.globalAlpha = 1; ctx.setLineDash([8, 6]); ctx.strokeStyle = "#6366f1"; ctx.lineWidth = 2 / this.boardZoom;
-      ctx.strokeRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
+      ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(z, z);
+      if (this.marquee) {
+        const m = this.marquee, rx = Math.min(m.x0, m.x1), ry = Math.min(m.y0, m.y1);
+        const rw = Math.abs(m.x1 - m.x0), rh = Math.abs(m.y1 - m.y0);
+        ctx.globalAlpha = 1; ctx.setLineDash([6, 5]); ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 1.5 / z;
+        ctx.fillStyle = "rgba(26,115,232,.08)"; ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
+      } else if (this.selObjs().length) {
+        const b = this.selBounds();
+        ctx.globalAlpha = 1; ctx.setLineDash([8, 6]); ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 2 / z;
+        ctx.strokeRect(b.x - 6, b.y - 6, b.w + 12, b.h + 12);
+        ctx.setLineDash([]);
+        const hs = 10 / z;
+        for (const c of this.selCorners(b)) {
+          ctx.fillStyle = "#fff"; ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 1.5 / z;
+          ctx.fillRect(c.x - hs / 2, c.y - hs / 2, hs, hs); ctx.strokeRect(c.x - hs / 2, c.y - hs / 2, hs, hs);
+        }
+      }
       ctx.restore();
     }
+    this.syncSelBar();
     this.drawLive();
   }
   private scheduleComposite() {
@@ -1258,14 +1290,49 @@ export class BoardEngine {
     }
     if (tool === "select") {
       if (phase === "down" && w) {
+        /* resize handle first */
+        if (this.selObjs().length) {
+          const hs = this.selCorners(this.selBounds());
+          const h = hs.find((c) => Math.hypot(w.x - c.x, w.y - c.y) <= 12 / this.boardZoom);
+          if (h) { this.resizeSel = { ax: h.ax, ay: h.ay, d0: Math.max(8, Math.hypot(h.x - h.ax, h.y - h.ay)) }; this.boardStore.pushHistory(); return; }
+        }
         const hit = hitTest(this.boardStore.objects, w.x, w.y);
-        this.selected = hit ? { surface: "board", obj: hit.obj } : null;
-        this.dragSel = hit ? { sx: w.x, sy: w.y } : null;
-        this.renderBoard();
-      } else if (phase === "move" && w && this.dragSel && this.selected) {
-        moveObject(this.selected.obj, w.x - this.dragSel.sx, w.y - this.dragSel.sy);
-        this.dragSel.sx = w.x; this.dragSel.sy = w.y; this.renderBoard();
-      } else if (phase === "up") { if (this.dragSel) this.scheduleSave(); this.dragSel = null; }
+        if (hit) {
+          const inSel = this.selObjs().includes(hit.obj);
+          if (!inSel) { this.selMulti = null; this.selected = { surface: "board", obj: hit.obj }; }
+          this.boardStore.pushHistory();
+          this.dragSel = { sx: w.x, sy: w.y };
+        } else {
+          /* empty space -> marquee multi-select */
+          this.selected = null; this.selMulti = null;
+          this.marquee = { x0: w.x, y0: w.y, x1: w.x, y1: w.y };
+        }
+        this.renderBoard(); this.syncSelBar();
+      } else if (phase === "move" && w) {
+        if (this.resizeSel) {
+          const d = Math.max(8, Math.hypot(w.x - this.resizeSel.ax, w.y - this.resizeSel.ay));
+          const k = d / this.resizeSel.d0; this.resizeSel.d0 = d;
+          this.selObjs().forEach((o) => scaleObject(o, k, this.resizeSel!.ax, this.resizeSel!.ay));
+          this.renderBoard(); this.syncSelBar();
+        } else if (this.dragSel) {
+          const os = this.selObjs(); const dx = w.x - this.dragSel.sx, dy = w.y - this.dragSel.sy;
+          os.forEach((o) => moveObject(o, dx, dy));
+          this.dragSel.sx = w.x; this.dragSel.sy = w.y; this.renderBoard(); this.syncSelBar();
+        } else if (this.marquee) { this.marquee.x1 = w.x; this.marquee.y1 = w.y; this.renderBoard(); }
+      } else if (phase === "up") {
+        if (this.resizeSel) { this.resizeSel = null; this.scheduleSave(); this.renderBoard(); this.syncSelBar(); }
+        else if (this.dragSel) { this.dragSel = null; this.scheduleSave(); this.syncSelBar(); }
+        else if (this.marquee) {
+          const m = this.marquee; this.marquee = null;
+          const r = { x: Math.min(m.x0, m.x1), y: Math.min(m.y0, m.y1), w: Math.abs(m.x1 - m.x0), h: Math.abs(m.y1 - m.y0) };
+          if (r.w > 6 || r.h > 6) {
+            const hits = this.boardStore.objects.filter((o) => o.type !== "erase" && rectsIntersect(bbox(o), r));
+            if (hits.length === 1) { this.selected = { surface: "board", obj: hits[0] }; this.selMulti = null; }
+            else if (hits.length > 1) { this.selMulti = hits; this.selected = null; }
+          }
+          this.renderBoard(); this.syncSelBar();
+        }
+      }
       return;
     }
     if (tool === "eraser") {
@@ -2369,6 +2436,45 @@ export class BoardEngine {
     });
   }
 
+  /* ---- advanced selection: multi via marquee, resize handles, floating bar ---- */
+  private selObjs(): BoardObject[] {
+    if (this.selMulti && this.selMulti.length) return this.selMulti;
+    if (this.selected && this.selected.surface === "board") return [this.selected.obj];
+    return [];
+  }
+  private selBounds(): BBox {
+    const objs = this.selObjs();
+    if (!objs.length) return { x: 0, y: 0, w: 0, h: 0 };
+    let b = bbox(objs[0]);
+    for (let i = 1; i < objs.length; i++) {
+      const q = bbox(objs[i]);
+      const x = Math.min(b.x, q.x), y = Math.min(b.y, q.y);
+      b = { x, y, w: Math.max(b.x + b.w, q.x + q.w) - x, h: Math.max(b.y + b.h, q.y + q.h) - y };
+    }
+    return b;
+  }
+  private selCorners(b: BBox) {
+    const r = { x: b.x - 6, y: b.y - 6, w: b.w + 12, h: b.h + 12 };
+    return [
+      { x: r.x, y: r.y, ax: r.x + r.w, ay: r.y + r.h },
+      { x: r.x + r.w, y: r.y, ax: r.x, ay: r.y + r.h },
+      { x: r.x, y: r.y + r.h, ax: r.x + r.w, ay: r.y },
+      { x: r.x + r.w, y: r.y + r.h, ax: r.x, ay: r.y },
+    ];
+  }
+  private syncSelBar() {
+    const bar = this.$("#selBar") as HTMLElement | null; if (!bar) return;
+    const objs = this.selObjs();
+    if (!objs.length || this.tool !== "select" || this.marquee || this.resizeSel) { bar.style.display = "none"; return; }
+    const pb = this.$("#paneBoard") as HTMLElement | null; if (!pb) { bar.style.display = "none"; return; }
+    const b = this.selBounds(); const z = this.boardZoom;
+    let ox = 0, oy = 0; let n: HTMLElement | null = this.boardCanvas;
+    while (n && n !== pb) { ox += n.offsetLeft; oy += n.offsetTop; n = n.offsetParent as HTMLElement | null; }
+    const left = Math.max(6, Math.min(ox + b.x * z + this.boardPan.x, pb.clientWidth - 150));
+    let top = oy + b.y * z + this.boardPan.y - 46;
+    if (top < 6) top = oy + (b.y + b.h) * z + this.boardPan.y + 12;
+    bar.style.display = "flex"; bar.style.left = left + "px"; bar.style.top = top + "px";
+  }
   private setTool(t: string) {
     if (this.textPenPending || this.textPenT) { /* switching tools finishes the text-pen conversion right away */
       if (this.textPenT) { clearTimeout(this.textPenT); this.textPenT = null; }
@@ -2378,6 +2484,15 @@ export class BoardEngine {
     this.$all(".tool[data-tool]").forEach((b: HTMLElement) => b.classList.toggle("on", b.dataset.tool === t));
     (this.$("#toolShapes") as HTMLElement).classList.toggle("on", !["select", "pan", "pen", "highlighter", "eraser", "text", "sticky"].includes(t));
     this.boardCanvas.style.cursor = t === "pan" ? "grab" : t === "select" ? "default" : "crosshair";
+    if (t !== "select") {
+      /* selection outlines must vanish the moment another tool is chosen */
+      if (this.selected || this.selMulti || this.marquee || this.resizeSel) {
+        this.selected = null; this.selMulti = null; this.marquee = null; this.resizeSel = null;
+        this.renderBoard();
+        try { this.refreshAnnot(this.currentPage); } catch { /* noop */ }
+      }
+      const bar = this.$("#selBar") as HTMLElement | null; if (bar) bar.style.display = "none";
+    }
     this.hidePops();
     this.updateBrushRing();
   }
@@ -2521,6 +2636,30 @@ export class BoardEngine {
 
     this.$("#btnUndo").onclick = () => this.doUndo();
     this.$("#btnRedo").onclick = () => this.doRedo();
+    const selAct = (id: string, fn: () => void) => { const b = this.$(id); if (b) b.onclick = (ev: MouseEvent) => { ev.stopPropagation(); fn(); }; };
+    selAct("#selDup", () => {
+      const objs = this.selObjs(); if (!objs.length) return; this.boardStore.pushHistory();
+      const clones = objs.map((o) => { const c = cloneObj(o); moveObject(c, 16, 16); return c; });
+      this.boardStore.objects.push(...clones);
+      this.selMulti = clones.length > 1 ? clones : null;
+      this.selected = clones.length === 1 ? { surface: "board", obj: clones[0] } : null;
+      this.renderBoard(); this.scheduleSave();
+    });
+    selAct("#selDel", () => {
+      const objs = this.selObjs(); if (!objs.length) return; this.boardStore.pushHistory();
+      this.boardStore.objects = this.boardStore.objects.filter((o) => !objs.includes(o));
+      this.selected = null; this.selMulti = null; this.renderBoard(); this.scheduleSave();
+    });
+    selAct("#selFront", () => {
+      const objs = this.selObjs(); if (!objs.length) return; this.boardStore.pushHistory();
+      this.boardStore.objects = this.boardStore.objects.filter((o) => !objs.includes(o)).concat(objs);
+      this.renderBoard(); this.scheduleSave();
+    });
+    selAct("#selBack", () => {
+      const objs = this.selObjs(); if (!objs.length) return; this.boardStore.pushHistory();
+      this.boardStore.objects = objs.concat(this.boardStore.objects.filter((o) => !objs.includes(o)));
+      this.renderBoard(); this.scheduleSave();
+    });
 
     (this.$("#fillChk") as HTMLInputElement).onchange = (e: Event) => { this.fill = (e.target as HTMLInputElement).checked; this.saveTools(); };
     (this.$("#dashChk") as HTMLInputElement).onchange = (e: Event) => { this.dashed = (e.target as HTMLInputElement).checked; this.saveTools(); };
@@ -3511,14 +3650,21 @@ export class BoardEngine {
       else if (k === "3") this.setLayout("board");
       else if (e.key === "ArrowRight") (this.$("#pgNext") as HTMLElement).click();
       else if (e.key === "ArrowLeft") (this.$("#pgPrev") as HTMLElement).click();
-      else if ((e.key === "Delete" || e.key === "Backspace") && this.selected) {
-        const st = this.selected.surface === "doc" && this.selected.page ? this.docStore(this.selected.page) : this.boardStore;
-        st.pushHistory();
-        const id = this.selected.obj.id;
-        st.objects = st.objects.filter((o) => o.id !== id);
-        this.selected = null;
-        if (this.active.kind === "doc") this.refreshAnnot(this.active.page || 1); else this.renderBoard();
-        this.scheduleSave();
+      else if ((e.key === "Delete" || e.key === "Backspace") && (this.selMulti || this.selected)) {
+        if (this.selMulti && this.selMulti.length) {
+          this.boardStore.pushHistory();
+          const ids = new Set(this.selMulti.map((o) => o.id));
+          this.boardStore.objects = this.boardStore.objects.filter((o) => !ids.has(o.id));
+          this.selMulti = null; this.renderBoard(); this.scheduleSave();
+        } else {
+          const st = this.selected!.surface === "doc" && this.selected!.page ? this.docStore(this.selected!.page) : this.boardStore;
+          st.pushHistory();
+          const id = this.selected!.obj.id;
+          st.objects = st.objects.filter((o) => o.id !== id);
+          this.selected = null;
+          if (this.active.kind === "doc") this.refreshAnnot(this.active.page || 1); else this.renderBoard();
+          this.scheduleSave();
+        }
       }
       else if (e.key === "[") this.gotoBoardPage(this.boardPage - 1);
       else if (e.key === "]") this.gotoBoardPage(this.boardPage + 1);

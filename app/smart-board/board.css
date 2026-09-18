@@ -610,3 +610,11 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .mitem .mlbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mitem small{display:none}
 @media (max-width:480px){#menuPop{width:calc(100vw - 24px)}}
+
+/* ---- selection floating bar (advanced select tool) ---- */
+.sel-bar{position:absolute;z-index:30;display:flex;gap:3px;background:#fff;border:1px solid var(--line);
+  border-radius:11px;padding:4px;box-shadow:0 8px 20px rgba(15,23,42,.18)}
+.sel-bar button{width:30px;height:30px;border:none;background:transparent;border-radius:8px;
+  display:grid;place-items:center;color:var(--ink-soft);cursor:pointer;transition:background .12s ease}
+.sel-bar button:hover{background:#f1f3f4;color:var(--ink)}
+.sel-bar #selDel:hover{background:#fce8e6;color:#d93025}

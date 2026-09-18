@@ -131,6 +131,12 @@ export default function SmartBoard() {
             </div>
             <div className="pane-body">
               <div id="boardScroll"><canvas id="boardCanvas" /><canvas id="boardLive" /><canvas id="boardFx" /><div id="brushRing" /></div>
+              <div className="sel-bar" id="selBar" style={{ display: "none" }}>
+                <button id="selDup" title="Duplicate selection"><Icon name="layers" size={15} /></button>
+                <button id="selFront" title="Bring to front"><Icon name="arrowUpRight" size={15} /></button>
+                <button id="selBack" title="Send to back"><Icon name="chevronDown" size={15} /></button>
+                <button id="selDel" title="Delete selection"><Icon name="trash2" size={15} /></button>
+              </div>
               <div id="ruler" className="measure"><div id="rulerTicks" /><div id="rulerNums" /></div>
               <div id="protractor" className="measure">
                 <svg id="protractorSvg" width="260" height="150" />
