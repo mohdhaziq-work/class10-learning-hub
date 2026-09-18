@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "ink pixel-exact + tap makes dot",
+  lastCommit: "recording shows red pointer ring (ink alignment check)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
@@ -48,6 +48,7 @@ export const HANDOFF = {
     "PDF sharpness: board PDF render now multiplies by devicePixelRatio (cap 2.5) — crisp on hi-DPI.",
     "Smart Board: split PDF+whiteboard, annotation, pages, QR upload, video/audio, shade/ruler/protractor, graph plotter, OCR handwriting, PYQ file viewer.",
     "Search Console: property verified via HTML meta tags (two codes). Sitemap submitted by user.",
+    "REC POINTER RING 2026-09-18: while isRecording(), a red ring+dot at lastPt (exact input world coords) is drawn on the live layer each frame — recording video now shows hand/pen position vs ink for alignment verification. lastPt tracked on every pointermove over board canvas; scheduleLive() only when recording. Temporary debug aid, invisible when not recording. Push will follow.",
     "INK ACCURACY 2026-09-18 (class field report): (a) finger/stylus ink landed up-left of tip on big smart board — culprit was touch nudge off()=[10,8] applied to pointerType touch (board stylus reports touch); REMOVED, now [0,0] for all inputs, pixel-exact like built-in whiteboards. (b) plain tap made no dot because touchPending required 4px glide; now on pointerup with touchPending a single-point stroke is committed (drawObject p.length===1 draws the dot). Pushed 9b98df7.",
     "ADVANCED SELECT 2026-09-18: select tool upgraded — marquee drag on empty space multi-selects (rectsIntersect), corner handles resize (scaleObject uniform about opposite corner), floating #selBar (dup/front/back/del) positioned by syncSelBar in paneBoard, Delete/Backspace works on multi. KEY FIX user complained: setTool now clears selected/selMulti/marquee + hides selBar when leaving select, so outlines vanish instantly on pen/etc. Pushed 02f3459.",
     "ERASER v3 2026-09-18: clip mu6abb... showed white blobs on light-blue bg — v2 near-white heuristic wrong. Now efill stores \"auto\"; module ERASE_SURFACE + setEraseSurface() resolved at draw time in drawObject, synced at renderBoard/compositeVisible/drawLive; engine.surfaceColor() = bgColor || per-bg default. Erased areas now ALWAYS equal current background, follow later bg changes, and PNG export fills with surfaceColor too (export ignored bgColor before). Pushed 8e7b3bc.",
