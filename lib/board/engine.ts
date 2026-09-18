@@ -446,6 +446,8 @@ export class BoardEngine {
   private latencyOn = false; private latencyEl: HTMLElement | null = null;
   private latIn: number[] = []; private latDraw: number[] = [];
   private latPendingT0 = 0; private latLastHud = 0;
+  private recCanvas = false; /* recording via board-canvas fallback (phones) */
+  private hudL1 = ""; private hudL2 = ""; private hudL3 = "";
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
   private adminUnsub: (() => void) | null = null; private boardRecRaf = 0;
@@ -1006,14 +1008,14 @@ export class BoardEngine {
   }
   private async toggleRec() {
     if (!this.adminOn) return;
-    if (isRecording()) { stopRecording(); this.toast("Saving recording…"); return; }
+    if (isRecording()) { stopRecording(); this.recCanvas = false; this.toast("Saving recording…"); return; }
     let started = false;
     if (supportsScreenShare()) {
       try { await startRecording(); started = true; } catch { started = false; }
     }
     if (!started) {
       /* phones & unsupported browsers: record the board canvas itself */
-      try { await this.startBoardCapture(); started = true; this.toast("Recording the board"); }
+      try { await this.startBoardCapture(); started = true; this.recCanvas = true; this.toast("Recording the board"); }
       catch { this.toast("Recording not supported on this browser"); return; }
     }
     this.recStartTs = Date.now();
@@ -1132,15 +1134,17 @@ export class BoardEngine {
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
     const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
+    this.hudL1 = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     const t = this.latencyEl.querySelector("#latText");
-    if (t) t.textContent = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
+    if (t) t.textContent = this.hudL1;
     this.latencyEl.dataset.grade = est < 35 ? "a" : est < 60 ? "b" : est < 90 ? "c" : "d";
     const ip = this.lastPt, kp = this.inkPt;
     const e1 = this.latencyEl.querySelector("#latInPos"), e2 = this.latencyEl.querySelector("#latInkPos");
-    if (e1 && ip) e1.textContent = `FINGER  x ${Math.round(ip.x)}   y ${Math.round(ip.y)}`;
-    if (e2 && kp) {
+    if (ip) { this.hudL2 = `FINGER  x ${Math.round(ip.x)}   y ${Math.round(ip.y)}`; if (e1) e1.textContent = this.hudL2; }
+    if (kp) {
       const gap = ip && this.boardDraft ? `   gap ${Math.abs(kp.x - ip.x).toFixed(1)}, ${Math.abs(kp.y - ip.y).toFixed(1)}` : "";
-      e2.textContent = `INK     x ${Math.round(kp.x)}   y ${Math.round(kp.y)}${gap}`;
+      this.hudL3 = `INK     x ${Math.round(kp.x)}   y ${Math.round(kp.y)}${gap}`;
+      if (e2) e2.textContent = this.hudL3;
     }
   }
   private drawLive() {
@@ -1192,6 +1196,19 @@ export class BoardEngine {
       const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
       if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
       this.updateLatencyHud();
+    }
+    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the
+       live layer so the speed test (and finger/ink coords) is IN the video */
+    if (this.recCanvas && this.latencyOn && this.hudL1) {
+      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      const lines = [this.hudL1, this.hudL2, this.hudL3].filter(Boolean);
+      const bw = 320, bh = 12 + lines.length * 17;
+      const x0 = Math.max(8, this.boardW - bw - 12), y0 = 12;
+      ctx.globalAlpha = 0.93; ctx.fillStyle = "#ffffff"; ctx.fillRect(x0, y0, bw, bh);
+      ctx.strokeStyle = "#dadce0"; ctx.lineWidth = 1; ctx.strokeRect(x0, y0, bw, bh);
+      ctx.globalAlpha = 1; ctx.fillStyle = "#202124";
+      ctx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
+      lines.forEach((ln, i2) => ctx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
     }
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
