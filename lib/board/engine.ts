@@ -1182,10 +1182,10 @@ export class BoardEngine {
 
   private wireBoard() {
     const cv = this.boardCanvas;
-    /* Finger tips are physically tilted: the capacitive contact centroid sits
-       down-right of the visible tip, so finger ink must be nudged up-left to
-       land where the user aims. Stylus/pen/mouse stay pixel-exact. */
-    const off = (ev: PointerEvent): readonly [number, number] => (ev.pointerType === "touch" ? [10, 8] as const : [0, 0] as const);
+    /* Pixel-exact for EVERY input type. A per-input nudge (finger ink shifted
+       up-left) read as a visible offset on large smart boards — built-in
+       whiteboard apps land ink exactly under the tip, so we do the same. */
+    const off = (_ev: PointerEvent): readonly [number, number] => [0, 0] as const;
     this.on(cv, "pointerdown", (e: PointerEvent) => {
       try { cv.setPointerCapture(e.pointerId); } catch { /* noop */ }
       this.boardRectC = cv.getBoundingClientRect(); /* cache for the whole stroke — no layout thrash on move */
@@ -1393,7 +1393,11 @@ export class BoardEngine {
       if (phase === "down" && w) { this.pendingAnchor = { surface: "board", x: w.x, y: w.y }; this.openModal(tool === "text" ? "mText" : "mSticky"); }
       return;
     }
-    if (phase === "up") this.touchPending = null;
+    if (phase === "up" && this.touchPending && (tool === "pen" || tool === "highlighter")) {
+      /* plain tap = dot: commit a single-point stroke right where touched */
+      const tp = this.touchPending; this.touchPending = null;
+      this.startStroke(tool, tp, tp.pr);
+    } else if (phase === "up") this.touchPending = null;
     if (phase === "down" && w) {
       if ((tool === "pen" || tool === "highlighter") && (e as PointerEvent).pointerType === "touch") {
         /* finger: deliberate 4px glide required before inking (no accidental marks) */
