@@ -620,3 +620,9 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .sel-bar #selDel:hover{background:#fce8e6;color:#d93025}
 
 .lat-hud #latInPos,.lat-hud #latInkPos{font:600 11.5px ui-monospace,Menlo,Consolas,monospace;color:#5f6368;white-space:pre}
+
+/* ---- slide-to-clear (inside eraser popover) ---- */
+.slide-clear{position:relative;height:40px;border-radius:99px;background:#f1f3f4;border:1px solid #dadce0;overflow:hidden;margin-top:6px;user-select:none;-webkit-user-select:none}
+.slide-clear .sc-track{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5f6368;letter-spacing:.02em;pointer-events:none}
+.slide-clear .sc-knob{position:absolute;left:2px;top:2px;width:36px;height:34px;border-radius:99px;background:#fff;border:1px solid #dadce0;box-shadow:0 1px 2px rgba(0,0,0,.15);display:grid;place-items:center;color:#d93025;touch-action:none;cursor:grab}
+.slide-clear.done{background:#fce8e6;border-color:#f5c6c0}

@@ -240,14 +240,11 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
     /* pixel eraser v2: paints the surface color (fill) like a real eraser;
        legacy objects without fill punch transparent holes */
     const p = o.points || [], sz = o.size || 28;
-    if (o.efill) {
-      ctx.globalCompositeOperation = "source-over";
-      const c = o.efill === "auto" ? ERASE_SURFACE : o.efill;
-      ctx.strokeStyle = c; ctx.fillStyle = c;
-    } else {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.strokeStyle = "#000"; ctx.fillStyle = "#000";
-    }
+    /* real eraser: punch transparent holes in the ink layer, so EVERY surface
+       style (plain, grid, graph, ruled, custom color) shows through exactly —
+       no more solid patches hiding the pattern or the color underneath */
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "#000"; ctx.fillStyle = "#000";
     ctx.lineWidth = sz; ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0].x, p[0].y, sz / 2, 0, 7); ctx.fill(); }
     else if (p.length > 1) {
@@ -410,7 +407,7 @@ export class BoardEngine {
   private fill = false; private dashed = false; private hlColor = "#facc15";
   private penKind: "ball" | "marker" | "ink" | "text" | "shape" = "ball";
   private hlSize = 24;
-  private eraserMode: "stroke" | "pixel" | "area" = "stroke";
+  private eraserMode: "stroke" | "pixel" | "area" = "pixel";
   private eraserSize = 28;
   private customColors: string[] = [];
   private erasedThisDrag = false;
@@ -818,6 +815,12 @@ export class BoardEngine {
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
   private inkPt: { x: number; y: number } | null = null; /* where ink actually lands */
+  /* input-latency compensation: hardware reports the finger ~30-60 ms in the
+     past; a short velocity extrapolation draws the visible tip where the
+     finger physically IS right now. Committed points stay exact samples. */
+  private predV = { x: 0, y: 0 };
+  private prevSample: { x: number; y: number; t: number } | null = null;
+  private lastSampleT = 0;
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -955,9 +958,8 @@ export class BoardEngine {
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
-    const fill = this.boardDraft.efill ? this.surfaceColor() : undefined;
-    ctx.globalCompositeOperation = fill ? "source-over" : "destination-out";
-    ctx.strokeStyle = fill || "#000"; ctx.lineWidth = this.boardDraft.size || 28; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "#000"; ctx.lineWidth = this.boardDraft.size || 28; ctx.lineCap = "round"; ctx.lineJoin = "round";
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.restore();
   }
@@ -976,6 +978,7 @@ export class BoardEngine {
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
     this.inkPt = { x: w.x, y: w.y };
+    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t;
     this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
@@ -1221,6 +1224,29 @@ export class BoardEngine {
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
     drawObject(ctx, this.boardDraft);
+    /* latency compensation: extend the visible tip along the measured writing
+       velocity by the sample age, so the ink sits under the physical finger
+       instead of ~40 ms behind it. Transient only — the committed stroke is
+       exact, and the tail collapses the moment the finger stops or lifts. */
+    {
+      const d = this.boardDraft;
+      const pts = d.points || [];
+      const age = performance.now() - this.lastSampleT;
+      if (d.type === "stroke" && pts.length > 1 && age < 150) {
+        const lp = pts[pts.length - 1];
+        const t = Math.min(age, 80) / 1000;
+        let dx = this.predV.x * t, dy = this.predV.y * t;
+        const len = Math.hypot(dx, dy);
+        if (len > 70) { dx *= 70 / len; dy *= 70 / len; }
+        if (len > 1) {
+          const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
+          ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
+          ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
+          ctx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 80 ? 1 : (150 - age) / 70);
+          ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
+        }
+      }
+    }
     ctx.restore();
     if (this.latencyOn && this.latPendingT0) {
       const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
@@ -1565,6 +1591,16 @@ export class BoardEngine {
              huge phantom gap (up to 300px on fast flicks). Syncing here keeps
              FINGER == INK for every hardware sample, so the HUD gap stays 0. */
           this.lastPt = { x: w.x, y: w.y };
+          {
+            const now = performance.now();
+            const ps = this.prevSample;
+            if (ps) {
+              const dt = Math.max(4, now - ps.t);
+              const vx = ((w.x - ps.x) / dt) * 1000, vy = ((w.y - ps.y) / dt) * 1000;
+              if (Math.hypot(vx, vy) < 5000) { this.predV.x = this.predV.x * 0.55 + vx * 0.45; this.predV.y = this.predV.y * 0.55 + vy * 0.45; }
+            }
+            this.prevSample = { x: w.x, y: w.y, t: now }; this.lastSampleT = now;
+          }
           this.paintTip(last, w);
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
@@ -2337,7 +2373,7 @@ export class BoardEngine {
       if (Array.isArray(j.customColors)) this.customColors = j.customColors.filter((c: unknown) => typeof c === "string" && /^#[0-9a-fA-F]{6}$/.test(c as string)).slice(0, 8);
       if (typeof j.hlColor === "string") this.hlColor = j.hlColor;
       if (typeof j.hlSize === "number") this.hlSize = Math.min(60, Math.max(8, j.hlSize));
-      if (j.eraserMode === "stroke" || j.eraserMode === "pixel" || j.eraserMode === "area") this.eraserMode = j.eraserMode;
+      if (j.eraserMode === "pixel" || j.eraserMode === "area") this.eraserMode = j.eraserMode; /* stroke eraser retired */
       if (typeof j.eraserSize === "number") this.eraserSize = Math.min(140, Math.max(6, j.eraserSize));
       if (typeof j.fill === "boolean") this.fill = j.fill;
       if (typeof j.dashed === "boolean") this.dashed = j.dashed;
@@ -2508,7 +2544,6 @@ export class BoardEngine {
     this.$all("#eraserModeSeg button").forEach((b: HTMLElement) => b.classList.toggle("on", (b as HTMLButtonElement).dataset.mode === this.eraserMode));
     this.$all("#eraserSizes button").forEach((b: HTMLElement) => b.classList.toggle("on", +((b as HTMLButtonElement).dataset.s || 0) === this.eraserSize));
     const hints: Record<string, string> = {
-      stroke: "Tap or rub over any stroke, shape, text or note — the whole object is deleted in one tap. Bigger size = easier tapping.",
       pixel: "Rub like a real eraser — only the part you touch is erased. Works on the board and on PDF pages.",
       area: "Lasso — draw any loop (circle, square, any shape). Everything fully inside the loop is erased in one go.",
     };
@@ -2775,15 +2810,6 @@ export class BoardEngine {
     if (menuPop) menuPop.onclick = () => setTimeout(() => menuPop.classList.remove("show"), 80);
     this.$("#btnGraph").onclick = () => { this.hidePops(); this.openModal("mGraph"); setTimeout(() => this.drawGraphPreview(), 50); };
 
-    this.$("#toolClear").onclick = () => {
-      const isBoard = this.active.kind !== "doc";
-      if (!confirm(isBoard ? "Delete all whiteboard work?" : `Delete all drawings on page ${this.active.page}?`)) return;
-      const st = this.activeStore();
-      st.pushHistory(); st.objects = [];
-      this.editingObj = null; this.selected = null;
-      if (isBoard) this.renderBoard(); else this.refreshAnnot(this.active.page || 1);
-      this.scheduleSave(); this.toast("Cleared");
-    };
 
     this.$("#btnUndo").onclick = () => this.doUndo();
     this.$("#btnRedo").onclick = () => this.doRedo();
@@ -2872,7 +2898,9 @@ export class BoardEngine {
     const btnRecs = this.$("#btnRecordings"); if (btnRecs) btnRecs.onclick = () => { void this.openRecordings(); };
     const btnRecClose = this.$("#btnRecClose"); if (btnRecClose) btnRecClose.onclick = () => this.closeModal(this.$("#mRecordings") as HTMLElement);
     const mExport = this.$("#mExport"); if (mExport) mExport.onclick = () => (this.$("#btnExport") as HTMLElement).click();
-    const mClear = this.$("#mClear"); if (mClear) mClear.onclick = () => (this.$("#toolClear") as HTMLElement).click();
+    const mRecover = this.$("#mRecover"); if (mRecover) mRecover.onclick = () => { this.recoverBoardPage(); };
+    const mDelPage = this.$("#mDelPage"); if (mDelPage) mDelPage.onclick = () => { this.delBoardPage(); };
+    this.wireSlideClear();
     const mAddPage = this.$("#mAddPage"); if (mAddPage) mAddPage.onclick = () => (this.$("#btnBoardAdd") as HTMLElement).click();
     const btnSignIn = this.$("#btnSignIn"); if (btnSignIn) btnSignIn.onclick = () => { void signInWithGoogle().then((r) => this.toast(r.message)); };
     const btnSignOut = this.$("#btnSignOut"); if (btnSignOut) btnSignOut.onclick = () => { void signOutAdmin().then(() => this.toast("Signed out")); };
@@ -2938,11 +2966,59 @@ export class BoardEngine {
     this.gotoBoardPage(this.boardPage + 1);
     this.toast(`Duplicated as page ${this.boardPage + 1}`);
   }
+  private pageTrash: { store: Store; idx: number }[] = [];
   private delBoardPage() {
     if (this.boardPages.length <= 1) { this.toast("At least one board page is needed"); return; }
-    this.boardPages.splice(this.boardPage, 1);
+    const [rm] = this.boardPages.splice(this.boardPage, 1);
+    this.pageTrash.push({ store: rm, idx: this.boardPage });
+    if (this.pageTrash.length > 10) this.pageTrash.shift();
     this.gotoBoardPage(this.boardPage);
-    this.toast(`Page removed (${this.boardPages.length} left)`);
+    this.toast(`Page removed — MENU > Recover brings it back`);
+  }
+  private recoverBoardPage() {
+    const t = this.pageTrash.pop();
+    if (!t) { this.toast("No removed pages to recover"); return; }
+    const at = Math.min(t.idx, this.boardPages.length);
+    this.boardPages.splice(at, 0, t.store);
+    this.gotoBoardPage(at);
+    this.toast(`Page recovered (${this.boardPages.length} total)`);
+  }
+  /* slide-to-clear: the slide gesture itself is the confirmation; the work is
+     pushed to history first, so Undo also restores everything */
+  private clearActiveSurface() {
+    const isBoard = this.active.kind !== "doc";
+    const st = this.activeStore();
+    if (!st.objects.length) { this.toast("Nothing to clear on this page"); return; }
+    st.pushHistory(); st.objects = [];
+    this.editingObj = null; this.selected = null;
+    if (isBoard) this.renderBoard(); else this.refreshAnnot(this.active.page || 1);
+    this.scheduleSave(); this.toast("Page cleared — Undo brings it back");
+  }
+  private wireSlideClear() {
+    const el = this.$("#slideClear") as HTMLElement | null;
+    const knob = el?.querySelector(".sc-knob") as HTMLElement | null;
+    if (!el || !knob) return;
+    let dragging = false, startX = 0;
+    const reset = () => { knob.style.transform = ""; el.classList.remove("done"); };
+    knob.addEventListener("pointerdown", (e) => {
+      dragging = true; startX = e.clientX;
+      try { knob.setPointerCapture(e.pointerId); } catch { /* noop */ }
+      e.preventDefault(); e.stopPropagation();
+    });
+    knob.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const track = Math.max(40, el.clientWidth - knob.offsetWidth - 4);
+      const dx = Math.max(0, Math.min(track, e.clientX - startX));
+      knob.style.transform = `translateX(${dx}px)`;
+      if (dx >= track - 2) {
+        dragging = false; el.classList.add("done");
+        this.clearActiveSurface();
+        setTimeout(reset, 400);
+      }
+    });
+    const up = () => { if (dragging) { dragging = false; reset(); } };
+    knob.addEventListener("pointerup", up);
+    knob.addEventListener("pointercancel", up);
   }
   private wirePages() {
     this.$("#btnBoardPrev").onclick = () => this.gotoBoardPage(this.boardPage - 1);
@@ -3536,7 +3612,9 @@ export class BoardEngine {
 
   /* ---------- external reference page (e.g. EduRev PYQs) + whiteboard ---------- */
   private openWeb(url: string, name: string) {
-    if (!/^https:\/\//.test(url)) return;
+    /* absolute https refs (EduRev etc.) AND internal same-origin sheets
+       like /embed/ai-qa both open in the split view */
+    if (!/^https:\/\//.test(url) && !url.startsWith("/")) return;
     this.resetDocViewer(name, url, "web");
     this.mountHtmlDoc(
       `<div class="web-bar">

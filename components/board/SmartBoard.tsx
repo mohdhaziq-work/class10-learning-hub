@@ -208,7 +208,6 @@ export default function SmartBoard() {
         <span className="dock-hidden" aria-hidden="true">
           <button className="tool" id="btnMenuLegacy" hidden />
           <button className="tool" id="btnSave" hidden /><button className="tool" id="btnExport" hidden />
-          <button className="tool" id="toolClear" hidden />
           <button className="tool" id="btnBoardDup" hidden />
           <button className="tool" id="btnBoardDel" hidden />
           <span className="pg" id="targetLbl" />
@@ -262,8 +261,7 @@ export default function SmartBoard() {
       <div className="pop tool-pop" id="eraserPop">
         <div className="tp-head"><h5>Eraser</h5><button className="tp-x" title="Close"><Icon name="x" size={14} /></button></div>
         <div className="seg-row" id="eraserModeSeg">
-          <button data-mode="stroke" title="Tap an object — the whole thing is deleted"><Icon name="slash" size={17} />Stroke</button>
-          <button data-mode="pixel" title="Rub like a real eraser — fills the circle with the board surface color (white on white/grey boards)"><Icon name="eraser" size={17} />Pixel</button>
+          <button data-mode="pixel" title="Rub like a real eraser — works on every surface style and on PDF pages"><Icon name="eraser" size={17} />Pixel</button>
           <button data-mode="area" title="Draw any loop — circle, square, any shape — everything inside is erased"><Icon name="circle" size={17} />Lasso</button>
         </div>
         <h5>Size</h5>
@@ -273,6 +271,12 @@ export default function SmartBoard() {
           <button data-s={56} title="Large"><span style={{ width: 17, height: 17 }} /></button>
           <button data-s={100} title="Huge"><span style={{ width: 23, height: 23 }} /></button>
         </div>
+        <h5>Clear page</h5>
+        <div className="slide-clear" id="slideClear">
+          <span className="sc-track">Slide to clear this page</span>
+          <span className="sc-knob"><Icon name="chevronRight" size={16} /></span>
+        </div>
+        <p className="tp-hint">Drag the knob all the way right. Undo brings the page back.</p>
         <p className="tp-hint" id="eraserHint" />
       </div>
 
@@ -341,8 +345,9 @@ export default function SmartBoard() {
         <div className="mp-sec">Board</div>
         <div className="menu-list">
           <button className="mitem" id="mExport" title="Export PNG / print"><Icon name="download" size={17} /><span className="mlbl">Export / print</span></button>
-          <button className="mitem" id="mClear" title="Clear this page"><Icon name="trash2" size={17} /><span className="mlbl">Clear page</span></button>
           <button className="mitem" id="mAddPage" title="Add a new board page"><Icon name="plus" size={17} /><span className="mlbl">Add page</span></button>
+          <button className="mitem" id="mDelPage" title="Remove the current board page (can be recovered)"><Icon name="trash2" size={17} /><span className="mlbl">Remove page</span></button>
+          <button className="mitem" id="mRecover" title="Bring back the last removed board page"><Icon name="undo2" size={17} /><span className="mlbl">Recover removed page</span></button>
         </div>
         <div className="mp-sec" id="mpAdminSec" style={{ display: "none" }}>Admin device</div>
         <div className="menu-list">
