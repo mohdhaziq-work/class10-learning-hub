@@ -29,7 +29,7 @@ export interface BoardObject {
   shape?: string; x1?: number; y1?: number; x2?: number; y2?: number;
   x?: number; y?: number; w?: number; h?: number;
   text?: string; fontSize?: number; weight?: number; bg?: string; src?: string; img?: HTMLImageElement;
-  color?: string; size?: number; opacity?: number; fill?: boolean; efill?: string; /* pixel eraser paints this surface color */ dashed?: boolean;
+  color?: string; size?: number; opacity?: number; fill?: boolean; efill?: string; /* pixel eraser paints this surface color */ dashed?: boolean; rot?: number;
   _w?: number; _h?: number;
 }
 
@@ -231,6 +231,10 @@ let ERASE_SURFACE = "#ffffff";
 export function setEraseSurface(c: string) { ERASE_SURFACE = c; }
 function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.save();
+  if (o.rot) {
+    const b = rawBbox(o), cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+    ctx.translate(cx, cy); ctx.rotate((o.rot * Math.PI) / 180); ctx.translate(-cx, -cy);
+  }
   applyStyle(ctx, o);
   if (o.type === "erase") {
     /* pixel eraser v2: paints the surface color (fill) like a real eraser;
@@ -278,7 +282,7 @@ function drawObject(ctx: CanvasRenderingContext2D, o: BoardObject) {
   ctx.restore();
 }
 interface BBox { x: number; y: number; w: number; h: number }
-function bbox(o: BoardObject): BBox {
+function rawBbox(o: BoardObject): BBox {
   if (o.type === "stroke") {
     const xs = (o.points || [{ x: 0, y: 0 }]).map((p) => p.x), ys = (o.points || [{ x: 0, y: 0 }]).map((p) => p.y);
     return { x: Math.min(...xs) - 8, y: Math.min(...ys) - 8, w: Math.max(...xs) - Math.min(...xs) + 16, h: Math.max(...ys) - Math.min(...ys) + 16 };
@@ -292,6 +296,18 @@ function bbox(o: BoardObject): BBox {
   if (o.type === "sticky") return { x: o.x || 0, y: o.y || 0, w: o._w || 230, h: o._h || 90 };
   if (o.type === "image") return { x: o.x || 0, y: o.y || 0, w: o.w || 0, h: o.h || 0 };
   return { x: 0, y: 0, w: 0, h: 0 };
+}
+function bbox(o: BoardObject): BBox {
+  const b = rawBbox(o);
+  if (!o.rot) return b;
+  const cx = b.x + b.w / 2, cy = b.y + b.h / 2, r = (o.rot * Math.PI) / 180;
+  const cs = Math.cos(r), sn = Math.sin(r);
+  const pts = [[b.x, b.y], [b.x + b.w, b.y], [b.x, b.y + b.h], [b.x + b.w, b.y + b.h]].map(([px, py]) => {
+    const dx = px - cx, dy = py - cy;
+    return [cx + dx * cs - dy * sn, cy + dx * sn + dy * cs];
+  });
+  const xs = pts.map((q) => q[0]), ys = pts.map((q) => q[1]);
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
 }
 function hitTest(objects: BoardObject[], x: number, y: number): { obj: BoardObject; idx: number } | null {
   for (let i = objects.length - 1; i >= 0; i--) {
@@ -452,7 +468,8 @@ export class BoardEngine {
   private boardDraft: BoardObject | null = null;
   private selected: { surface: "board" | "doc"; page?: number; obj: BoardObject } | null = null;
   private selMulti: BoardObject[] | null = null;
-  private marquee: { x0: number; y0: number; x1: number; y1: number } | null = null;
+  private marquee: { x: number; y: number }[] | null = null; /* lasso select loop */
+  private rotateSel: { c: { x: number; y: number }; a0: number; r0: number } | null = null;
   private resizeSel: { ax: number; ay: number; d0: number } | null = null;
   private dragSel: any = null; private pinch: { d: number; z: number } | null = null;
   private pointers = new Map<number, { x: number; y: number }>();
@@ -810,6 +827,7 @@ export class BoardEngine {
     this.boardW = Math.max(300, r.width); this.boardH = Math.max(300, r.height);
     this.DPR = Math.min(2, window.devicePixelRatio || 1);
     this.boardRectC = null;
+    this.clampView();
     this.boardCanvas.width = this.boardW * this.DPR;
     this.boardCanvas.height = this.boardH * this.DPR;
     this.boardCanvas.style.width = this.boardW + "px";
@@ -888,11 +906,12 @@ export class BoardEngine {
       ctx.save();
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(z, z);
-      if (this.marquee) {
-        const m = this.marquee, rx = Math.min(m.x0, m.x1), ry = Math.min(m.y0, m.y1);
-        const rw = Math.abs(m.x1 - m.x0), rh = Math.abs(m.y1 - m.y0);
+      if (this.marquee && this.marquee.length > 1) {
         ctx.globalAlpha = 1; ctx.setLineDash([6, 5]); ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 1.5 / z;
-        ctx.fillStyle = "rgba(26,115,232,.08)"; ctx.fillRect(rx, ry, rw, rh); ctx.strokeRect(rx, ry, rw, rh);
+        ctx.fillStyle = "rgba(26,115,232,.08)";
+        ctx.beginPath(); ctx.moveTo(this.marquee[0].x, this.marquee[0].y);
+        for (let i = 1; i < this.marquee.length; i++) ctx.lineTo(this.marquee[i].x, this.marquee[i].y);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
       } else if (this.selObjs().length) {
         const b = this.selBounds();
         ctx.globalAlpha = 1; ctx.setLineDash([8, 6]); ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 2 / z;
@@ -902,6 +921,12 @@ export class BoardEngine {
         for (const c of this.selCorners(b)) {
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 1.5 / z;
           ctx.fillRect(c.x - hs / 2, c.y - hs / 2, hs, hs); ctx.strokeRect(c.x - hs / 2, c.y - hs / 2, hs, hs);
+        }
+        if (this.selObjs().length === 1) {
+          const rh2 = this.rotHandle(b, z);
+          ctx.setLineDash([]); ctx.strokeStyle = "#1a73e8"; ctx.lineWidth = 1.5 / z;
+          ctx.beginPath(); ctx.moveTo(b.x + b.w / 2, b.y - 6); ctx.lineTo(rh2.x, rh2.y); ctx.stroke();
+          ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(rh2.x, rh2.y, 7 / z, 0, 7); ctx.fill(); ctx.stroke();
         }
       }
       ctx.restore();
@@ -1252,7 +1277,7 @@ export class BoardEngine {
         this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         const p = [...this.pointers.values()];
         const d = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
-        this.boardZoom = Math.min(4, Math.max(0.3, this.pinch.z * d / this.pinch.d));
+        this.boardZoom = this.pinch.z * d / this.pinch.d; this.clampView();
         this.renderBoard(); return;
       }
       if (!this.pointers.has(e.pointerId)) return;
@@ -1287,7 +1312,7 @@ export class BoardEngine {
       const r = cv.getBoundingClientRect();
       const mx = e.clientX - r.left, my = e.clientY - r.top;
       const before = this.toWorld(mx, my);
-      this.boardZoom = Math.min(4, Math.max(0.3, this.boardZoom * (e.deltaY < 0 ? 1.1 : 0.9)));
+      this.boardZoom = this.boardZoom * (e.deltaY < 0 ? 1.1 : 0.9); this.clampView();
       this.boardPan.x = mx - before.x * this.boardZoom;
       this.boardPan.y = my - before.y * this.boardZoom;
       this.renderBoard();
@@ -1311,13 +1336,22 @@ export class BoardEngine {
     if (phase === "down") { this.hidePops(); this.erasedThisDrag = false; }
     if (tool === "pan") {
       if (phase === "down") this.dragSel = { x: e.clientX, y: e.clientY, px: this.boardPan.x, py: this.boardPan.y };
-      else if (phase === "move" && this.dragSel) { this.boardPan.x = this.dragSel.px + (e.clientX - this.dragSel.x); this.boardPan.y = this.dragSel.py + (e.clientY - this.dragSel.y); this.renderBoard(); }
+      else if (phase === "move" && this.dragSel) { this.boardPan.x = this.dragSel.px + (e.clientX - this.dragSel.x); this.boardPan.y = this.dragSel.py + (e.clientY - this.dragSel.y); this.clampView(); this.renderBoard(); }
       else if (phase === "up") this.dragSel = null;
       return;
     }
     if (tool === "select") {
       if (phase === "down" && w) {
-        /* resize handle first */
+        /* rotate handle first (single selection) */
+        if (this.selObjs().length === 1) {
+          const b0 = this.selBounds(); const h = this.rotHandle(b0, this.boardZoom);
+          if (Math.hypot(w.x - h.x, w.y - h.y) <= 12 / this.boardZoom) {
+            const c = { x: b0.x + b0.w / 2, y: b0.y + b0.h / 2 };
+            this.rotateSel = { c, a0: Math.atan2(w.y - c.y, w.x - c.x), r0: this.selObjs()[0].rot || 0 };
+            this.boardStore.pushHistory(); return;
+          }
+        }
+        /* resize corners */
         if (this.selObjs().length) {
           const hs = this.selCorners(this.selBounds());
           const h = hs.find((c) => Math.hypot(w.x - c.x, w.y - c.y) <= 12 / this.boardZoom);
@@ -1330,13 +1364,20 @@ export class BoardEngine {
           this.boardStore.pushHistory();
           this.dragSel = { sx: w.x, sy: w.y };
         } else {
-          /* empty space -> marquee multi-select */
+          /* empty space -> free-form LASSO multi-select */
           this.selected = null; this.selMulti = null;
-          this.marquee = { x0: w.x, y0: w.y, x1: w.x, y1: w.y };
+          this.marquee = [{ x: w.x, y: w.y }];
         }
         this.renderBoard(); this.syncSelBar();
       } else if (phase === "move" && w) {
-        if (this.resizeSel) {
+        if (this.rotateSel) {
+          const o = this.selObjs()[0];
+          if (o) {
+            const a = Math.atan2(w.y - this.rotateSel.c.y, w.x - this.rotateSel.c.x);
+            o.rot = this.rotateSel.r0 + ((a - this.rotateSel.a0) * 180) / Math.PI;
+            this.renderBoard(); this.syncSelBar();
+          }
+        } else if (this.resizeSel) {
           const d = Math.max(8, Math.hypot(w.x - this.resizeSel.ax, w.y - this.resizeSel.ay));
           const k = d / this.resizeSel.d0; this.resizeSel.d0 = d;
           this.selObjs().forEach((o) => scaleObject(o, k, this.resizeSel!.ax, this.resizeSel!.ay));
@@ -1345,15 +1386,18 @@ export class BoardEngine {
           const os = this.selObjs(); const dx = w.x - this.dragSel.sx, dy = w.y - this.dragSel.sy;
           os.forEach((o) => moveObject(o, dx, dy));
           this.dragSel.sx = w.x; this.dragSel.sy = w.y; this.renderBoard(); this.syncSelBar();
-        } else if (this.marquee) { this.marquee.x1 = w.x; this.marquee.y1 = w.y; this.renderBoard(); }
+        } else if (this.marquee) {
+          const lp = this.marquee, lastP = lp[lp.length - 1];
+          if (Math.hypot(w.x - lastP.x, w.y - lastP.y) >= 2) { lp.push({ x: w.x, y: w.y }); this.renderBoard(); }
+        }
       } else if (phase === "up") {
-        if (this.resizeSel) { this.resizeSel = null; this.scheduleSave(); this.renderBoard(); this.syncSelBar(); }
+        if (this.rotateSel) { this.rotateSel = null; this.scheduleSave(); this.renderBoard(); this.syncSelBar(); }
+        else if (this.resizeSel) { this.resizeSel = null; this.scheduleSave(); this.renderBoard(); this.syncSelBar(); }
         else if (this.dragSel) { this.dragSel = null; this.scheduleSave(); this.syncSelBar(); }
         else if (this.marquee) {
-          const m = this.marquee; this.marquee = null;
-          const r = { x: Math.min(m.x0, m.x1), y: Math.min(m.y0, m.y1), w: Math.abs(m.x1 - m.x0), h: Math.abs(m.y1 - m.y0) };
-          if (r.w > 6 || r.h > 6) {
-            const hits = this.boardStore.objects.filter((o) => o.type !== "erase" && rectsIntersect(bbox(o), r));
+          const poly = this.marquee; this.marquee = null;
+          if (poly.length > 2) {
+            const hits = this.boardStore.objects.filter((o) => o.type !== "erase" && objectInsidePoly(o, poly));
             if (hits.length === 1) { this.selected = { surface: "board", obj: hits[0] }; this.selMulti = null; }
             else if (hits.length > 1) { this.selMulti = hits; this.selected = null; }
           }
@@ -1546,7 +1590,7 @@ export class BoardEngine {
     this.$("#btnFitBoard").onclick = () => {
       const f = fitBoard(this.boardStore.objects, this.boardW, this.boardH);
       if (!f) { this.toast("Draw something first"); return; }
-      this.boardZoom = f.zoom; this.boardPan.x = f.x; this.boardPan.y = f.y; this.renderBoard();
+      this.boardZoom = f.zoom; this.boardPan.x = f.x; this.boardPan.y = f.y; this.clampView(); this.renderBoard();
     };
     this.$("#btnReplay").onclick = () => this.openReplay();
     this.$("#btnTemplates").onclick = () => this.openModal("mTemplates");
@@ -2493,10 +2537,19 @@ export class BoardEngine {
       { x: r.x + r.w, y: r.y + r.h, ax: r.x, ay: r.y },
     ];
   }
+  /* fixed canvas like a physical whiteboard: zoom never below fit(100%),
+     pan never beyond the board edges */
+  private clampView() {
+    this.boardZoom = Math.min(6, Math.max(1, this.boardZoom));
+    const W = this.boardW, H = this.boardH, z = this.boardZoom;
+    this.boardPan.x = Math.min(0, Math.max(W * (1 - z), this.boardPan.x));
+    this.boardPan.y = Math.min(0, Math.max(H * (1 - z), this.boardPan.y));
+  }
+  private rotHandle(b: BBox, z: number) { return { x: b.x + b.w / 2, y: b.y - 6 - 26 / z }; }
   private syncSelBar() {
     const bar = this.$("#selBar") as HTMLElement | null; if (!bar) return;
     const objs = this.selObjs();
-    if (!objs.length || this.tool !== "select" || this.marquee || this.resizeSel) { bar.style.display = "none"; return; }
+    if (!objs.length || this.tool !== "select" || this.marquee || this.resizeSel || this.rotateSel) { bar.style.display = "none"; return; }
     const pb = this.$("#paneBoard") as HTMLElement | null; if (!pb) { bar.style.display = "none"; return; }
     const b = this.selBounds(); const z = this.boardZoom;
     let ox = 0, oy = 0; let n: HTMLElement | null = this.boardCanvas;
@@ -2518,7 +2571,7 @@ export class BoardEngine {
     if (t !== "select") {
       /* selection outlines must vanish the moment another tool is chosen */
       if (this.selected || this.selMulti || this.marquee || this.resizeSel) {
-        this.selected = null; this.selMulti = null; this.marquee = null; this.resizeSel = null;
+        this.selected = null; this.selMulti = null; this.marquee = null; this.resizeSel = null; this.rotateSel = null;
         this.renderBoard();
         try { this.refreshAnnot(this.currentPage); } catch { /* noop */ }
       }
@@ -2704,7 +2757,7 @@ export class BoardEngine {
     const gIn = this.$("#gridSize") as HTMLInputElement | null;
     if (gIn) gIn.oninput = () => { this.gridScale = Math.min(2, Math.max(0.5, (+gIn.value || 100) / 100)); this.saveBgPrefs(); this.syncBgSwatches(); this.renderBoard(); };
     const cr = this.$("#btnCanvasReset") as HTMLElement | null;
-    if (cr) cr.onclick = () => { this.boardZoom = 1; this.boardPan = { x: 40, y: 40 }; this.renderBoard(); this.toast("Canvas view reset"); };
+    if (cr) cr.onclick = () => { this.boardZoom = 1; this.boardPan = { x: 0, y: 0 }; this.clampView(); this.renderBoard(); this.toast("Canvas view reset"); };
     this.wireBgSwatches(); this.syncBgSwatches();
 
     this.$all("#layoutGroup .sb-btn").forEach((b: HTMLElement) => (b.onclick = () => this.setLayout((b as HTMLButtonElement).dataset.layout as "doc" | "split" | "board")));
@@ -3640,14 +3693,20 @@ export class BoardEngine {
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      const max = 900, sc = Math.min(1, max / Math.max(img.width, img.height));
-      const w = Math.max(1, Math.round(img.width * sc)), h = Math.max(1, Math.round(img.height * sc));
-      const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
-      cv.getContext("2d")!.drawImage(img, 0, 0, w, h);
+      const rast = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const rw = Math.max(1, Math.round(img.width * rast)), rh = Math.max(1, Math.round(img.height * rast));
+      const cv = document.createElement("canvas"); cv.width = rw; cv.height = rh;
+      cv.getContext("2d")!.drawImage(img, 0, 0, rw, rh);
       let dataUrl = "";
       try { dataUrl = cv.toDataURL("image/jpeg", 0.85); }
       catch { this.toast("This image cannot be placed"); return; }
-      const o: BoardObject = { id: uid(), type: "image", src: dataUrl, x: 60, y: 60, w, h };
+      const z = this.boardZoom;
+      const vw = this.boardW / z, vh = this.boardH / z;
+      const target = Math.min(vw, vh) * 0.7;
+      const k = Math.min(target / Math.max(img.width, img.height), 1);
+      const w = Math.max(20, Math.round(img.width * k)), h = Math.max(20, Math.round(img.height * k));
+      const cxw = (this.boardW / 2 - this.boardPan.x) / z, cyw = (this.boardH / 2 - this.boardPan.y) / z;
+      const o: BoardObject = { id: uid(), type: "image", src: dataUrl, x: Math.round(cxw - w / 2), y: Math.round(cyw - h / 2), w, h };
       const im = new Image(); im.src = dataUrl; o.img = im;
       im.onload = () => this.renderBoard();
       this.boardStore.pushHistory();
