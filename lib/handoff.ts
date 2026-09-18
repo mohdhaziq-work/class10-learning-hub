@@ -106,6 +106,7 @@ export const HANDOFF = {
   ],
 
   log: [
+    "ZERO-GAP INK + VOICE IN CLIPS 2026-09-19: user clip showed the ink tip trailing the finger by a frame during fast writing. engine.paintTip now paints the newest stroke segment onto the live layer synchronously inside the pointermove handler at exact pointer coords (no nudge, no prediction; the next rAF drawLive clears and replaces it, recDirty set so recordings capture it instantly). Fallback canvas recording (startBoardCapture) now adds the microphone via getUserMedia when permitted so clips carry the teacher's voice; recorder onstop already stops every stream track; denied mic = video-only clip exactly as before. Same batch shipped the official CBSE board papers section on /pyq (2022-2026 all sets main + compartment from cbse.gov.in, 2011-2021 archive mirror links).",
     "2026-09-14: took over from a stalled session. Added batch D (~175 questions), board-paper redesign of chapter PYQ pages, DPR-crisp PDF rendering, hidden /ai handoff page + rule to update it after every task.",
     "2026-09-14: batch E — downloaded all 14 EduRev Class 10 Maths chapter PYQ pages, parsed 481 unique questions (MCQ options inline, assertion-reason, 2025-26 sections), merged + deduped; bank 373 -> 854. Pushed 52b916f.",
     "2026-09-14: old Google verification tags removed from site (user deleting old GSC property, switching to new email). Verification meta renders only if NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION set — paste new code or set env. Pushed edcd41b.",

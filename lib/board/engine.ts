@@ -1055,6 +1055,13 @@ export class BoardEngine {
     };
     loop(performance.now());
     const stream = rec.captureStream(30);
+    /* include the mic when allowed so clips carry the teacher's voice;
+       denied or unsupported -> video-only clip, exactly as before.
+       recorder.onstop stops every track on the stream, incl. the mic. */
+    try {
+      const mic = await navigator.mediaDevices?.getUserMedia({ audio: true });
+      mic?.getAudioTracks().forEach((t) => stream.addTrack(t));
+    } catch { /* no mic permission */ }
     const origStop = stopRecording;
     await startFromStream(stream);
     /* cancel the composite loop when the recorder stops */
@@ -1149,6 +1156,25 @@ export class BoardEngine {
       this.hudL3 = `INK     x ${Math.round(kp.x)}   y ${Math.round(kp.y)}${gap}`;
       if (e2) e2.textContent = this.hudL3;
     }
+  }
+  /* zero-lag ink: paint the newest segment onto the live layer synchronously
+     inside the pointer event, so the ink tip is on screen the instant the
+     sample arrives instead of one frame later. The full smooth redraw on the
+     next rAF clears and replaces it, so no artifacts accumulate. Committed
+     points stay exactly at the pointer positions (no nudge, no prediction). */
+  private paintTip(a: { x: number; y: number }, b: { x: number; y: number }) {
+    const d = this.boardDraft; if (!d || d.type !== "stroke") return;
+    const ctx = this.lctx; if (!ctx) return;
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    ctx.save();
+    ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
+    const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
+    ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
+    ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
+    ctx.globalAlpha = kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    ctx.restore();
+    this.recDirty = true;
   }
   private drawLive() {
     this.recDirty = true;
@@ -1533,6 +1559,7 @@ export class BoardEngine {
           const pr = (e as PointerEvent).pressure;
           pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
           this.inkPt = { x: w.x, y: w.y };
+          this.paintTip(last, w);
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
       this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
