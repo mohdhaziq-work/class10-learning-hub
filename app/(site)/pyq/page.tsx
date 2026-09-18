@@ -5,13 +5,15 @@ import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { PYQ_TOTAL } from "@/lib/content/pyq";
+import { BoardPapersSection } from "@/components/pyq/BoardPapersSection";
+import { BOARD_EXAMS } from "@/lib/content/board-papers";
 import { PYQ_MATHS_SEO, getPyqChapterByKey } from "@/lib/pyqSeo";
 import { SUBJECTS } from "@/lib/syllabus";
 
 export const metadata: Metadata = {
   title: "Class 10 PYQs — CBSE Previous Year Questions Chapter-wise",
   description:
-    "Free Class 10 PYQs: CBSE board previous year questions chapter-wise with answers, marks-wise filter, PDF download and Smart Board solving. Start with Class 10 Maths PYQs.",
+    "Free Class 10 PYQs: CBSE board previous year questions chapter-wise with answers, PDF download and Smart Board solving - plus official Class 10 board papers 2022-2026, all sets including compartment exams.",
   alternates: { canonical: "/pyq" },
   openGraph: {
     title: "Class 10 PYQs — CBSE Previous Year Questions Chapter-wise",
@@ -42,6 +44,10 @@ const FAQS = [
   {
     q: "Is this free?",
     a: "Yes. Class 10 Learning Hub is free forever, with no login required.",
+  },
+  {
+    q: "Where can I download official Class 10 board papers with all sets?",
+    a: "This page links the official CBSE Class X papers (2022-2026) directly from cbse.gov.in - every set of every year, including Compartment and Second Board exams. For 2011-2021, we link the same official papers archived year-wise with all sets.",
   },
 ];
 
@@ -78,6 +84,18 @@ export default function PyqPage({
               position: i + 1,
               name: `Class 10 Maths Chapter ${c.n} ${c.name} PYQs`,
               url: absoluteUrl(c.path),
+            })),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: "Official CBSE Class X Board Papers 2022-2026 (all sets, main + compartment)",
+            url: absoluteUrl("/pyq"),
+            itemListElement: BOARD_EXAMS.map((ex, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: `${ex.title}${ex.kind === "compartment" ? " — Compartment" : ""}`,
+              url: absoluteUrl("/pyq"),
             })),
           },
           {
@@ -135,6 +153,8 @@ export default function PyqPage({
           ))}
         </dl>
       </div>
+
+      <BoardPapersSection />
 
       <section className="mt-12">
         <h2 className="text-2xl font-extrabold tracking-tight">Class 10 Maths chapter-wise PYQs</h2>
