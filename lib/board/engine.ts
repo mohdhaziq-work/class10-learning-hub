@@ -537,16 +537,27 @@ export class BoardEngine {
     this.wireShade();
     this.wireMeasure();
     this.wireKeys();
-    this.restore();
-
     this.setLayout(this.layout);
     (this.$("#bgSelect") as HTMLSelectElement).value = this.bg;
     this.setTool("pen");
     this.sizeBoard();
     this.setActive("board", null);
-    if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
-    if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
-    else this.refreshEmpty();
+    this.renderBoard();
+    /* boot sequence: the "Preparing your board" screen stays as the ONLY screen
+       until the whiteboard is fully painted; only then the session restores and
+       heavy docs (PDF / EduRev iframes) load — no more laggy first seconds */
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (this.destroyed) return;
+      const ov = this.$("#bootOverlay"); if (ov) ov.remove();
+      setTimeout(() => {
+        if (this.destroyed) return;
+        this.restore();
+        this.setLayout(this.layout);
+        if (opts.pdfUrl) this.openPdfFromUrl(opts.pdfUrl, opts.pdfName || "NCERT chapter.pdf");
+        if (opts.webUrl) this.openWeb(opts.webUrl, opts.webName || "Reference page");
+        else this.refreshEmpty();
+      }, 250);
+    }));
     let roRaf = 0;
     const ro = new ResizeObserver(() => {
       if (roRaf) return;
@@ -786,7 +797,6 @@ export class BoardEngine {
      ========================================================================== */
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
-  private nudgeTest = false; /* TEMPORARY admin test: re-applies the OLD finger offset for comparison */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -950,7 +960,7 @@ export class BoardEngine {
     const apply = (on: boolean, email: string | null) => {
       if (on === this.adminOn) return;
       this.adminOn = on;
-      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut", "#btnNudge"]) {
+      for (const id of ["#btnLatency", "#btnRec", "#btnRecordings", "#btnSignOut"]) {
         const b = this.$(id) as HTMLElement | null;
         if (b) b.style.display = on ? "" : "none";
       }
@@ -1199,7 +1209,7 @@ export class BoardEngine {
     /* Pixel-exact for EVERY input type. A per-input nudge (finger ink shifted
        up-left) read as a visible offset on large smart boards — built-in
        whiteboard apps land ink exactly under the tip, so we do the same. */
-    const off = (ev: PointerEvent): readonly [number, number] => (this.nudgeTest && ev.pointerType === "touch" ? [10, 8] as const : [0, 0] as const);
+    const off = (_ev: PointerEvent): readonly [number, number] => [0, 0] as const;
     this.on(cv, "pointerdown", (e: PointerEvent) => {
       try { cv.setPointerCapture(e.pointerId); } catch { /* noop */ }
       this.boardRectC = cv.getBoundingClientRect(); /* cache for the whole stroke — no layout thrash on move */
@@ -1744,7 +1754,6 @@ export class BoardEngine {
   }
 
   private wireAnnotCanvas(canvas: HTMLCanvasElement, pageNum: number, scaleFn: (() => number) | null, zoomCssFn: (() => number) | null) {
-    if (this.docReadOnly) { canvas.style.display = "none"; return; }
     let drawing = false, selDrag: { sx: number; sy: number } | null = null;
     let erasing = false, erasedAny = false;
     let lasso: { x: number; y: number }[] | null = null;
@@ -1752,6 +1761,7 @@ export class BoardEngine {
     let raf = 0;
     const sched = () => { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; this.refreshAnnot(pageNum); }); };
     this.on(canvas, "pointerdown", (e: PointerEvent) => {
+      if (this.docReadOnly) return; /* split/board layouts: doc stays view-only */
       e.preventDefault();
       try { canvas.setPointerCapture(e.pointerId); } catch { /* noop */ }
       rect = canvas.getBoundingClientRect(); /* cached for the whole stroke */
@@ -2735,10 +2745,6 @@ export class BoardEngine {
         this.toast("Fullscreen on");
       } catch { this.toast("Fullscreen blocked by browser"); }
     };
-    const btnNudge = this.$("#btnNudge"); if (btnNudge) btnNudge.onclick = () => {
-      this.nudgeTest = !this.nudgeTest;
-      this.toast(this.nudgeTest ? "OLD finger offset ON (test) — touch ink shifts up-left" : "Offset test OFF — ink pixel-exact");
-    };
     const btnLat = this.$("#btnLatency"); if (btnLat) btnLat.onclick = () => this.toggleLatency();
     const latHud = this.$("#latencyHud"); if (latHud) this.latencyEl = latHud as HTMLElement;
     const btnRec = this.$("#btnRec"); if (btnRec) btnRec.onclick = () => { void this.toggleRec(); };
@@ -2830,6 +2836,10 @@ export class BoardEngine {
   private setLayout(l: "doc" | "split" | "board") {
     this.layout = l;
     this.root.dataset.layout = l;
+    /* file-only layout revives the whiteboard tools ON the file (pen/eraser/etc
+       annotate the doc); split/board keep the doc view-only */
+    this.docReadOnly = l !== "doc";
+    this.$all("#docScroll canvas.annot").forEach((c: HTMLElement) => { c.style.display = this.docReadOnly ? "none" : ""; });
     this.$all("#layoutGroup .sb-btn").forEach((b: HTMLElement) => b.classList.toggle("on", (b as HTMLButtonElement).dataset.layout === l));
     /* Divider drags write inline flex ratios; layout CSS must win again or the
        surviving pane freezes at its previous split width (the 50% lock bug). */
@@ -2837,7 +2847,7 @@ export class BoardEngine {
     (this.$("#paneBoard") as HTMLElement).style.flex = "";
     /* Two measurement passes: immediately, and after the browser finishes the
        flex reflow — the canvas buffer must absorb the new viewport bounds. */
-    requestAnimationFrame(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); } });
+    requestAnimationFrame(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); if (!this.docReadOnly) this.refreshAnnot(this.currentPage); } });
     setTimeout(() => { if (!this.destroyed) { this.sizeBoard(); if (this.doc?.kind === "pdf") this.computeFit(); } }, 250);
   }
 

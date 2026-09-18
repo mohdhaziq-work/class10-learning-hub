@@ -10,7 +10,7 @@
   --sh-sm:0 1px 2px rgba(16,24,40,.06), 0 1px 3px rgba(16,24,40,.08);
   --sh-md:0 8px 24px rgba(16,24,40,.10), 0 2px 6px rgba(16,24,40,.06);
   --sh-lg:0 16px 48px rgba(16,24,40,.16), 0 2px 8px rgba(16,24,40,.08);
-  background:var(--bg); color:var(--ink);
+  background:var(--bg); color:var(--ink); position:relative;
   height:100vh; height:100dvh; display:flex; flex-direction:column; overflow:hidden;
   -webkit-user-select:none; user-select:none; font-size:15px;
   font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;

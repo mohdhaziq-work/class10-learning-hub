@@ -86,6 +86,15 @@ export default function SmartBoard() {
 
   return (
     <div ref={rootRef} className="sb-root" data-layout="split">
+      <div id="bootOverlay" style={{ position: "absolute", inset: 0, zIndex: 300, background: "#f6f8fb", display: "grid", placeItems: "center" }}>
+        <div style={{ textAlign: "center", color: "#1f2937", fontFamily: "Google Sans,Arial,sans-serif" }}>
+          <div style={{ width: 64, height: 64, margin: "0 auto 18px", borderRadius: 18, background: "linear-gradient(135deg,#1a73e8,#5aa2f8)", display: "grid", placeItems: "center", boxShadow: "0 10px 30px rgba(26,115,232,.35)" }}>
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="14" rx="2" /><path d="M8 21h8M12 17v4" /><path d="m7 10 3 2 4-5" /></svg>
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: ".2px" }}>Smart Board</div>
+          <div style={{ fontSize: 13.5, color: "#5f6b7a", marginTop: 4 }}>Preparing your board…</div>
+        </div>
+      </div>
       <div id="latencyHud" className="lat-hud" hidden><span id="latText" /> <small>input: OS to JS | draw: JS to canvas | est adds one display frame</small></div>
       <div id="recPill" className="rec-pill" hidden><span className="rec-dot" /><span id="recTime">00:00</span><button id="btnRecStop">Stop</button></div>
 
@@ -336,7 +345,6 @@ export default function SmartBoard() {
         </div>
         <div className="mp-sec" id="mpAdminSec" style={{ display: "none" }}>Admin device</div>
         <div className="menu-list">
-          <button className="mitem" id="btnNudge" style={{ display: "none" }} title="Temporary test — re-apply the old finger offset to compare"><Icon name="crosshair" size={17} /><span className="mlbl">Offset test (old)</span></button>
           <button className="mitem" id="btnLatency" style={{ display: "none" }} title="Pen latency test — admin device"><Icon name="timer" size={17} /><span className="mlbl">Speed test</span></button>
           <button className="mitem" id="btnRec" style={{ display: "none" }} title="Record the screen — admin device"><Icon name="circleDot" size={17} /><span className="mlbl">Record</span></button>
           <button className="mitem" id="btnRecordings" style={{ display: "none" }} title="Watch saved screen recordings — admin device"><Icon name="play" size={17} /><span className="mlbl">Recordings</span></button>
