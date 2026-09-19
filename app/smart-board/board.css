@@ -626,3 +626,21 @@ kbd{background:var(--panel3);border:1px solid var(--line);border-bottom-width:2p
 .slide-clear .sc-track{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#5f6368;letter-spacing:.02em;pointer-events:none}
 .slide-clear .sc-knob{position:absolute;left:2px;top:2px;width:36px;height:34px;border-radius:99px;background:#fff;border:1px solid #dadce0;box-shadow:0 1px 2px rgba(0,0,0,.15);display:grid;place-items:center;color:#d93025;touch-action:none;cursor:grab}
 .slide-clear.done{background:#fce8e6;border-color:#f5c6c0}
+
+/* ---- bottom-left board page cluster ---- */
+.sb-dock .page-ctl{order:-1;margin-left:0;margin-right:auto}
+.sb-dock .page-ctl .pg-click{cursor:pointer;border-radius:8px;padding:2px 6px;transition:background .15s}
+.sb-dock .page-ctl .pg-click:hover{background:#e8f0fe;color:var(--brand,#1a73e8)}
+.page-ctl-doc{display:none}
+.sb-root[data-layout="doc"] .page-ctl-doc{display:flex;align-items:center;gap:5px}
+
+/* ---- board pages overview modal ---- */
+.bp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:12px}
+.bp-cell{display:flex;flex-direction:column;gap:6px;align-items:stretch;background:#fff;border:1.5px solid var(--line,#dadce0);border-radius:12px;padding:8px;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.bp-cell:hover{box-shadow:0 4px 14px rgba(0,0,0,.12);transform:translateY(-1px)}
+.bp-cell.on{border-color:#1a73e8;box-shadow:0 0 0 3px #e8f0fe}
+.bp-cell canvas{width:100%;border-radius:8px;border:1px solid #e5e7eb;display:block}
+.bp-cell span{font-size:12px;font-weight:800;color:#3c4043;text-align:center}
+
+/* ---- settings select ---- */
+.set-select{border:1px solid #dadce0;border-radius:10px;padding:7px 10px;font:inherit;font-size:13.5px;font-weight:600;background:#fff;color:#202124}

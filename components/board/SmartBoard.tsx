@@ -30,41 +30,6 @@ export default function SmartBoard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* ---- settings (pure UI prefs) ---- */
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const ls = localStorage;
-    const apply = () => {
-      root.classList.toggle("sb-nolabels", ls.getItem("sb.labels") === "0");
-      root.classList.toggle("sb-compact", ls.getItem("sb.compact") === "1");
-      root.classList.toggle("sb-railright", ls.getItem("sb.railside") === "right");
-    };
-    apply();
-    const open = (id: string) => document.getElementById(id)?.classList.add("show");
-    document.getElementById("btnSettings")?.addEventListener("click", () => open("mSettings"));
-    document.getElementById("btnHelp")?.addEventListener("click", () => open("mHelp"));
-    const labels = document.getElementById("setLabels") as HTMLInputElement | null;
-    const compact = document.getElementById("setCompact") as HTMLInputElement | null;
-    const rl = document.getElementById("setRailL");
-    const rr = document.getElementById("setRailR");
-    const syncSide = () => {
-      const right = ls.getItem("sb.railside") === "right";
-      rl?.classList.toggle("on", !right);
-      rr?.classList.toggle("on", right);
-    };
-    if (labels) {
-      labels.checked = ls.getItem("sb.labels") !== "0";
-      labels.addEventListener("change", () => { ls.setItem("sb.labels", labels.checked ? "1" : "0"); apply(); });
-    }
-    if (compact) {
-      compact.checked = ls.getItem("sb.compact") === "1";
-      compact.addEventListener("change", () => { ls.setItem("sb.compact", compact.checked ? "1" : "0"); apply(); });
-    }
-    rl?.addEventListener("click", () => { ls.setItem("sb.railside", "left"); apply(); syncSide(); });
-    rr?.addEventListener("click", () => { ls.setItem("sb.railside", "right"); apply(); syncSide(); });
-    syncSide();
-  }, []);
 
   /* Viewport zoom isolation: block browser pinch / ctrl-wheel page zoom so the
      board owns all gestures (canvas pan-zoom still works inside the engine). */
@@ -196,12 +161,15 @@ export default function SmartBoard() {
 
         <div className="dock-cluster dock-minor page-ctl">
           <button className="sb-btn" id="btnBoardPrev" title="Previous board page ( [ )"><Icon name="chevronLeft" size={16} /></button>
-          <span className="pg" id="boardPgLbl" title="Whiteboard pages">Board 1/1</span>
+          <span className="pg pg-click" id="boardPgLbl" title="Open all board pages">Board 1/1</span>
           <button className="sb-btn" id="btnBoardNext" title="Next board page ( ] )"><Icon name="chevronRight" size={16} /></button>
           <button className="sb-btn dock-add" id="btnBoardAdd" title="Add a new board page"><Icon name="plus" size={16} /></button>
+          <button className="sb-btn" id="btnBoardDel" title="Remove this board page (MENU recovers it)"><Icon name="trash2" size={16} /></button>
+        </div>
+        <div className="dock-cluster dock-minor page-ctl-doc">
           <span className="pg" id="pgLbl">– / –</span>
-          <button className="sb-btn" id="pgPrev" title="Previous page"><Icon name="chevronLeft" size={16} /></button>
-          <button className="sb-btn" id="pgNext" title="Next page"><Icon name="chevronRight" size={16} /></button>
+          <button className="sb-btn" id="pgPrev" title="Previous file page"><Icon name="chevronLeft" size={16} /></button>
+          <button className="sb-btn" id="pgNext" title="Next file page"><Icon name="chevronRight" size={16} /></button>
         </div>
 
         {/* engine-bound controls kept in DOM but hidden (live in MENU) */}
@@ -209,7 +177,6 @@ export default function SmartBoard() {
           <button className="tool" id="btnMenuLegacy" hidden />
           <button className="tool" id="btnSave" hidden /><button className="tool" id="btnExport" hidden />
           <button className="tool" id="btnBoardDup" hidden />
-          <button className="tool" id="btnBoardDel" hidden />
           <span className="pg" id="targetLbl" />
         </span>
       </footer>
@@ -511,9 +478,39 @@ export default function SmartBoard() {
 
       {/* ---- NEW: settings ---- */}
       <div className="modal" id="mSettings"><div className="modal-card">
-        <h2><Icon name="settings" size={22} /> Settings</h2><p>Make the board yours — changes apply instantly and stay saved on this device.</p>
+        <h2><Icon name="settings" size={22} /> Settings</h2><p>Every control below works instantly and stays saved on this device.</p>
 
-        <h5 className="set-head">Appearance</h5>
+        <h5 className="set-head">Surface</h5>
+        <label className="set-lbl">Surface style</label>
+        <div className="set-seg wide" id="bgSeg">
+          <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
+            <option value="white">Plain</option>
+            <option value="black">Blackboard</option>
+            <option value="grid">Grid</option>
+            <option value="graph">Graph</option>
+            <option value="ruled">Ruled</option>
+            <option value="dotted">Dots</option>
+            <option value="cream">Cream paper</option>
+            <option value="green">Green board</option>
+            <option value="blueprint">Blueprint</option>
+          </select>
+        </div>
+        <label className="set-lbl">Canvas color</label>
+        <div className="swatches" id="bgColors" style={{ display: "flex", gap: 7, flexWrap: "wrap" }} />
+        <label className="set-lbl">Grid size <b id="gridVal">100%</b></label>
+        <input type="range" id="gridSize" min={50} max={200} step={5} defaultValue={100} />
+        <div className="set-row" style={{ marginTop: 10 }}>
+          <span>Reset canvas view <span className="hint">zoom 100% and recenter</span></span>
+          <button className="mbtn" id="btnCanvasReset" type="button"><Icon name="refreshCw" size={14} /> Reset</button>
+        </div>
+
+        <h5 className="set-head">Writing</h5>
+        <div className="set-row">
+          <span>Stylus pressure ink <span className="hint">calligraphy width from pen pressure (tablets)</span></span>
+          <input type="checkbox" className="switch" id="setPressure" defaultChecked />
+        </div>
+
+        <h5 className="set-head">Interface</h5>
         <div className="set-row">
           <span>Tool labels <span className="hint">small captions under the tools</span></span>
           <input type="checkbox" className="switch" id="setLabels" defaultChecked />
@@ -526,31 +523,33 @@ export default function SmartBoard() {
           <span>Toolbar side <span className="hint">left for right-handed, right for left-handed</span></span>
           <div className="set-seg"><button id="setRailL" className="on">Left</button><button id="setRailR">Right</button></div>
         </div>
-
-        <h5 className="set-head">Board canvas</h5>
-        <label className="set-lbl">Surface style</label>
-        <div className="set-seg wide" id="bgSeg">
-          <select id="bgSelect" defaultValue="graph" title="Whiteboard background">
-            <option value="white">Plain</option>
-            <option value="black">Blackboard</option>
-            <option value="grid">Grid</option>
-            <option value="graph">Graph</option>
-            <option value="ruled">Ruled</option>
-            <option value="dotted">Dots</option>
+        <div className="set-row">
+          <span>Start-up layout <span className="hint">how the board opens next time</span></span>
+          <select id="setLayout" className="set-select" defaultValue="split">
+            <option value="split">Document + board</option>
+            <option value="board">Whiteboard only</option>
+            <option value="doc">Document only</option>
           </select>
         </div>
-        <label className="set-lbl">Canvas color</label>
-        <div className="swatches" id="bgColors" style={{ display: "flex", gap: 7, flexWrap: "wrap" }} />
-        <label className="set-lbl">Grid size <b id="gridVal">100%</b></label>
-        <input type="range" id="gridSize" min={50} max={200} step={5} defaultValue={100} />
-        <div className="set-row" style={{ marginTop: 10 }}>
-          <span>Reset canvas view <span className="hint">zoom 100% and recenter</span></span>
-          <button className="mbtn" id="btnCanvasReset" type="button"><Icon name="refreshCw" size={14} /> Reset</button>
-        </div>
 
-        <h5 className="set-head">Board &amp; data</h5>
-        <div className="set-row"><span>Auto-save <span className="hint">every change is saved on this device</span></span><span className="badge-on"><Icon name="check" size={13} /> ON</span></div>
-        <div className="set-row"><span>Export / backup <span className="hint">PNG, print, session JSON</span></span><Icon name="download" size={17} /></div>
+        <h5 className="set-head">Data</h5>
+        <div className="set-row">
+          <span>Auto-save <span className="hint">work is saved on this device as you write</span></span>
+          <span className="badge-on"><Icon name="check" size={13} /> ON</span>
+        </div>
+        <div className="set-row">
+          <span>Backup <span className="hint">download all pages as a file</span></span>
+          <button className="mbtn" id="btnBackup" type="button"><Icon name="download" size={14} /> Download</button>
+        </div>
+        <div className="set-row">
+          <span>Restore <span className="hint">bring back a backup file</span></span>
+          <button className="mbtn" id="btnRestore" type="button"><Icon name="upload" size={14} /> Restore</button>
+          <input type="file" id="restoreFile" accept="application/json,.json" style={{ display: "none" }} />
+        </div>
+        <div className="set-row">
+          <span>Export / print <span className="hint">PNG or print the board</span></span>
+          <button className="mbtn" id="btnGoExport" type="button"><Icon name="printer" size={14} /> Open</button>
+        </div>
 
         <h5 className="set-head">Shortcuts</h5>
         <div className="kbd-row" style={{ fontSize: 13.5 }}>
@@ -558,11 +557,13 @@ export default function SmartBoard() {
           <span><kbd>M</kbd> highlighter · <kbd>E</kbd> eraser</span>
           <span><kbd>T</kbd> text · <kbd>L</kbd> line</span>
           <span><kbd>R</kbd> rect · <kbd>C</kbd> circle</span>
-          <span><kbd>F</kbd> fullscreen · <kbd>←</kbd><kbd>→</kbd> pages</span>
-          <span><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> layouts</span>
         </div>
+      </div></div>
 
-        <div className="mrow"><button className="mbtn primary" data-close="1"><Icon name="check" size={17} /> Done</button></div>
+      <div className="modal" id="mBoardPages"><div className="modal-card">
+        <h2><Icon name="layers" size={22} /> Board pages</h2>
+        <p>Tap a page to open it. Add pages with the + button on the board.</p>
+        <div className="bp-grid" id="bpGrid" />
       </div></div>
 
       <div className="modal" id="mHelp"><div className="modal-card">

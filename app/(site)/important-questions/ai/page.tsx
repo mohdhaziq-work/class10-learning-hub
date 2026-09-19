@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
-import { AI_IMPORTANT, AI_IMPORTANT_UNITS, AI_IMPORTANT_TOTAL } from "@/lib/content/ai-important";
+import { AI_IMPORTANT, AI_IMPORTANT_UNITS, AI_IMPORTANT_TOTAL, AI_PDF_URL } from "@/lib/content/ai-important";
 
 export const metadata: Metadata = {
   title: "Class 10 AI Important Questions — 50 Long Answers (417) with Solutions",
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 const BOARD_PRACTICE_URL =
-  "/smart-board?web=%2Fembed%2Fai-qa&name=AI%20Important%20Questions&layout=split";
+  "/smart-board?pdf=%2Fpdfs%2Fclass-10-ai-417-important-questions.pdf&name=AI%20417%20Important%20Questions&layout=split";
 
 export default function AIImportantQuestionsPage() {
   return (
@@ -86,6 +86,9 @@ export default function AIImportantQuestionsPage() {
           <Link href={BOARD_PRACTICE_URL} className="btn-g btn-g-dark text-[15px]">
             <Icon name="squarePen" size={18} /> Practise on Smart Board (split view)
           </Link>
+          <a href={AI_PDF_URL} download className="btn-g btn-g-white text-[15px]">
+            <Icon name="download" size={18} /> Download PDF
+          </a>
           <Link href="/subjects/ai" className="btn-g btn-g-white text-[15px]">
             <Icon name="bot" size={18} /> AI chapters
           </Link>
@@ -123,7 +126,7 @@ export default function AIImportantQuestionsPage() {
                   <span className="font-bold text-[15.5px] leading-snug pt-0.5">{q.q}</span>
                 </summary>
                 <div className="mt-4 pl-0 sm:pl-10">
-                  <p className="text-[14.5px] leading-relaxed text-ink-soft">{q.a}</p>
+                  <p className="text-[14.5px] leading-relaxed text-ink-soft whitespace-pre-line">{q.a}</p>
                   <a
                     href={`${BOARD_PRACTICE_URL}`}
                     className="inline-flex items-center gap-1.5 mt-3 text-[12.5px] font-bold text-brand-600 hover:underline"

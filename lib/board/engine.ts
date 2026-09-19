@@ -18,7 +18,7 @@ import { fsUpsertClasswork } from "@/lib/firebase/vault";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
 const INK_WORKER_ENABLED = false;
 
-export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted";
+export type BgKind = "white" | "black" | "grid" | "graph" | "ruled" | "dotted" | "cream" | "green" | "blueprint";
 
 function uid(): string { return "o" + Math.random().toString(36).slice(2, 9); }
 
@@ -408,6 +408,7 @@ export class BoardEngine {
   private penKind: "ball" | "marker" | "ink" | "text" | "shape" = "ball";
   private hlSize = 24;
   private eraserMode: "stroke" | "pixel" | "area" = "pixel";
+  private pressureOn = true; /* stylus calligraphy toggle (settings) */
   private eraserSize = 28;
   private customColors: string[] = [];
   private erasedThisDrag = false;
@@ -491,10 +492,15 @@ export class BoardEngine {
   constructor(root: HTMLElement, opts: EngineOpts = {}) {
     this.root = root;
     if (opts.layout === "doc" || opts.layout === "split" || opts.layout === "board") this.layout = opts.layout;
-    if (opts.bg && ["white", "black", "grid", "graph", "ruled", "dotted"].includes(opts.bg)) this.bg = opts.bg as BgKind;
+    else {
+      const dl = localStorage.getItem("sb-layout");
+      if (dl === "doc" || dl === "split" || dl === "board") this.layout = dl;
+    }
+    if (opts.bg && ["white", "black", "grid", "graph", "ruled", "dotted", "cream", "green", "blueprint"].includes(opts.bg)) this.bg = opts.bg as BgKind;
     try {
-      const saved = JSON.parse(localStorage.getItem("sb-bg-prefs") || "{}") as { bg?: BgKind; color?: string; grid?: number };
-      if (saved.bg && !opts.bg) this.bg = saved.bg;
+      const saved = JSON.parse(localStorage.getItem("sb-bg-prefs") || "{}") as { bg?: BgKind; color?: string; grid?: number; pressure?: boolean };
+      if (saved.bg && !opts.bg && ["white", "black", "grid", "graph", "ruled", "dotted", "cream", "green", "blueprint"].includes(saved.bg)) this.bg = saved.bg;
+      if (typeof saved.pressure === "boolean") this.pressureOn = saved.pressure;
       if (saved.color) this.bgColor = saved.color;
       if (typeof saved.grid === "number" && saved.grid >= 50 && saved.grid <= 200) this.gridScale = saved.grid / 100;
     } catch { /* first run */ }
@@ -881,7 +887,7 @@ export class BoardEngine {
       bx.setTransform(1, 0, 0, 1, 0, 0);
       bx.clearRect(0, 0, this.bgC.width, this.bgC.height);
       bx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      const bgc: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
+      const bgc: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff", cream: "#fbf3e4", green: "#14432f", blueprint: "#0e2a4f" };
       bx.fillStyle = this.bgColor || bgc[this.bg] || "#fff";
       bx.fillRect(0, 0, this.boardW, this.boardH);
       this.drawBoardPattern(bx, z, px, py);
@@ -947,7 +953,7 @@ export class BoardEngine {
   }
   /* exact visible board surface color — the pixel eraser paints this */
   private surfaceColor(): string {
-    const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
+    const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff", cream: "#fbf3e4", green: "#14432f", blueprint: "#0e2a4f" };
     return this.bgColor || def[this.bg] || "#ffffff";
   }
   /* live pixel-erase: paint the segment straight into the ink layer */
@@ -973,7 +979,7 @@ export class BoardEngine {
     this.boardStore.pushHistory();
     this.boardDraft = {
       id: uid(), type: "stroke", tool, kind: tool === "pen" ? this.penKind : undefined,
-      points: [pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y }],
+      points: [this.pressureOn && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y }],
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
@@ -1297,6 +1303,12 @@ export class BoardEngine {
         for (let y = ay; y < this.boardH; y += step * 5) { ctx.moveTo(0, y); ctx.lineTo(this.boardW, y); }
         ctx.stroke();
       }
+    } else if (this.bg === "blueprint") {
+      ctx.strokeStyle = "rgba(255,255,255,.26)";
+      ctx.beginPath();
+      for (let x = px % step; x < this.boardW; x += step) { ctx.moveTo(x, 0); ctx.lineTo(x, this.boardH); }
+      for (let y = py % step; y < this.boardH; y += step) { ctx.moveTo(0, y); ctx.lineTo(this.boardW, y); }
+      ctx.stroke();
     } else if (this.bg === "ruled") {
       ctx.strokeStyle = "#cbd5e1"; ctx.beginPath();
       for (let y = py % step; y < this.boardH; y += step) { ctx.moveTo(0, y); ctx.lineTo(this.boardW, y); }
@@ -1583,7 +1595,7 @@ export class BoardEngine {
         if (Math.hypot(w.x - last.x, w.y - last.y) >= 1.25) {
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
-          pts.push(pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
+          pts.push(this.pressureOn && pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
           this.inkPt = { x: w.x, y: w.y };
           /* the finger marker must track the SAME sample the ink used — on
              high-rate digitizers the outer event coordinate can be an older
@@ -2843,7 +2855,7 @@ export class BoardEngine {
     (this.$("#shapeSize") as HTMLInputElement).oninput = (e: Event) => { this.size = +(e.target as HTMLInputElement).value; this.syncPenPop(); this.saveTools(); };
     (this.$("#bgSelect") as HTMLSelectElement).onchange = (e: Event) => {
       this.bg = (e.target as HTMLSelectElement).value as BgKind;
-      const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff" };
+      const def: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff", cream: "#fbf3e4", green: "#14432f", blueprint: "#0e2a4f" };
       this.bgColor = def[this.bg] || "#ffffff"; this.syncBgSwatches(); this.saveBgPrefs();
       this.renderBoard(); this.scheduleSave();
     };
@@ -2901,6 +2913,7 @@ export class BoardEngine {
     const mRecover = this.$("#mRecover"); if (mRecover) mRecover.onclick = () => { this.recoverBoardPage(); };
     const mDelPage = this.$("#mDelPage"); if (mDelPage) mDelPage.onclick = () => { this.delBoardPage(); };
     this.wireSlideClear();
+    this.wireSettings();
     const mAddPage = this.$("#mAddPage"); if (mAddPage) mAddPage.onclick = () => (this.$("#btnBoardAdd") as HTMLElement).click();
     const btnSignIn = this.$("#btnSignIn"); if (btnSignIn) btnSignIn.onclick = () => { void signInWithGoogle().then((r) => this.toast(r.message)); };
     const btnSignOut = this.$("#btnSignOut"); if (btnSignOut) btnSignOut.onclick = () => { void signOutAdmin().then(() => this.toast("Signed out")); };
@@ -2919,7 +2932,7 @@ export class BoardEngine {
   }
 
   private saveBgPrefs() {
-    try { localStorage.setItem("sb-bg-prefs", JSON.stringify({ bg: this.bg, color: this.bgColor, grid: Math.round(this.gridScale * 100) })); } catch { /* private mode */ }
+    try { localStorage.setItem("sb-bg-prefs", JSON.stringify({ bg: this.bg, color: this.bgColor, grid: Math.round(this.gridScale * 100), pressure: this.pressureOn })); } catch { /* private mode */ }
   }
   private wireBgSwatches() {
     const cols = ["#ffffff", "#fffef5", "#eef4ff", "#eefaf0", "#fff0f3", "#f5f0ff", "#0d1526"];
@@ -2994,6 +3007,88 @@ export class BoardEngine {
     if (isBoard) this.renderBoard(); else this.refreshAnnot(this.active.page || 1);
     this.scheduleSave(); this.toast("Page cleared — Undo brings it back");
   }
+  /* ---------- board pages overview: click the Board 1/1 label ---------- */
+  private openBoardPages() {
+    this.openModal("mBoardPages");
+    const grid = this.$("#bpGrid") as HTMLElement | null; if (!grid) return;
+    grid.textContent = "";
+    const W = 168, H = 110;
+    const bgc: Record<string, string> = { white: "#ffffff", black: "#0d1526", grid: "#ffffff", graph: "#ffffff", ruled: "#fffef5", dotted: "#ffffff", cream: "#fbf3e4", green: "#14432f", blueprint: "#0e2a4f" };
+    this.boardPages.forEach((st, i) => {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "bp-cell" + (i === this.boardPage ? " on" : "");
+      const cv = document.createElement("canvas");
+      cv.width = W; cv.height = H;
+      const ctx = cv.getContext("2d");
+      if (ctx) {
+        ctx.fillStyle = this.bgColor || bgc[this.bg] || "#fff";
+        ctx.fillRect(0, 0, W, H);
+        const sc = Math.min(W / Math.max(this.boardW, 1), H / Math.max(this.boardH, 1));
+        ctx.save();
+        ctx.translate((W - this.boardW * sc) / 2, (H - this.boardH * sc) / 2);
+        ctx.scale(sc, sc);
+        st.objects.forEach((o) => drawObject(ctx, o));
+        ctx.restore();
+      }
+      const lbl = document.createElement("span");
+      lbl.textContent = `Page ${i + 1}`;
+      cell.appendChild(cv); cell.appendChild(lbl);
+      cell.onclick = () => { this.gotoBoardPage(i); this.closeModal(this.$("#mBoardPages")); };
+      grid.appendChild(cell);
+    });
+  }
+
+  /* ---------- rebuilt settings: every control live, wired and persisted ---------- */
+  private wireSettings() {
+    const ls = localStorage;
+    const apply = () => {
+      this.root.classList.toggle("sb-nolabels", ls.getItem("sb.labels") === "0");
+      this.root.classList.toggle("sb-compact", ls.getItem("sb.compact") === "1");
+      this.root.classList.toggle("sb-railright", ls.getItem("sb.railside") === "right");
+    };
+    apply();
+    const labels = this.$("#setLabels") as HTMLInputElement | null;
+    if (labels) { labels.checked = ls.getItem("sb.labels") !== "0"; labels.onchange = () => { ls.setItem("sb.labels", labels.checked ? "1" : "0"); apply(); }; }
+    const compact = this.$("#setCompact") as HTMLInputElement | null;
+    if (compact) { compact.checked = ls.getItem("sb.compact") === "1"; compact.onchange = () => { ls.setItem("sb.compact", compact.checked ? "1" : "0"); apply(); }; }
+    const rl = this.$("#setRailL"), rr = this.$("#setRailR");
+    const syncSide = () => { const r = ls.getItem("sb.railside") === "right"; rl?.classList.toggle("on", !r); rr?.classList.toggle("on", r); };
+    if (rl) rl.onclick = () => { ls.setItem("sb.railside", "left"); apply(); syncSide(); };
+    if (rr) rr.onclick = () => { ls.setItem("sb.railside", "right"); apply(); syncSide(); };
+    syncSide();
+    const pr = this.$("#setPressure") as HTMLInputElement | null;
+    if (pr) { pr.checked = this.pressureOn; pr.onchange = () => { this.pressureOn = pr.checked; this.saveBgPrefs(); this.toast(pr.checked ? "Stylus pressure on" : "Uniform ink width"); }; }
+    const lay = this.$("#setLayout") as HTMLSelectElement | null;
+    if (lay) { lay.value = this.layout; lay.onchange = () => { ls.setItem("sb-layout", lay.value); this.setLayout(lay.value as "doc" | "split" | "board"); }; }
+    const bk = this.$("#btnBackup");
+    if (bk) bk.onclick = () => {
+      this.flushSave();
+      const data = ls.getItem(LS_KEY) || "{}";
+      const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+      this.download(url, "smart-board-backup.json");
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      this.toast("Backup downloaded");
+    };
+    const rsBtn = this.$("#btnRestore"); const fi = this.$("#restoreFile") as HTMLInputElement | null;
+    if (rsBtn && fi) {
+      rsBtn.onclick = () => fi.click();
+      fi.onchange = () => {
+        const f = fi.files?.[0]; if (!f) return;
+        const rd = new FileReader();
+        rd.onload = () => {
+          try { this.applySession(JSON.parse(String(rd.result))); this.scheduleSave(); this.toast("Backup restored"); }
+          catch { this.toast("Not a valid backup file"); }
+        };
+        rd.readAsText(f); fi.value = "";
+      };
+    }
+    const ge = this.$("#btnGoExport");
+    if (ge) ge.onclick = () => { this.closeModal(this.$("#mSettings")); this.openModal("mExport"); };
+    const bs = this.$("#btnSettings"); if (bs) bs.onclick = () => this.openModal("mSettings");
+    const bh = this.$("#btnHelp"); if (bh) bh.onclick = () => this.openModal("mHelp");
+  }
+
   private wireSlideClear() {
     const el = this.$("#slideClear") as HTMLElement | null;
     const knob = el?.querySelector(".sc-knob") as HTMLElement | null;
@@ -3021,6 +3116,7 @@ export class BoardEngine {
     knob.addEventListener("pointercancel", up);
   }
   private wirePages() {
+    const lblB = this.$("#boardPgLbl"); if (lblB) lblB.onclick = () => this.openBoardPages();
     this.$("#btnBoardPrev").onclick = () => this.gotoBoardPage(this.boardPage - 1);
     this.$("#btnBoardNext").onclick = () => this.gotoBoardPage(this.boardPage + 1);
     this.$("#btnBoardAdd").onclick = () => this.addBoardPage();
