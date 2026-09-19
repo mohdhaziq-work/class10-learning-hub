@@ -892,6 +892,7 @@ export class BoardEngine {
       bx.fillRect(0, 0, this.boardW, this.boardH);
       this.drawBoardPattern(bx, z, px, py);
     }
+    this.clearLive();
     /* ink layer — erase objects punch holes here, the background below stays intact */
     const ix = this.inkX;
     if (ix && this.inkC) {
@@ -983,6 +984,8 @@ export class BoardEngine {
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
+    this.clearLive();
+    this.boardLive.style.opacity = tool === "highlighter" ? "0.45" : this.penKind === "marker" ? "0.55" : "1";
     this.inkPt = { x: w.x, y: w.y };
     this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t;
     this.latPendingT0 = performance.now();
@@ -1061,6 +1064,7 @@ export class BoardEngine {
       rctx.clearRect(0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardCanvas, 0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardLive, 0, 0, rec.width, rec.height);
+      rctx.drawImage(this.boardFx, 0, 0, rec.width, rec.height);
     };
     loop(performance.now());
     const stream = rec.captureStream(30);
@@ -1177,20 +1181,34 @@ export class BoardEngine {
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
-    const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
     ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-    ctx.globalAlpha = kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1;
+    ctx.globalAlpha = 1;
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.restore();
     this.recDirty = true;
   }
+  /* clear only the incremental stroke layer */
+  private clearLive() {
+    const l = this.lctx;
+    l.setTransform(1, 0, 0, 1, 0, 0);
+    l.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    this.boardLive.style.opacity = "1";
+  }
+  /* INCREMENTAL INK — the way built-in classroom whiteboards stay gap-free:
+     the live canvas KEEPS the in-progress stroke as already-painted segments
+     (paintTip adds each new segment synchronously inside the pointer event),
+     and is cleared only at stroke start/end. Nothing redraws the whole stroke
+     per frame, so phones pay near-zero draw cost and the ink tip lands on
+     screen the instant the hardware sample arrives. This fx layer carries
+     only transients — input rings, lasso preview, predicted tip, rec HUD —
+     which are cheap to repaint every frame. */
   private drawLive() {
     this.recDirty = true;
     setEraseSurface(this.surfaceColor());
-    const ctx = this.lctx;
+    const ctx = this.fctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    ctx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
     if ((isRecording() || this.latencyOn) && this.lastPt) {
       const z = this.boardZoom;
       ctx.save();
@@ -1224,43 +1242,38 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    if (!this.boardDraft || this.boardDraft.type === "erase") return;
-    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-    ctx.save();
-    ctx.translate(this.boardPan.x, this.boardPan.y);
-    ctx.scale(this.boardZoom, this.boardZoom);
-    drawObject(ctx, this.boardDraft);
-    /* latency compensation: extend the visible tip along the measured writing
-       velocity by the sample age, so the ink sits under the physical finger
-       instead of ~40 ms behind it. Transient only — the committed stroke is
-       exact, and the tail collapses the moment the finger stops or lifts. */
-    {
-      const d = this.boardDraft;
+    /* predicted tip: transient forward extension so the visible ink sits under
+       the physical finger despite OS input latency; collapses when the finger
+       stops or lifts. Committed strokes stay exact hardware samples. */
+    const d = this.boardDraft;
+    if (d && d.type === "stroke") {
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
-      if (d.type === "stroke" && pts.length > 1 && age < 150) {
+      if (pts.length > 1 && age < 150) {
         const lp = pts[pts.length - 1];
         const t = Math.min(age, 80) / 1000;
         let dx = this.predV.x * t, dy = this.predV.y * t;
         const len = Math.hypot(dx, dy);
         if (len > 70) { dx *= 70 / len; dy *= 70 / len; }
         if (len > 1) {
-          const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
+          ctx.save();
+          ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+          ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
           ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
           ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 80 ? 1 : (150 - age) / 70);
+          ctx.globalAlpha = age < 80 ? 1 : (150 - age) / 70;
           ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
+          ctx.restore();
         }
       }
     }
-    ctx.restore();
     if (this.latencyOn && this.latPendingT0) {
-      const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
-      if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
+      const dd = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
+      if (dd < 400) { this.latDraw.push(dd); if (this.latDraw.length > 60) this.latDraw.shift(); }
       this.updateLatencyHud();
     }
-    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the
-       live layer so the speed test (and finger/ink coords) is IN the video */
+    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the fx
+       layer so the speed test (and finger/ink coords) is IN the video */
     if (this.recCanvas && this.latencyOn && this.hudL1) {
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       const lines = [this.hudL1, this.hudL2, this.hudL3].filter(Boolean);
@@ -1275,7 +1288,7 @@ export class BoardEngine {
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
   private paintIncremental() {
-    this.drawLive(); /* clears the live layer */
+    this.clearLive(); /* stroke committed to the static layer */
     const o = this.boardStore.objects[this.boardStore.objects.length - 1];
     if (!o) return;
     const ctx = this.inkX || this.bctx;
