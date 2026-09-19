@@ -16,8 +16,8 @@ path. That is the Phase-1 strategy: one web engine, two shells.
 - `AndroidManifest.xml` — verified-origin intent filter
   (`autoVerify=true` on `https://class10-learning-hub.onrender.com`).
 - `app/build.gradle.kts` — `androidx.browser:browser:1.8.0` dependency.
-- `MainActivity.kt` — renderer priority policy, render-process-gone /
-  unresponsive handlers (crash protection for both variants).
+- `MainActivity.kt` — renderer priority policy, render-process-gone auto-reload
+  (crash protection for both variants).
 
 ## Steps to build the TWA variant (on your machine)
 

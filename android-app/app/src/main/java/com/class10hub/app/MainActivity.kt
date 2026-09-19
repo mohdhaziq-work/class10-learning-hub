@@ -120,11 +120,6 @@ class MainActivity : AppCompatActivity() {
                 view.postDelayed({ view.loadUrl(HOME_URL) }, 600)
                 return true /* handled: keep the app process alive */
             }
-
-            override fun onRenderProcessUnresponsive(view: WebView): Boolean {
-                Toast.makeText(this@MainActivity, "Board is slow to respond…", Toast.LENGTH_LONG).show()
-                return true /* handled: do not kill the app */
-            }
         }
 
         /* File uploads (board session imports) */
