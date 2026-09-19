@@ -15,10 +15,23 @@ android {
         versionName = "2.0.2"
     }
 
+    signingConfigs {
+        create("release") {
+            /* Stable app identity: same keystore for every build so Android can
+               verify the TWA digital-asset-links handshake. File lives at
+               android-app/release.keystore (password-protected). */
+            storeFile = file("../release.keystore")
+            storePassword = "class10hub2026"
+            keyAlias = "class10hub"
+            keyPassword = "class10hub2026"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }

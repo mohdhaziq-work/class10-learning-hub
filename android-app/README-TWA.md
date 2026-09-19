@@ -21,14 +21,13 @@ path. That is the Phase-1 strategy: one web engine, two shells.
 
 ## Steps to build the TWA variant (on your machine)
 
-1. Get the SHA-256 fingerprint of the release keystore:
+1. Keystore is already created and committed: `android-app/release.keystore`
+   (alias `class10hub`, store/key password `class10hub2026`, valid 25 years).
+   Its SHA-256 fingerprint is already live in
+   `public/.well-known/assetlinks.json`:
+   `C0:6D:6C:3C:F6:2A:8B:B4:75:07:87:04:E8:A9:1D:E6:04:12:B0:3E:46:DB:82:5E:27:1F:8C:82:4D:C0:70:1F`
 
-   ```
-   keytool -list -v -keystore <your.keystore> -alias <your-alias>
-   ```
-
-   Copy the `SHA256:` line (colon-separated hex). Send it over so
-   `public/.well-known/assetlinks.json` can be finalized, then redeploy Render.
+   Nothing to generate — GitHub Actions signs every build with it automatically.
 
 2. Verify the handshake before building:
 

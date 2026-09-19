@@ -31,13 +31,13 @@ jobs:
         with:
           gradle-version: "8.5"
 
-      - name: Build debug APK
-        run: gradle assembleDebug --no-daemon
+      - name: Build signed release APK
+        run: gradle assembleRelease --no-daemon
 
       - name: Place APK in site downloads
         run: |
           mkdir -p ../public/downloads
-          cp app/build/outputs/apk/debug/app-debug.apk ../public/downloads/class10-learning-hub.apk
+          cp app/build/outputs/apk/release/app-release.apk ../public/downloads/class10-learning-hub.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
