@@ -27,19 +27,50 @@ export function watchAdmin(cb: (isAdmin: boolean, email: string | null) => void)
   return () => { if (unsub) unsub(); };
 }
 
+/* Android WebViews (our APK) cannot open Firebase popups — window.open is dead
+   there. Detect the shell (or a blocked popup) and use the full-page redirect
+   flow instead, which works everywhere a normal link works. */
+function looksLikeWebView(): boolean {
+  try { return /Class10HubApp|; wv\)|Android.*Version\//i.test(navigator.userAgent); } catch { return false; }
+}
+
 export async function signInWithGoogle(): Promise<{ ok: boolean; message: string }> {
   if (!isFirebaseConfigured) return { ok: false, message: "Firebase is not configured on this deployment" };
+  const { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect } = await import("firebase/auth");
+  const provider = () => {
+    const pr = new GoogleAuthProvider();
+    pr.setCustomParameters({ prompt: "select_account" });
+    return pr;
+  };
   try {
-    const { getAuth, GoogleAuthProvider, signInWithPopup } = await import("firebase/auth");
-    const a = getFirebaseAuth() || getAuth();
-    const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: "select_account" });
-    const cred = await signInWithPopup(a, provider);
+    if (looksLikeWebView()) {
+      await signInWithRedirect(getFirebaseAuth() || getAuth(), provider());
+      return { ok: true, message: "Opening Google sign-in..." };
+    }
+    const cred = await signInWithPopup(getFirebaseAuth() || getAuth(), provider());
     if (isAdminEmail(cred.user.email)) return { ok: true, message: "Signed in as admin — developer tools unlocked" };
     return { ok: true, message: "Signed in — your progress now syncs on every device" };
-  } catch {
+  } catch (err) {
+    const code = String((err as { code?: string })?.code || "");
+    if (code.includes("popup") || code.includes("operation-not-supported") || code.includes("unauthorized-domain")) {
+      try {
+        await signInWithRedirect(getFirebaseAuth() || getAuth(), provider());
+        return { ok: true, message: "Opening Google sign-in..." };
+      } catch { /* fall through */ }
+    }
     return { ok: false, message: "Google sign-in was cancelled or blocked" };
   }
+}
+
+/* After the redirect flow bounces back, Firebase needs this once on boot to
+   finish the sign-in and fire onAuthStateChanged. */
+export async function completePendingSignIn(): Promise<void> {
+  if (!isFirebaseConfigured) return;
+  try {
+    const { getRedirectResult } = await import("firebase/auth");
+    const a = getFirebaseAuth();
+    if (a) await getRedirectResult(a);
+  } catch { /* no pending redirect */ }
 }
 
 export async function signOutAdmin(): Promise<void> {

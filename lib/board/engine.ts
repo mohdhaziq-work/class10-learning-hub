@@ -12,7 +12,7 @@ import { RemotePad } from "./pad";
 import { putFile, getFile, listFiles, deleteFile, touchFile, fmtSize, fmtWhen } from "./files";
 import { INK_WORKER_SOURCE } from "./inkWorkerSource";
 import { startRecording, startFromStream, stopRecording, isRecording, supportsScreenShare, listRecordings, deleteRecording, type RecordingMeta } from "./recorder";
-import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL } from "@/lib/firebase/admin";
+import { watchAdmin, signInWithGoogle, signOutAdmin, ADMIN_EMAIL, completePendingSignIn } from "@/lib/firebase/admin";
 import { uploadClip } from "@/lib/clipShare";
 import { fsUpsertClasswork } from "@/lib/firebase/vault";
 /* set true on verified high-end boards to enable the OffscreenCanvas worker */
@@ -591,6 +591,7 @@ export class BoardEngine {
 
     let rzT: ReturnType<typeof setTimeout>;
     this.on(window, "resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
+    completePendingSignIn().then(() => this.startAdminWatch());
     this.on(window, "sb-board-dirty", () => this.renderBoard());
     this.on(window, "pagehide", () => this.flushSave());
     this.on(document, "visibilitychange", () => { if (document.visibilityState === "hidden") this.flushSave(); });
@@ -1403,7 +1404,9 @@ export class BoardEngine {
             const [ox, oy] = off(ev);
             this.boardStroke(ev, this.toWorldInto(ev.clientX - r.left - ox, ev.clientY - r.top - oy), "move");
           }
-          return;
+          /* the outer event itself carries the NEWEST sample on many Android
+             browsers — without inking it the tip stays one event (~30 ms)
+             behind the finger; the 1.25px gate drops true duplicates */
         }
       }
       const [ox2, oy2] = off(e);
@@ -2935,7 +2938,7 @@ export class BoardEngine {
       const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;
       this.toast("Recording saved — MENU > CLIPS");
     });
-    this.startAdminWatch();
+    /* admin watch now starts at boot after completePendingSignIn (see init) */
     this.$("#btnSave").onclick = () => {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
       catch { this.toast("Save failed — the board has large images"); }
