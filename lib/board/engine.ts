@@ -1177,7 +1177,7 @@ export class BoardEngine {
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
     const p95 = (a: number[]) => { if (a.length < 4) return 0; const s2 = [...a].sort((x, y) => x - y); return s2[Math.min(s2.length - 1, Math.floor(s2.length * 0.95))]; };
-    this.hudL4 = `QA  IN-p95 ${Math.round(p95(this.latIn))} ms   coal ${this.lastCoalN}   ${this.moveEvtRaw ? "RAW" : "move"}${this.inDt > 40 ? " SPARSE+bridge" : ""}${this.desyncOn ? " +DES" : ""}`;
+    this.hudL4 = `QA p95 ${Math.round(p95(this.latIn))} c${this.lastCoalN} ${this.moveEvtRaw ? "RAW" : "MOV"}${this.inDt > 40 ? " BR" : ""}`;
     const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
     this.hudL1 = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     const t = this.latencyEl.querySelector("#latText");
@@ -1264,13 +1264,14 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    /* ADAPTIVE predictive tip (v3 rule): prediction exists ONLY to bridge the
-       gaps of SPARSE input (event cadence > 40ms — WebView ~10Hz). On fast
-       input (rawupdate 90-240Hz) it is fully OFF: zero ghost, zero wobble.
-       When bridging, the extension uses the stroke's own colour/width so it
-       reads as ink, not a translucent tail. Turn gate + speed floor + a tight
-       24px cap keep it from ever forking the stroke. Committed strokes are
-       always the exact hardware samples. */
+    /* ADAPTIVE predictive tip (v3 rule): on this project's target hardware the
+       OS delivers input sparsely even in Chrome (clip QA: IN-p95 60-70ms,
+       rawupdate at ~20Hz bursts), so a real smoother is what makes the tip
+       glide. It runs ONLY while cadence is sparse (>40ms) with the proven
+       120ms horizon / 90px clamp, stroke colour at full alpha (reads as ink,
+       never a translucent ghost), turn-gated and speed-floored so it cannot
+       fork strokes. On genuinely fast input (true rawupdate 90-240Hz) it is
+       fully OFF: zero artifact. Committed strokes stay exact hardware samples. */
     const d = this.boardDraft;
     if (d && d.type === "stroke") {
       const pts = d.points || [];
@@ -1279,18 +1280,17 @@ export class BoardEngine {
       const speed = Math.hypot(this.predV.x, this.predV.y);
       const sparse = this.inDt > 40;
       if (pts.length > 1 && lp && sparse && this.predOk && speed > 150 && age < 220) {
-        const t = Math.min(age, 40) / 1000;
+        const t = Math.min(age, 120) / 1000;
         let dx = this.predV.x * t, dy = this.predV.y * t;
         const len = Math.hypot(dx, dy);
-        const cap = Math.max(24, 1.2 * (d.size || 3));
-        if (len > cap) { dx *= cap / len; dy *= cap / len; }
+        if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
         if (len > 1) {
           ctx.save();
           ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
           ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
           ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
           ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = age < 120 ? 0.9 : Math.max(0, (220 - age) / 100) * 0.9;
+          ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
           ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
           ctx.restore();
         }
