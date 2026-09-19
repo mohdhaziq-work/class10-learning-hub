@@ -18,6 +18,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AppCompatActivity
 
@@ -63,6 +64,13 @@ class MainActivity : AppCompatActivity() {
         invokeWebView("setOffscreenPreRaster", true)   /* pre-render off-viewport split panes */
         invokeWebView("setEnableSmoothTransition", true)
 
+        /* Renderer hardening (API 26+): keep the WebView renderer at IMPORTANT
+           priority so classroom multitasking never demotes it to background and
+           throttles the input pipeline; never kill the app if the renderer dies. */
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false)
+        }
+
         webView.settings.apply {
             javaScriptEnabled = true
             domStorageEnabled = true
@@ -99,9 +107,23 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
+            /* onPageFinished stays trivial — heavy work here delays first paint. */
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 enterImmersiveMode()
+            }
+
+            /* Renderer crash protection: without these overrides a dead or
+               unresponsive renderer takes the whole app down mid-lesson. */
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                Toast.makeText(this@MainActivity, "Board engine restarted — reloading…", Toast.LENGTH_LONG).show()
+                view.postDelayed({ view.loadUrl(HOME_URL) }, 600)
+                return true /* handled: keep the app process alive */
+            }
+
+            override fun onRenderProcessUnresponsive(view: WebView): Boolean {
+                Toast.makeText(this@MainActivity, "Board is slow to respond…", Toast.LENGTH_LONG).show()
+                return true /* handled: do not kill the app */
             }
         }
 

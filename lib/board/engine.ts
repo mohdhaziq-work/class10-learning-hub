@@ -446,7 +446,7 @@ export class BoardEngine {
   private latPendingT0 = 0; private latLastHud = 0;
   private recCanvas = false; /* recording via board-canvas fallback (phones) */
   private recDirty = false; /* composite loop only blits when a layer actually changed */
-  private hudL1 = ""; private hudL2 = ""; private hudL3 = "";
+  private hudL1 = ""; private hudL2 = ""; private hudL3 = ""; private hudL4 = "";
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
   private adminUnsub: (() => void) | null = null; private boardRecRaf = 0;
@@ -515,7 +515,11 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.boardFx = this.$("#boardFx");
-    this.fctx = this.boardFx.getContext("2d", { desynchronized: true })!;
+    /* desync hint can crash some Android WebView builds (Chromium issue
+       40100820) — request it only in real browsers, then verify via
+       getContextAttributes before believing it. */
+    this.desyncOn = !/Class10HubApp|; wv\)/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "");
+    this.fctx = this.boardFx.getContext("2d", this.desyncOn ? { desynchronized: true } : undefined)!;
     /* Dual-threaded pipeline is implemented but DISABLED by default: on
        low-end classroom SoCs the cross-thread messaging + extra compositor
        layer cost more than they save, and it caused live-ink mapping bugs.
@@ -530,7 +534,7 @@ export class BoardEngine {
         }
       } catch { this.inkWorker = null; }
     }
-    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", { desynchronized: true })!;
+    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", this.desyncOn ? { desynchronized: true } : undefined)!;
     /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
        The vector store (boardStore.objects) is the source of truth, so a
        restore is just: preventDefault + full history repaint. */
@@ -828,6 +832,9 @@ export class BoardEngine {
   private predV = { x: 0, y: 0 };
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
+  private moveEvtRaw = false; private desyncOn = false;
+  private osPred: { x: number; y: number }[] | null = null; private predOk = true;
+  private inkPresenter: any = null; private lastCoalN = 0; private lastPredN = 0;
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -1020,6 +1027,14 @@ export class BoardEngine {
     };
     this.adminUnsub = watchAdmin(apply);
   }
+  private initInkPresenter() {
+    /* OS delegated ink trail (Windows Ink). Best effort only — unsupported on
+       Android; the QA flag in the latency HUD shows whether it is actually live. */
+    try {
+      const inkNav = (navigator as any).ink;
+      if (inkNav?.requestPresenter) inkNav.requestPresenter().then((pp: any) => { this.inkPresenter = pp || null; }).catch(() => {});
+    } catch { /* unsupported */ }
+  }
   private async toggleRec() {
     if (!this.adminOn) return;
     if (isRecording()) { stopRecording(); this.recCanvas = false; this.toast("Saving recording…"); return; }
@@ -1157,6 +1172,8 @@ export class BoardEngine {
     this.latLastHud = now;
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
+    const p95 = (a: number[]) => { if (a.length < 4) return 0; const s2 = [...a].sort((x, y) => x - y); return s2[Math.min(s2.length - 1, Math.floor(s2.length * 0.95))]; };
+    this.hudL4 = `QA  IN-p95 ${Math.round(p95(this.latIn))} ms   coal ${this.lastCoalN}   ${this.moveEvtRaw ? "RAW" : "move"}${this.lastPredN ? " +PRED" : ""}${this.desyncOn ? " +DES" : ""}`;
     const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
     this.hudL1 = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     const t = this.latencyEl.querySelector("#latText");
@@ -1243,29 +1260,41 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    /* predicted tip: transient forward extension so the visible ink sits under
-       the physical finger despite OS input latency; collapses when the finger
-       stops or lifts. Committed strokes stay exact hardware samples. */
+    /* predicted tip: OS getPredictedEvents() (Chromium LSQ predictor) when the
+       browser gives us one, otherwise our own capped EMA extrapolation — never
+       both stacked. Transient only; committed strokes stay exact hardware
+       samples. Turn gating and a speed floor keep it from forking strokes. */
     const d = this.boardDraft;
     if (d && d.type === "stroke") {
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
-      if (pts.length > 1 && age < 220) {
-        const lp = pts[pts.length - 1];
-        const t = Math.min(age, 120) / 1000;
-        let dx = this.predV.x * t, dy = this.predV.y * t;
-        const len = Math.hypot(dx, dy);
-        if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
-        if (len > 1) {
-          ctx.save();
-          ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-          ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
-          ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
-          ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
-          ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
-          ctx.restore();
+      const lp = pts[pts.length - 1];
+      const speed = Math.hypot(this.predV.x, this.predV.y);
+      const os = age < 200 && this.osPred && this.osPred.length ? this.osPred : null;
+      const own = this.predOk && speed > 150 && age < 220; /* 0.15 px/ms floor */
+      if (pts.length > 1 && lp && (os || own)) {
+        ctx.save();
+        ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+        ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
+        ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
+        ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
+        if (os) {
+          ctx.globalAlpha = 0.55;
+          ctx.beginPath(); ctx.moveTo(lp.x, lp.y);
+          for (const q of os) ctx.lineTo(q.x, q.y);
+          ctx.stroke();
+        } else {
+          const t = Math.min(age, 40) / 1000; /* research sweet spot <= 50 ms */
+          let dx = this.predV.x * t, dy = this.predV.y * t;
+          const len = Math.hypot(dx, dy);
+          const cap = Math.max(32, 1.5 * (d.size || 3));
+          if (len > cap) { dx *= cap / len; dy *= cap / len; }
+          if (len > 1) {
+            ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
+            ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
+          }
         }
+        ctx.restore();
       }
     }
     if (this.latencyOn && this.latPendingT0) {
@@ -1277,7 +1306,7 @@ export class BoardEngine {
        layer so the speed test (and finger/ink coords) is IN the video */
     if (this.recCanvas && this.latencyOn && this.hudL1) {
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      const lines = [this.hudL1, this.hudL2, this.hudL3].filter(Boolean);
+      const lines = [this.hudL1, this.hudL2, this.hudL3, this.hudL4].filter(Boolean);
       const bw = 320, bh = 12 + lines.length * 17;
       const x0 = Math.max(8, this.boardW - bw - 12), y0 = 12;
       ctx.globalAlpha = 0.93; ctx.fillStyle = "#ffffff"; ctx.fillRect(x0, y0, bw, bh);
@@ -1372,7 +1401,13 @@ export class BoardEngine {
       const [ox, oy] = off(e);
       this.boardStroke(e, this.toWorld(e.clientX - r.left - ox, e.clientY - r.top - oy), "down");
     });
-    this.on(cv, "pointermove", (e: PointerEvent) => {
+    /* Chromium aligns pointermove to the next rAF; pointerrawupdate is
+       dispatched as fast as events are produced — the cheapest way to win
+       back ~one frame of input latency (Chrome Developers, 2017+). One
+       listener on the chosen event, never both. */
+    const MOVE_EVT = typeof PointerEvent !== "undefined" && "onpointerrawupdate" in (window as any) ? "pointerrawupdate" : "pointermove";
+    this.moveEvtRaw = MOVE_EVT === "pointerrawupdate";
+    this.on(cv, MOVE_EVT, (e: PointerEvent) => {
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
       { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
@@ -1402,6 +1437,7 @@ export class BoardEngine {
       if (coalesce && (e as any).getCoalescedEvents) {
         const gce = (e as any).getCoalescedEvents() as PointerEvent[];
         if (gce.length > 1) {
+          this.lastCoalN = gce.length;
           for (let i = 0; i < gce.length; i++) {
             const ev = gce[i];
             const [ox, oy] = off(ev);
@@ -1414,7 +1450,14 @@ export class BoardEngine {
       }
       const [ox2, oy2] = off(e);
       this.boardStroke(e, this.toWorldInto(e.clientX - r.left - ox2, e.clientY - r.top - oy2), "move");
-    });
+      /* QA: OS predictor (Chromium LSQ fit) when available; never stacked with
+         our own EMA extrapolation below. Delegated ink trail: OS-level wet
+         overlay on Windows Ink displays (best effort). */
+      const pe = (e as any).getPredictedEvents ? ((e as any).getPredictedEvents() as PointerEvent[]) : null;
+      this.lastPredN = pe ? pe.length : 0;
+      this.osPred = pe && pe.length ? pe.map((q) => this.toWorldInto(q.clientX - r.left, q.clientY - r.top)) : null;
+      try { this.inkPresenter?.updateInkTrailStartPoint?.(e, { color: this.color, diameter: Math.max(this.size || 3, 2) }); } catch { /* noop */ }
+    }, { passive: true });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
       if (e.pointerId === this.palmPointer) { this.palmPointer = -1; this.palmErased = false; }
@@ -1423,6 +1466,7 @@ export class BoardEngine {
     };
     this.on(cv, "pointerup", up);
     this.on(cv, "pointercancel", up);
+    this.initInkPresenter();
     this.on(this.boardScroll, "wheel", (e: WheelEvent) => {
       e.preventDefault();
       const r = cv.getBoundingClientRect();
@@ -1612,6 +1656,14 @@ export class BoardEngine {
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
         if (Math.hypot(w.x - last.x, w.y - last.y) >= 1.25) {
+          /* sharp-turn gate: kill the predictive tail past ~60 deg bends so it
+             can never fork the stroke at corners (research rule 3). */
+          const prevP = pts.length > 1 ? pts[pts.length - 2] : null;
+          if (prevP) {
+            const v1x = last.x - prevP.x, v1y = last.y - prevP.y, v2x = w.x - last.x, v2y = w.y - last.y;
+            const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+            if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
+          }
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
           pts.push(this.pressureOn && pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });

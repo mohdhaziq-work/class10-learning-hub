@@ -33,4 +33,8 @@ android {
 dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.activity:activity-ktx:1.8.2")
+    /* TWA support: androidx.browser provides the Trusted Web Activity plumbing
+       (Custom Tabs renderer, verified-origin handshake). Not used by the plain
+       WebView build path — safe to ship now, needed for the TWA variant. */
+    implementation("androidx.browser:browser:1.8.0")
 }
