@@ -515,10 +515,13 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.boardFx = this.$("#boardFx");
-    /* desync hint can crash some Android WebView builds (Chromium issue
-       40100820) — request it only in real browsers, then verify via
-       getContextAttributes before believing it. */
-    this.desyncOn = !/Class10HubApp|; wv\)/i.test(typeof navigator !== "undefined" ? navigator.userAgent : "");
+    /* desynchronized hint REMOVED everywhere: on several Android Chrome builds
+       the desync overlay plane renders solid black on screen while code-side
+       composites (recordings) look perfect — user hit exactly this. The hint
+       is worth at most ~1 composite frame; the risk is a black board. The QA
+       HUD keeps the +DES slot so a future runtime-safe reintroduction is
+       visible. */
+    this.desyncOn = false;
     this.fctx = this.boardFx.getContext("2d", this.desyncOn ? { desynchronized: true } : undefined)!;
     /* Dual-threaded pipeline is implemented but DISABLED by default: on
        low-end classroom SoCs the cross-thread messaging + extra compositor
