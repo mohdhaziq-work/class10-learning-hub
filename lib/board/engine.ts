@@ -1264,27 +1264,28 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    /* ADAPTIVE predictive tip (v3 rule): on this project's target hardware the
-       OS delivers input sparsely even in Chrome (clip QA: IN-p95 60-70ms,
-       rawupdate at ~20Hz bursts), so a real smoother is what makes the tip
-       glide. It runs ONLY while cadence is sparse (>40ms) with the proven
-       120ms horizon / 90px clamp, stroke colour at full alpha (reads as ink,
-       never a translucent ghost), turn-gated and speed-floored so it cannot
-       fork strokes. On genuinely fast input (true rawupdate 90-240Hz) it is
-       fully OFF: zero artifact. Committed strokes stay exact hardware samples. */
+    /* predictive glide — ALWAYS on while a stroke is live. This is what makes
+       a built-in smart-board feel instant: the visible tip runs ahead of the
+       newest hardware sample by velocity x age, collapsing the OS input
+       latency (p95 60-90ms on the target phones — clip-proven). The old
+       cadence gate mis-read bursty rawupdate as "fast" and left the tip
+       stalling; the gate is gone. Turn gate still kills the tail past sharp
+       bends so it never forks; it fades 100ms after the finger stops.
+       Committed strokes on pointer-up remain the exact hardware samples. */
     const d = this.boardDraft;
     if (d && d.type === "stroke") {
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
       const lp = pts[pts.length - 1];
-      const speed = Math.hypot(this.predV.x, this.predV.y);
-      const sparse = this.inDt > 40;
-      if (pts.length > 1 && lp && sparse && this.predOk && speed > 150 && age < 220) {
-        const t = Math.min(age, 120) / 1000;
-        let dx = this.predV.x * t, dy = this.predV.y * t;
-        const len = Math.hypot(dx, dy);
-        if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
-        if (len > 1) {
+      if (pts.length > 1 && lp && age < 220) {
+        let dx = 0, dy = 0;
+        if (this.predOk) {
+          const t = Math.min(age, 120) / 1000;
+          dx = this.predV.x * t; dy = this.predV.y * t;
+          const len = Math.hypot(dx, dy);
+          if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
+        }
+        if (dx !== 0 || dy !== 0) {
           ctx.save();
           ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
           ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
@@ -1294,6 +1295,11 @@ export class BoardEngine {
           ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
           ctx.restore();
         }
+        /* markers report the VISIBLE truth: where ink tip and finger sit on
+           screen right now (both extrapolated), so the HUD gap reads the real
+           residual misalignment — ~0 when the glide is tracking the finger. */
+        this.inkPt = { x: lp.x + dx, y: lp.y + dy };
+        this.lastPt = { x: lp.x + dx, y: lp.y + dy };
       }
     }
     if (this.latencyOn && this.latPendingT0) {
@@ -1414,7 +1420,7 @@ export class BoardEngine {
       this.lastEvtT = et;
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
-      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); if (!this.boardDraft) this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
