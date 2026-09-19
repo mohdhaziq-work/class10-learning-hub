@@ -836,8 +836,9 @@ export class BoardEngine {
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
   private moveEvtRaw = false; private desyncOn = false;
-  private osPred: { x: number; y: number }[] | null = null; private predOk = true;
-  private inkPresenter: any = null; private lastCoalN = 0; private lastPredN = 0;
+  private predOk = true;
+  private inkPresenter: any = null; private lastCoalN = 0;
+  private inDt = 16; private lastEvtT = 0; /* input cadence EMA (ms between events) */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -1176,7 +1177,7 @@ export class BoardEngine {
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
     const p95 = (a: number[]) => { if (a.length < 4) return 0; const s2 = [...a].sort((x, y) => x - y); return s2[Math.min(s2.length - 1, Math.floor(s2.length * 0.95))]; };
-    this.hudL4 = `QA  IN-p95 ${Math.round(p95(this.latIn))} ms   coal ${this.lastCoalN}   ${this.moveEvtRaw ? "RAW" : "move"}${this.lastPredN ? " +PRED" : ""}${this.desyncOn ? " +DES" : ""}`;
+    this.hudL4 = `QA  IN-p95 ${Math.round(p95(this.latIn))} ms   coal ${this.lastCoalN}   ${this.moveEvtRaw ? "RAW" : "move"}${this.inDt > 40 ? " SPARSE+bridge" : ""}${this.desyncOn ? " +DES" : ""}`;
     const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
     this.hudL1 = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     const t = this.latencyEl.querySelector("#latText");
@@ -1263,41 +1264,36 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    /* predicted tip: OS getPredictedEvents() (Chromium LSQ predictor) when the
-       browser gives us one, otherwise our own capped EMA extrapolation — never
-       both stacked. Transient only; committed strokes stay exact hardware
-       samples. Turn gating and a speed floor keep it from forking strokes. */
+    /* ADAPTIVE predictive tip (v3 rule): prediction exists ONLY to bridge the
+       gaps of SPARSE input (event cadence > 40ms — WebView ~10Hz). On fast
+       input (rawupdate 90-240Hz) it is fully OFF: zero ghost, zero wobble.
+       When bridging, the extension uses the stroke's own colour/width so it
+       reads as ink, not a translucent tail. Turn gate + speed floor + a tight
+       24px cap keep it from ever forking the stroke. Committed strokes are
+       always the exact hardware samples. */
     const d = this.boardDraft;
     if (d && d.type === "stroke") {
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
       const lp = pts[pts.length - 1];
       const speed = Math.hypot(this.predV.x, this.predV.y);
-      const os = age < 200 && this.osPred && this.osPred.length ? this.osPred : null;
-      const own = this.predOk && speed > 150 && age < 220; /* 0.15 px/ms floor */
-      if (pts.length > 1 && lp && (os || own)) {
-        ctx.save();
-        ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-        ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
-        ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
-        ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-        if (os) {
-          ctx.globalAlpha = 0.55;
-          ctx.beginPath(); ctx.moveTo(lp.x, lp.y);
-          for (const q of os) ctx.lineTo(q.x, q.y);
-          ctx.stroke();
-        } else {
-          const t = Math.min(age, 40) / 1000; /* research sweet spot <= 50 ms */
-          let dx = this.predV.x * t, dy = this.predV.y * t;
-          const len = Math.hypot(dx, dy);
-          const cap = Math.max(32, 1.5 * (d.size || 3));
-          if (len > cap) { dx *= cap / len; dy *= cap / len; }
-          if (len > 1) {
-            ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
-            ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
-          }
+      const sparse = this.inDt > 40;
+      if (pts.length > 1 && lp && sparse && this.predOk && speed > 150 && age < 220) {
+        const t = Math.min(age, 40) / 1000;
+        let dx = this.predV.x * t, dy = this.predV.y * t;
+        const len = Math.hypot(dx, dy);
+        const cap = Math.max(24, 1.2 * (d.size || 3));
+        if (len > cap) { dx *= cap / len; dy *= cap / len; }
+        if (len > 1) {
+          ctx.save();
+          ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+          ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
+          ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
+          ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
+          ctx.globalAlpha = age < 120 ? 0.9 : Math.max(0, (220 - age) / 100) * 0.9;
+          ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
+          ctx.restore();
         }
-        ctx.restore();
       }
     }
     if (this.latencyOn && this.latPendingT0) {
@@ -1411,6 +1407,11 @@ export class BoardEngine {
     const MOVE_EVT = typeof PointerEvent !== "undefined" && "onpointerrawupdate" in (window as any) ? "pointerrawupdate" : "pointermove";
     this.moveEvtRaw = MOVE_EVT === "pointerrawupdate";
     this.on(cv, MOVE_EVT, (e: PointerEvent) => {
+      /* cadence EMA: tells the adaptive predictor whether input is sparse
+         (WebView ~10Hz needs a bridge) or fast (rawupdate — no prediction). */
+      const et = performance.now();
+      if (this.lastEvtT) { const g = et - this.lastEvtT; if (g > 0 && g < 400) this.inDt = this.inDt * 0.8 + g * 0.2; }
+      this.lastEvtT = et;
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
       { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
@@ -1453,12 +1454,8 @@ export class BoardEngine {
       }
       const [ox2, oy2] = off(e);
       this.boardStroke(e, this.toWorldInto(e.clientX - r.left - ox2, e.clientY - r.top - oy2), "move");
-      /* QA: OS predictor (Chromium LSQ fit) when available; never stacked with
-         our own EMA extrapolation below. Delegated ink trail: OS-level wet
-         overlay on Windows Ink displays (best effort). */
-      const pe = (e as any).getPredictedEvents ? ((e as any).getPredictedEvents() as PointerEvent[]) : null;
-      this.lastPredN = pe ? pe.length : 0;
-      this.osPred = pe && pe.length ? pe.map((q) => this.toWorldInto(q.clientX - r.left, q.clientY - r.top)) : null;
+      /* delegated ink trail (Windows Ink displays) — best effort, no visual
+         prediction on top of our own adaptive bridge (never stacked). */
       try { this.inkPresenter?.updateInkTrailStartPoint?.(e, { color: this.color, diameter: Math.max(this.size || 3, 2) }); } catch { /* noop */ }
     }, { passive: true });
     const up = (e: PointerEvent) => {
