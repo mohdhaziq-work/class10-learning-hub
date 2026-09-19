@@ -515,7 +515,7 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.boardFx = this.$("#boardFx");
-    this.fctx = this.boardFx.getContext("2d")!;
+    this.fctx = this.boardFx.getContext("2d", { desynchronized: true })!;
     /* Dual-threaded pipeline is implemented but DISABLED by default: on
        low-end classroom SoCs the cross-thread messaging + extra compositor
        layer cost more than they save, and it caused live-ink mapping bugs.
@@ -530,7 +530,7 @@ export class BoardEngine {
         }
       } catch { this.inkWorker = null; }
     }
-    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d")!;
+    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", { desynchronized: true })!;
     /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
        The vector store (boardStore.objects) is the source of truth, so a
        restore is just: preventDefault + full history repaint. */
@@ -1250,19 +1250,19 @@ export class BoardEngine {
     if (d && d.type === "stroke") {
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
-      if (pts.length > 1 && age < 150) {
+      if (pts.length > 1 && age < 220) {
         const lp = pts[pts.length - 1];
-        const t = Math.min(age, 80) / 1000;
+        const t = Math.min(age, 120) / 1000;
         let dx = this.predV.x * t, dy = this.predV.y * t;
         const len = Math.hypot(dx, dy);
-        if (len > 70) { dx *= 70 / len; dy *= 70 / len; }
+        if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
         if (len > 1) {
           ctx.save();
           ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
           ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
           ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
           ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = age < 80 ? 1 : (150 - age) / 70;
+          ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
           ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
           ctx.restore();
         }
@@ -1285,6 +1285,9 @@ export class BoardEngine {
       ctx.globalAlpha = 1; ctx.fillStyle = "#202124";
       ctx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
       lines.forEach((ln, i2) => ctx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
+    }
+    if (this.boardDraft && this.boardDraft.type === "stroke" && performance.now() - this.lastSampleT < 240) {
+      this.scheduleLive(); /* keep the predicted tip gliding at display rate */
     }
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
