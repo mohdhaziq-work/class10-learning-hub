@@ -827,9 +827,10 @@ export class BoardEngine {
   private predV = { x: 0, y: 0 };
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
-  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp) seeds the horizon;
-     horizonMs is then tuned per-stroke by a closed-loop calibrator (see the
-     stroke push path) until the visible tip converges to the physical finger. */
+  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp), measured on EVERY
+     pointer event — seeds the horizon at stroke start and is the convergence
+     target of the closed-loop calibrator (see the stroke push path), which
+     tunes horizonMs until the visible tip sits under the physical finger. */
   private latEMA = 40;
   private horizonMs = 40;
   private predOk = true;
@@ -1459,9 +1460,17 @@ export class BoardEngine {
   }
 
   private boardStroke(e: PointerEvent, w: { x: number; y: number } | null, phase: "down" | "move" | "up") {
-    if (this.latencyOn) {
+    {
+      /* DELIVERY LATENCY IS MEASURED ALWAYS — not only while the speed test is
+         on. This number is the seed and the convergence target of the tip
+         extrapolation, so gating it behind the admin HUD left every normal
+         lesson running on a frozen 40 ms guess. latIn (the HUD history) stays
+         gated; the EMA itself does not. */
       const d = performance.now() - e.timeStamp;
-      if (d >= 0 && d < 400) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); this.latEMA = this.latEMA * 0.8 + d * 0.2; }
+      if (d >= 0 && d < 400) {
+        this.latEMA = this.latEMA * 0.8 + d * 0.2;
+        if (this.latencyOn) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); }
+      }
     }
     const tool = this.tool;
     if (phase === "down") { this.hidePops(); this.erasedThisDrag = false; }
@@ -1635,18 +1644,32 @@ export class BoardEngine {
             const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
             if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
           }
-          /* CLOSED-LOOP LATENCY CALIBRATION: the visible tip just before this
-             hardware sample arrived should coincide with the sample (the
-             finger IS here now). Project the miss onto the motion direction
-             and nudge the horizon until it converges to this device's true
-             total latency — self-correcting on every device, no guessing. */
+          /* CLOSED-LOOP LATENCY CALIBRATION: aim the visible tip at the FINGER,
+             not at this sample. The sample is already latEMA ms stale when it
+             reaches us, so "tip == sample" reads as a trailing tip on screen.
+             The finger's current position is estimated as w + predV*latEMA;
+             project the miss onto the motion direction and nudge the horizon
+             until it settles on this device's true delivery latency. The old
+             comment here claimed "the finger IS here now" — that assumption was
+             false and is what made the controller converge to zero. */
           {
             const spd = Math.hypot(this.predV.x, this.predV.y);
             if (spd > 120 && pts.length > 2 && this.predOk) {
               const ageA = performance.now() - this.lastSampleT;
+              /* the visible tip as it stood an instant ago */
               const tvx = last.x + (this.predV.x * (ageA + this.horizonMs)) / 1000;
               const tvy = last.y + (this.predV.y * (ageA + this.horizonMs)) / 1000;
-              const eProj = ((w.x - tvx) * this.predV.x + (w.y - tvy) * this.predV.y) / spd;
+              /* REFERENCE = THE FINGER, NOT THIS SAMPLE. w was generated
+                 latEMA ms ago, so the finger has moved on by predV*latEMA.
+                 Aiming the tip at the raw sample drove horizonMs to 0 and
+                 re-opened the original gap (velocity x delivery, ~54 px at
+                 600 px/s / 90 ms) — the controller cancelled its own work.
+                 Aiming at the finger's current position settles horizonMs at
+                 the device's true delivery latency, which is where the visible
+                 gap reaches zero. Verified numerically before shipping. */
+              const refx = w.x + (this.predV.x * this.latEMA) / 1000;
+              const refy = w.y + (this.predV.y * this.latEMA) / 1000;
+              const eProj = ((refx - tvx) * this.predV.x + (refy - tvy) * this.predV.y) / spd;
               this.horizonMs = Math.max(0, Math.min(260, this.horizonMs + (0.3 * eProj * 1000) / spd));
             }
           }
