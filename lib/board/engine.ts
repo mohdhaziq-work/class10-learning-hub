@@ -827,10 +827,11 @@ export class BoardEngine {
   private predV = { x: 0, y: 0 };
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
-  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp). The physical
-     finger is (age + delivery) ahead of the newest sample we hold; the tip
-     extrapolates exactly that far. Measured, not guessed. */
+  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp) seeds the horizon;
+     horizonMs is then tuned per-stroke by a closed-loop calibrator (see the
+     stroke push path) until the visible tip converges to the physical finger. */
   private latEMA = 40;
+  private horizonMs = 40;
   private predOk = true;
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
@@ -989,8 +990,7 @@ export class BoardEngine {
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
     this.inkPt = { x: w.x, y: w.y };
-    this.lastPt = { x: w.x, y: w.y };
-    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t; this.predOk = true;
+    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t; this.predOk = true; this.horizonMs = this.latEMA;
     this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
@@ -1282,11 +1282,11 @@ export class BoardEngine {
     const lp = pts[pts.length - 1];
     let dx = 0, dy = 0;
     if (age < 220) {
-      const horizon = this.predOk ? Math.min(age + this.latEMA, 220) : Math.min(age, 80);
+      const horizon = this.predOk ? Math.min(age + this.horizonMs, 260) : Math.min(age, 80);
       const t = horizon / 1000;
       dx = this.predV.x * t; dy = this.predV.y * t;
       const len = Math.hypot(dx, dy);
-      if (len > 140) { dx *= 140 / len; dy *= 140 / len; }
+      if (len > 160) { dx *= 160 / len; dy *= 160 / len; }
       if (len > 1) {
         const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
         fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
@@ -1298,14 +1298,7 @@ export class BoardEngine {
         fx.beginPath(); fx.moveTo(lp.x, lp.y); fx.lineTo(lp.x + dx, lp.y + dy); fx.stroke();
         fx.restore();
       }
-    } else {
-      dx = 0; dy = 0;
     }
-    /* markers report the visible truth: estimated physical finger == visible
-       tip, so the HUD gap reads the real residual (~0) */
-    this.lastPt = { x: lp.x + dx, y: lp.y + dy };
-    this.inkPt = { x: lp.x + dx, y: lp.y + dy };
-    if ((isRecording() || this.latencyOn)) this.updateLatencyHud();
     /* glide: keep advancing at display rate until the finger rests */
     if (age < 240) this.scheduleGlide();
   }
@@ -1399,11 +1392,7 @@ export class BoardEngine {
     this.on(cv, "pointermove", (e: PointerEvent) => {
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
-      /* hover tracking only when idle — during a stroke the extrapolated
-         marker from drawTail is the truth; HUD updates happen in drawTail
-         AFTER markers are consistent, so the gap line reads the real
-         residual (~0) instead of the compensation distance */
-      { const rr = this.boardRectC || cv.getBoundingClientRect(); if (!this.boardDraft) this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); } }
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
@@ -1645,6 +1634,21 @@ export class BoardEngine {
             const v1x = last.x - pp2.x, v1y = last.y - pp2.y, v2x = w.x - last.x, v2y = w.y - last.y;
             const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
             if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
+          }
+          /* CLOSED-LOOP LATENCY CALIBRATION: the visible tip just before this
+             hardware sample arrived should coincide with the sample (the
+             finger IS here now). Project the miss onto the motion direction
+             and nudge the horizon until it converges to this device's true
+             total latency — self-correcting on every device, no guessing. */
+          {
+            const spd = Math.hypot(this.predV.x, this.predV.y);
+            if (spd > 120 && pts.length > 2 && this.predOk) {
+              const ageA = performance.now() - this.lastSampleT;
+              const tvx = last.x + (this.predV.x * (ageA + this.horizonMs)) / 1000;
+              const tvy = last.y + (this.predV.y * (ageA + this.horizonMs)) / 1000;
+              const eProj = ((w.x - tvx) * this.predV.x + (w.y - tvy) * this.predV.y) / spd;
+              this.horizonMs = Math.max(0, Math.min(260, this.horizonMs + (0.3 * eProj * 1000) / spd));
+            }
           }
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
