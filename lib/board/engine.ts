@@ -989,6 +989,7 @@ export class BoardEngine {
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
     this.inkPt = { x: w.x, y: w.y };
+    this.lastPt = { x: w.x, y: w.y };
     this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t; this.predOk = true;
     this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
@@ -1398,7 +1399,11 @@ export class BoardEngine {
     this.on(cv, "pointermove", (e: PointerEvent) => {
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
-      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
+      /* hover tracking only when idle — during a stroke the extrapolated
+         marker from drawTail is the truth; HUD updates happen in drawTail
+         AFTER markers are consistent, so the gap line reads the real
+         residual (~0) instead of the compensation distance */
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); if (!this.boardDraft) this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); } }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
