@@ -446,7 +446,7 @@ export class BoardEngine {
   private latPendingT0 = 0; private latLastHud = 0;
   private recCanvas = false; /* recording via board-canvas fallback (phones) */
   private recDirty = false; /* composite loop only blits when a layer actually changed */
-  private hudL1 = ""; private hudL2 = ""; private hudL3 = ""; private hudL4 = "";
+  private hudL1 = ""; private hudL2 = ""; private hudL3 = "";
   /* admin device features: latency tool + screen recording */
   private adminOn = false; private recTimer = 0; private recStartTs = 0;
   private adminUnsub: (() => void) | null = null; private boardRecRaf = 0;
@@ -515,14 +515,7 @@ export class BoardEngine {
     this.bctx = this.boardCanvas.getContext("2d")!;
     this.boardLive = this.$("#boardLive");
     this.boardFx = this.$("#boardFx");
-    /* desynchronized hint REMOVED everywhere: on several Android Chrome builds
-       the desync overlay plane renders solid black on screen while code-side
-       composites (recordings) look perfect — user hit exactly this. The hint
-       is worth at most ~1 composite frame; the risk is a black board. The QA
-       HUD keeps the +DES slot so a future runtime-safe reintroduction is
-       visible. */
-    this.desyncOn = false;
-    this.fctx = this.boardFx.getContext("2d", this.desyncOn ? { desynchronized: true } : undefined)!;
+    this.fctx = this.boardFx.getContext("2d")!;
     /* Dual-threaded pipeline is implemented but DISABLED by default: on
        low-end classroom SoCs the cross-thread messaging + extra compositor
        layer cost more than they save, and it caused live-ink mapping bugs.
@@ -537,7 +530,7 @@ export class BoardEngine {
         }
       } catch { this.inkWorker = null; }
     }
-    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d", this.desyncOn ? { desynchronized: true } : undefined)!;
+    if (!this.inkWorker) this.lctx = this.boardLive.getContext("2d")!;
     /* Chrome can drop canvas GPU contexts during aggressive flex re-sizes.
        The vector store (boardStore.objects) is the source of truth, so a
        restore is just: preventDefault + full history repaint. */
@@ -598,7 +591,6 @@ export class BoardEngine {
 
     let rzT: ReturnType<typeof setTimeout>;
     this.on(window, "resize", () => { clearTimeout(rzT); rzT = setTimeout(() => { if (this.doc?.kind === "pdf") this.computeFit(); }, 300); });
-    completePendingSignIn().then(() => this.startAdminWatch());
     this.on(window, "sb-board-dirty", () => this.renderBoard());
     this.on(window, "pagehide", () => this.flushSave());
     this.on(document, "visibilitychange", () => { if (document.visibilityState === "hidden") this.flushSave(); });
@@ -835,10 +827,6 @@ export class BoardEngine {
   private predV = { x: 0, y: 0 };
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
-  private moveEvtRaw = false; private desyncOn = false;
-  private predOk = true;
-  private inkPresenter: any = null; private lastCoalN = 0;
-  private inDt = 16; private lastEvtT = 0; /* input cadence EMA (ms between events) */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -904,7 +892,6 @@ export class BoardEngine {
       bx.fillRect(0, 0, this.boardW, this.boardH);
       this.drawBoardPattern(bx, z, px, py);
     }
-    this.clearLive();
     /* ink layer — erase objects punch holes here, the background below stays intact */
     const ix = this.inkX;
     if (ix && this.inkC) {
@@ -996,8 +983,6 @@ export class BoardEngine {
       color: tool === "highlighter" ? this.hlColor : this.color,
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
-    this.clearLive();
-    this.boardLive.style.opacity = tool === "highlighter" ? "0.45" : this.penKind === "marker" ? "0.55" : "1";
     this.inkPt = { x: w.x, y: w.y };
     this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t;
     this.latPendingT0 = performance.now();
@@ -1030,14 +1015,6 @@ export class BoardEngine {
       }
     };
     this.adminUnsub = watchAdmin(apply);
-  }
-  private initInkPresenter() {
-    /* OS delegated ink trail (Windows Ink). Best effort only — unsupported on
-       Android; the QA flag in the latency HUD shows whether it is actually live. */
-    try {
-      const inkNav = (navigator as any).ink;
-      if (inkNav?.requestPresenter) inkNav.requestPresenter().then((pp: any) => { this.inkPresenter = pp || null; }).catch(() => {});
-    } catch { /* unsupported */ }
   }
   private async toggleRec() {
     if (!this.adminOn) return;
@@ -1084,7 +1061,6 @@ export class BoardEngine {
       rctx.clearRect(0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardCanvas, 0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardLive, 0, 0, rec.width, rec.height);
-      rctx.drawImage(this.boardFx, 0, 0, rec.width, rec.height);
     };
     loop(performance.now());
     const stream = rec.captureStream(30);
@@ -1176,8 +1152,6 @@ export class BoardEngine {
     this.latLastHud = now;
     const avg = (a: number[]) => a.length ? a.reduce((x, v) => x + v, 0) / a.length : 0;
     const i = avg(this.latIn), dr = avg(this.latDraw);
-    const p95 = (a: number[]) => { if (a.length < 4) return 0; const s2 = [...a].sort((x, y) => x - y); return s2[Math.min(s2.length - 1, Math.floor(s2.length * 0.95))]; };
-    this.hudL4 = `QA p95 ${Math.round(p95(this.latIn))} c${this.lastCoalN} ${this.moveEvtRaw ? "RAW" : "MOV"}${this.inDt > 40 ? " BR" : ""}`;
     const est = i + dr + (1000 / 60); /* honest estimate: + one display frame */
     this.hudL1 = `INPUT ${i.toFixed(1)} ms  |  DRAW ${dr.toFixed(1)} ms  |  EST ${Math.round(est)} ms`;
     const t = this.latencyEl.querySelector("#latText");
@@ -1203,34 +1177,20 @@ export class BoardEngine {
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
+    const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
     ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1;
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
     ctx.restore();
     this.recDirty = true;
   }
-  /* clear only the incremental stroke layer */
-  private clearLive() {
-    const l = this.lctx;
-    l.setTransform(1, 0, 0, 1, 0, 0);
-    l.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
-    this.boardLive.style.opacity = "1";
-  }
-  /* INCREMENTAL INK — the way built-in classroom whiteboards stay gap-free:
-     the live canvas KEEPS the in-progress stroke as already-painted segments
-     (paintTip adds each new segment synchronously inside the pointer event),
-     and is cleared only at stroke start/end. Nothing redraws the whole stroke
-     per frame, so phones pay near-zero draw cost and the ink tip lands on
-     screen the instant the hardware sample arrives. This fx layer carries
-     only transients — input rings, lasso preview, predicted tip, rec HUD —
-     which are cheap to repaint every frame. */
   private drawLive() {
     this.recDirty = true;
     setEraseSurface(this.surfaceColor());
-    const ctx = this.fctx;
+    const ctx = this.lctx;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
+    ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
     if ((isRecording() || this.latencyOn) && this.lastPt) {
       const z = this.boardZoom;
       ctx.save();
@@ -1264,54 +1224,46 @@ export class BoardEngine {
       ctx.restore();
       return;
     }
-    /* predictive glide — ALWAYS on while a stroke is live. This is what makes
-       a built-in smart-board feel instant: the visible tip runs ahead of the
-       newest hardware sample by velocity x age, collapsing the OS input
-       latency (p95 60-90ms on the target phones — clip-proven). The old
-       cadence gate mis-read bursty rawupdate as "fast" and left the tip
-       stalling; the gate is gone. Turn gate still kills the tail past sharp
-       bends so it never forks; it fades 100ms after the finger stops.
-       Committed strokes on pointer-up remain the exact hardware samples. */
-    const d = this.boardDraft;
-    if (d && d.type === "stroke") {
+    if (!this.boardDraft || this.boardDraft.type === "erase") return;
+    ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+    ctx.save();
+    ctx.translate(this.boardPan.x, this.boardPan.y);
+    ctx.scale(this.boardZoom, this.boardZoom);
+    drawObject(ctx, this.boardDraft);
+    /* latency compensation: extend the visible tip along the measured writing
+       velocity by the sample age, so the ink sits under the physical finger
+       instead of ~40 ms behind it. Transient only — the committed stroke is
+       exact, and the tail collapses the moment the finger stops or lifts. */
+    {
+      const d = this.boardDraft;
       const pts = d.points || [];
       const age = performance.now() - this.lastSampleT;
-      const lp = pts[pts.length - 1];
-      if (pts.length > 1 && lp && age < 220) {
-        let dx = 0, dy = 0;
-        if (this.predOk) {
-          const t = Math.min(age, 120) / 1000;
-          dx = this.predV.x * t; dy = this.predV.y * t;
-          const len = Math.hypot(dx, dy);
-          if (len > 90) { dx *= 90 / len; dy *= 90 / len; }
-        }
-        if (dx !== 0 || dy !== 0) {
-          ctx.save();
-          ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-          ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
+      if (d.type === "stroke" && pts.length > 1 && age < 150) {
+        const lp = pts[pts.length - 1];
+        const t = Math.min(age, 80) / 1000;
+        let dx = this.predV.x * t, dy = this.predV.y * t;
+        const len = Math.hypot(dx, dy);
+        if (len > 70) { dx *= 70 / len; dy *= 70 / len; }
+        if (len > 1) {
+          const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
           ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
           ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = age < 120 ? 1 : Math.max(0, (220 - age) / 100);
+          ctx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 80 ? 1 : (150 - age) / 70);
           ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
-          ctx.restore();
         }
-        /* markers report the VISIBLE truth: where ink tip and finger sit on
-           screen right now (both extrapolated), so the HUD gap reads the real
-           residual misalignment — ~0 when the glide is tracking the finger. */
-        this.inkPt = { x: lp.x + dx, y: lp.y + dy };
-        this.lastPt = { x: lp.x + dx, y: lp.y + dy };
       }
     }
+    ctx.restore();
     if (this.latencyOn && this.latPendingT0) {
-      const dd = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
-      if (dd < 400) { this.latDraw.push(dd); if (this.latDraw.length > 60) this.latDraw.shift(); }
+      const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
+      if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
       this.updateLatencyHud();
     }
-    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the fx
-       layer so the speed test (and finger/ink coords) is IN the video */
+    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the
+       live layer so the speed test (and finger/ink coords) is IN the video */
     if (this.recCanvas && this.latencyOn && this.hudL1) {
       ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      const lines = [this.hudL1, this.hudL2, this.hudL3, this.hudL4].filter(Boolean);
+      const lines = [this.hudL1, this.hudL2, this.hudL3].filter(Boolean);
       const bw = 320, bh = 12 + lines.length * 17;
       const x0 = Math.max(8, this.boardW - bw - 12), y0 = 12;
       ctx.globalAlpha = 0.93; ctx.fillStyle = "#ffffff"; ctx.fillRect(x0, y0, bw, bh);
@@ -1320,13 +1272,10 @@ export class BoardEngine {
       ctx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
       lines.forEach((ln, i2) => ctx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
     }
-    if (this.boardDraft && this.boardDraft.type === "stroke" && performance.now() - this.lastSampleT < 240) {
-      this.scheduleLive(); /* keep the predicted tip gliding at display rate */
-    }
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
   private paintIncremental() {
-    this.clearLive(); /* stroke committed to the static layer */
+    this.drawLive(); /* clears the live layer */
     const o = this.boardStore.objects[this.boardStore.objects.length - 1];
     if (!o) return;
     const ctx = this.inkX || this.bctx;
@@ -1406,21 +1355,10 @@ export class BoardEngine {
       const [ox, oy] = off(e);
       this.boardStroke(e, this.toWorld(e.clientX - r.left - ox, e.clientY - r.top - oy), "down");
     });
-    /* Chromium aligns pointermove to the next rAF; pointerrawupdate is
-       dispatched as fast as events are produced — the cheapest way to win
-       back ~one frame of input latency (Chrome Developers, 2017+). One
-       listener on the chosen event, never both. */
-    const MOVE_EVT = typeof PointerEvent !== "undefined" && "onpointerrawupdate" in (window as any) ? "pointerrawupdate" : "pointermove";
-    this.moveEvtRaw = MOVE_EVT === "pointerrawupdate";
-    this.on(cv, MOVE_EVT, (e: PointerEvent) => {
-      /* cadence EMA: tells the adaptive predictor whether input is sparse
-         (WebView ~10Hz needs a bridge) or fast (rawupdate — no prediction). */
-      const et = performance.now();
-      if (this.lastEvtT) { const g = et - this.lastEvtT; if (g > 0 && g < 400) this.inDt = this.inDt * 0.8 + g * 0.2; }
-      this.lastEvtT = et;
+    this.on(cv, "pointermove", (e: PointerEvent) => {
       /* debug aid: while recording, a red ring shows exactly where the input is —
          compare it with the ink to verify alignment */
-      { const rr = this.boardRectC || cv.getBoundingClientRect(); if (!this.boardDraft) this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
+      { const rr = this.boardRectC || cv.getBoundingClientRect(); this.lastPt = this.toWorld(e.clientX - rr.left, e.clientY - rr.top); if (isRecording() || this.latencyOn) { this.scheduleLive(); this.updateLatencyHud(); } }
       if (e.pointerId === this.palmPointer) {
         const r = this.boardRectC || cv.getBoundingClientRect();
         const w = this.toWorld(e.clientX - r.left, e.clientY - r.top);
@@ -1447,23 +1385,17 @@ export class BoardEngine {
       if (coalesce && (e as any).getCoalescedEvents) {
         const gce = (e as any).getCoalescedEvents() as PointerEvent[];
         if (gce.length > 1) {
-          this.lastCoalN = gce.length;
           for (let i = 0; i < gce.length; i++) {
             const ev = gce[i];
             const [ox, oy] = off(ev);
             this.boardStroke(ev, this.toWorldInto(ev.clientX - r.left - ox, ev.clientY - r.top - oy), "move");
           }
-          /* the outer event itself carries the NEWEST sample on many Android
-             browsers — without inking it the tip stays one event (~30 ms)
-             behind the finger; the 1.25px gate drops true duplicates */
+          return;
         }
       }
       const [ox2, oy2] = off(e);
       this.boardStroke(e, this.toWorldInto(e.clientX - r.left - ox2, e.clientY - r.top - oy2), "move");
-      /* delegated ink trail (Windows Ink displays) — best effort, no visual
-         prediction on top of our own adaptive bridge (never stacked). */
-      try { this.inkPresenter?.updateInkTrailStartPoint?.(e, { color: this.color, diameter: Math.max(this.size || 3, 2) }); } catch { /* noop */ }
-    }, { passive: true });
+    });
     const up = (e: PointerEvent) => {
       this.pointers.delete(e.pointerId);
       if (e.pointerId === this.palmPointer) { this.palmPointer = -1; this.palmErased = false; }
@@ -1472,7 +1404,6 @@ export class BoardEngine {
     };
     this.on(cv, "pointerup", up);
     this.on(cv, "pointercancel", up);
-    this.initInkPresenter();
     this.on(this.boardScroll, "wheel", (e: WheelEvent) => {
       e.preventDefault();
       const r = cv.getBoundingClientRect();
@@ -1662,14 +1593,6 @@ export class BoardEngine {
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
         if (Math.hypot(w.x - last.x, w.y - last.y) >= 1.25) {
-          /* sharp-turn gate: kill the predictive tail past ~60 deg bends so it
-             can never fork the stroke at corners (research rule 3). */
-          const prevP = pts.length > 1 ? pts[pts.length - 2] : null;
-          if (prevP) {
-            const v1x = last.x - prevP.x, v1y = last.y - prevP.y, v2x = w.x - last.x, v2y = w.y - last.y;
-            const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
-            if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
-          }
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
           pts.push(this.pressureOn && pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
@@ -2999,7 +2922,10 @@ export class BoardEngine {
       const pill = this.$("#recPill") as HTMLElement | null; if (pill) pill.hidden = true;
       this.toast("Recording saved — MENU > CLIPS");
     });
-    /* admin watch now starts at boot after completePendingSignIn (see init) */
+    /* in-app (WebView) sign-in finishes via redirect — complete it at boot so
+       the admin session unlocks REC inside the APK shell; on plain web it
+       resolves immediately */
+    completePendingSignIn().then(() => this.startAdminWatch());
     this.$("#btnSave").onclick = () => {
       try { localStorage.setItem(LS_KEY, JSON.stringify(this.collectSession())); this.toast("Saved"); }
       catch { this.toast("Save failed — the board has large images"); }
