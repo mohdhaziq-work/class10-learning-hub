@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChapterFound } from "@/lib/syllabus";
 import { chapterDetail, autoDetail, type ChapterDetail, type QuizQ } from "@/lib/content";
 import { useMergedDetail } from "@/lib/overrides";
@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/Icon";
 import MindMapInteractive from "@/components/chapter/MindMapInteractive";
 import ActivityArt from "@/components/chapter/ActivityArt";
 import { EXTRA_QUIZ } from "@/lib/content/quizExtra";
+import { SST_MCQ } from "@/lib/content/sstMcq";
 import { FORMULA_GUIDE } from "@/lib/content/formulaGuide";
 import { ACTIVITIES } from "@/lib/content/activities";
 
@@ -96,32 +97,81 @@ function Slides({ slides }: { slides: NonNullable<ChapterDetail["slides"]> }) {
  );
 }
 
+/* Deterministic option shuffle.
+   Content banks conventionally store the correct option first (answer: 0), so
+   without this the correct choice was almost always displayed as option A and
+   a student could score full marks by always tapping A. The order is derived
+   from the question text itself, so it is stable across re-renders (options
+   never jump while a student is answering) yet varied across questions. */
+function optionOrder(seed: string, n: number): number[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  let s = h >>> 0;
+  const rnd = () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; };
+  const idx = Array.from({ length: n }, (_, i) => i);
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = idx[i]; idx[i] = idx[j]; idx[j] = t; }
+  return idx;
+}
+
 /* ---------------- Quiz ---------------- */
 function Quiz({ quiz }: { quiz: QuizQ[] }) {
  const [ans, setAns] = useState<Record<number, number>>({});
  const [done, setDone] = useState(false);
+ const [topic, setTopic] = useState("__all");
+ /* stable shuffled option order per question (see optionOrder above) */
+ const orders = useMemo(() => quiz.map((q) => optionOrder(q.q, q.options.length)), [quiz]);
+ /* every question that carries a topic can be practised topic by topic */
+ const topics = useMemo(
+ () => Array.from(new Set(quiz.map((q) => q.topic).filter(Boolean))) as string[],
+ [quiz],
+ );
  if (!quiz.length) return <p className="text-ink-mute text-sm">The quiz is being prepared.</p>;
- const score = quiz.filter((q, i) => ans[i] === q.answer).length;
+ /* answers are stored against the ORIGINAL index, so switching topics never
+    wipes what the student has already marked. */
+ const rows = quiz.map((q, i) => ({ q, i })).filter((r) => topic === "__all" || r.q.topic === topic);
+ const score = rows.filter((r) => ans[r.i] === r.q.answer).length;
  return (
  <div>
- {quiz.map((q, i) => {
+ {topics.length > 1 && (
+ <div className="mb-4">
+ <p className="eyebrow mb-2">Practise by topic</p>
+ <div className="flex flex-wrap gap-2">
+ {["__all", ...topics].map((tp) => {
+ const on = topic === tp;
+ const n = tp === "__all" ? quiz.length : quiz.filter((q) => q.topic === tp).length;
+ return (
+ <button key={tp} onClick={() => { setTopic(tp); setDone(false); }}
+ className={`text-[12.5px] font-semibold px-3.5 py-2 rounded-full border transition ${on ? "border-[#1a73e8] bg-[#1a73e8]/[.08] text-[#1a73e8]" : "border-slate-300 text-ink-soft hover:border-slate-500"}`}>
+ {tp === "__all" ? `All topics (${n})` : `${tp} (${n})`}
+ </button>
+ );
+ })}
+ </div>
+ </div>
+ )}
+ {rows.map(({ q, i }, n) => {
  const picked = ans[i];
  const ok = done && picked === q.answer;
  const bad = done && picked !== undefined && picked !== q.answer;
  return (
  <div key={i} className={`rounded-2xl border-2 p-4 sm:p-5 mb-3.5 transition ${ok ? "border-g-green bg-g-green/[.06]" : bad ? "border-g-red bg-g-red/[.05]" : "border-slate-200 "}`}>
- <p className="font-bold text-[15.5px] leading-snug">Q{i + 1}. {q.q}</p>
+ {q.topic && (
+ <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[.12em] text-ink-mute bg-slate-100 rounded-full px-2.5 py-1 mb-2">
+ <Icon name="target" size={12} /> {q.topic}
+ </span>
+ )}
+ <p className="font-bold text-[15.5px] leading-snug">Q{n + 1}. {q.q}</p>
  <div className="grid gap-2 mt-3 sm:grid-cols-2">
- {q.options.map((o, k) => (
- <button key={k} disabled={done}
- onClick={() => setAns({ ...ans, [i]: k })}
- className={`flex items-center gap-2.5 text-left text-[14px] font-medium px-4 py-2.5 rounded-xl border-2 transition ${picked === k
+ {orders[i].map((orig, k) => (
+ <button key={orig} disabled={done}
+ onClick={() => setAns({ ...ans, [i]: orig })}
+ className={`flex items-center gap-2.5 text-left text-[14px] font-medium px-4 py-2.5 rounded-xl border-2 transition ${picked === orig
  ? "border-slate-900 bg-slate-100 "
  : "border-slate-200 hover:border-slate-400"}`}>
  <span className="w-6 h-6 rounded-full grid place-items-center text-[12px] font-bold bg-slate-200 flex-none">
  {String.fromCharCode(65 + k)}
  </span>
- {o}
+ {q.options[orig]}
  </button>
  ))}
  </div>
@@ -145,10 +195,10 @@ function Quiz({ quiz }: { quiz: QuizQ[] }) {
  </button>
  ) : (
  <div className="rounded-2xl p-5 text-center text-white bg-slate-900 ">
- <Icon name={score / quiz.length >= 0.8 ? "award" : score / quiz.length >= 0.5 ? "target" : "bookOpen"} size={34} className="mx-auto" />
- <p className="text-[22px] font-extrabold mt-1">Score: {score} / {quiz.length}</p>
+ <Icon name={score / rows.length >= 0.8 ? "award" : score / rows.length >= 0.5 ? "target" : "bookOpen"} size={34} className="mx-auto" />
+ <p className="text-[22px] font-extrabold mt-1">Score: {score} / {rows.length}</p>
  <p className="opacity-80 text-[14px] font-medium">
- {score / quiz.length >= 0.8 ? "Excellent — board-ready!" : score / quiz.length >= 0.5 ? "Good — revise once more." : "Review the slides, then try again."}
+ {score / rows.length >= 0.8 ? "Excellent — board-ready!" : score / rows.length >= 0.5 ? "Good — revise once more." : "Review the slides, then try again."}
  </p>
  <button onClick={() => { setAns({}); setDone(false); }} className="btn-g bg-white/20 hover:bg-white/30 text-sm mt-3">
  <Icon name="refreshCw" size={16} /> Try again
@@ -415,8 +465,8 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
  {active === "quiz" && (
  <div>
- <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length + (EXTRA_QUIZ[key] || []).length} questions)</PHead>
- <Quiz quiz={[...(D.quiz || []), ...(EXTRA_QUIZ[key] || [])]} />
+ <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length + (EXTRA_QUIZ[key] || []).length + (SST_MCQ[key] || []).length} questions)</PHead>
+ <Quiz quiz={[...(D.quiz || []), ...(EXTRA_QUIZ[key] || []), ...(SST_MCQ[key] || [])]} />
  </div>
  )}
 
