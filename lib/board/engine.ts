@@ -439,7 +439,7 @@ export class BoardEngine {
   /* zero-allocation hot path: pooled stroke vectors (x, y, pressure triples) */
   private strokePool = new Float32Array(16384); private workerBuf = new Float32Array(16384);
   private liveIdx = 1; private liveHas = false; private lp0x = 0; private lp0y = 0; private lp1x = 0; private lp1y = 0;
-  private touchPending: { x: number; y: number; pr: number } | null = null; private palmPointer = -1; private palmErased = false;
+  private palmPointer = -1; private palmErased = false;
   /* pen latency diagnostic (MENU > Pen latency test) */
   private latencyOn = false; private latencyEl: HTMLElement | null = null;
   private latIn: number[] = []; private latDraw: number[] = [];
@@ -821,19 +821,16 @@ export class BoardEngine {
   private worldPt = { x: 0, y: 0 }; /* pre-allocated — hot path never allocates */
   private lastPt: { x: number; y: number } | null = null; /* pointer position, drawn as a marker while recording */
   private inkPt: { x: number; y: number } | null = null; /* where ink actually lands */
-  /* input-latency compensation: hardware reports the finger ~30-60 ms in the
-     past; a short velocity extrapolation draws the visible tip where the
-     finger physically IS right now. Committed points stay exact samples. */
-  private predV = { x: 0, y: 0 };
-  private prevSample: { x: number; y: number; t: number } | null = null;
-  private lastSampleT = 0;
-  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp), measured on EVERY
-     pointer event — seeds the horizon at stroke start and is the convergence
-     target of the closed-loop calibrator (see the stroke push path), which
-     tunes horizonMs until the visible tip sits under the physical finger. */
-  private latEMA = 40;
-  private horizonMs = 40;
-  private predOk = true;
+  /* THERE IS NO PREDICTION LAYER, BY DESIGN.
+     Earlier builds extrapolated a "tail" past the newest hardware sample to
+     hide glass-to-ink latency. That is precisely what made writing feel wrong:
+     the drawn line ran AHEAD of the pen, wobbled on slow strokes, forked at
+     corners, and the ink was never exactly under the finger. A built-in
+     smart-board whiteboard does not predict - it simply puts ink down the
+     instant it has a sample. So do we now: every sample is drawn at its exact
+     position, in order, with no horizon, no velocity estimate, no glide loop
+     and no rewriting of committed points. The only delay left is the OS touch
+     delivery latency itself, which no web page can remove. */
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -991,8 +988,9 @@ export class BoardEngine {
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
     this.inkPt = { x: w.x, y: w.y };
-    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t; this.predOk = true; this.horizonMs = this.latEMA;
     this.latPendingT0 = performance.now();
+    /* the live layer holds exactly ONE stroke, so it always starts clean */
+    this.clearLive();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
   private scheduleLive() {
@@ -1179,9 +1177,17 @@ export class BoardEngine {
      sample arrives instead of one frame later. The full smooth redraw on the
      next rAF clears and replaces it, so no artifacts accumulate. Committed
      points stay exactly at the pointer positions (no nudge, no prediction). */
-  private paintTip(a: { x: number; y: number }, b: { x: number; y: number }) {
+  private paintTip(c: { x: number; y: number } | null, a: { x: number; y: number }, b: { x: number; y: number }) {
     const d = this.boardDraft; if (!d || d.type !== "stroke") return;
     const ctx = this.lctx; if (!ctx) return;
+    /* If the live layer is not in sync (stroke not painted yet, or the view
+       moved under ink that is already there), repaint the whole draft rather
+       than appending onto a stale layer. The new sample is already inside
+       d.points at this point, so a full repaint is always correct. */
+    if (!this.livePainted || this.livePanX !== this.boardPan.x || this.livePanY !== this.boardPan.y || this.liveZoom !== this.boardZoom) {
+      this.paintDraft();
+      return;
+    }
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(this.boardZoom, this.boardZoom);
@@ -1189,125 +1195,138 @@ export class BoardEngine {
     ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
     ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
     ctx.globalAlpha = kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1;
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+    /* SMOOTH WET INK, drawn incrementally.
+       Committed strokes are rendered by pathSmooth - a quadratic curve through
+       the midpoints of consecutive samples. Wet ink used to be straight
+       segments, so a curve looked faceted while being drawn and then visibly
+       changed shape the moment it was committed. This paints exactly the same
+       quadratic, one piece per sample (the piece pathSmooth would draw for
+       index j-1), so the curve on screen never reshapes on commit. It stays
+       O(1) per sample, so the live layer still gets no quadratic overdraw. */
+    ctx.beginPath();
+    if (c) {
+      ctx.moveTo((c.x + a.x) / 2, (c.y + a.y) / 2);
+      ctx.quadraticCurveTo(a.x, a.y, (a.x + b.x) / 2, (a.y + b.y) / 2);
+    } else {
+      ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke();
     ctx.restore();
     this.recDirty = true;
   }
-  private drawLive() {
-    this.recDirty = true;
-    setEraseSurface(this.surfaceColor());
-    const ctx = this.lctx;
+  /* --- layer model ---------------------------------------------------------
+     board : committed objects; redrawn only when something really changes.
+     live  : the WET STROKE ONLY. Painted once when the stroke starts and then
+             APPENDED to, one smooth piece per hardware sample - it is never
+             cleared mid-stroke. Cost per sample is therefore constant no matter
+             how long the stroke grows. The old code cleared the layer and
+             redrew the entire in-progress stroke on every frame, so a long word
+             cost more to draw with every letter; on a phone or a low-power
+             class board that redraw falls behind and the ink visibly trails the
+             pen. That is the "writing feels heavy" symptom.
+     fx    : transient decoration - input rings, the canvas speed-test panel and
+             the lasso preview. Cleared and redrawn every frame.
+     All three layers are blitted into recordings (see compositeVisible). */
+  private livePainted = false;
+  private livePanX = 0; private livePanY = 0; private liveZoom = 1;
+  private clearLive() {
+    const ctx = this.lctx; if (!ctx) return;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
-    if ((isRecording() || this.latencyOn) && this.lastPt) {
-      const z = this.boardZoom;
-      ctx.save();
-      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      ctx.translate(this.boardPan.x, this.boardPan.y); ctx.scale(z, z);
-      ctx.globalAlpha = 0.9; ctx.setLineDash([]);
-      ctx.strokeStyle = "#ea4335"; ctx.lineWidth = 2 / z;
-      ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 16 / z, 0, 7); ctx.stroke();
-      ctx.fillStyle = "#ea4335";
-      ctx.beginPath(); ctx.arc(this.lastPt.x, this.lastPt.y, 2.5 / z, 0, 7); ctx.fill();
-      if (this.latencyOn && this.inkPt) {
-        ctx.strokeStyle = "#188038"; ctx.lineWidth = 1.5 / z;
-        ctx.beginPath(); ctx.arc(this.inkPt.x, this.inkPt.y, 6 / z, 0, 7); ctx.stroke();
-      }
-      ctx.restore();
-    }
-    if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
-      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-      ctx.save();
-      ctx.translate(this.boardPan.x, this.boardPan.y);
-      ctx.scale(this.boardZoom, this.boardZoom);
-      const z = this.boardZoom;
-      ctx.beginPath();
-      ctx.moveTo(this.lasso[0].x, this.lasso[0].y);
-      for (let i = 1; i < this.lasso.length; i++) ctx.lineTo(this.lasso[i].x, this.lasso[i].y);
-      ctx.closePath();
-      ctx.globalAlpha = 0.12; ctx.fillStyle = "#dc2626"; ctx.fill();
-      ctx.globalAlpha = 1; ctx.setLineDash([7 / z, 5 / z]);
-      ctx.strokeStyle = "#dc2626"; ctx.lineWidth = 1.5 / z;
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-    if (!this.boardDraft || this.boardDraft.type === "erase") return;
+    this.livePainted = false;
+  }
+  /* full repaint of the in-progress stroke - only on stroke start and when the
+     view transform has moved under the already-painted ink */
+  private paintDraft() {
+    const ctx = this.lctx; if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.boardLive.width, this.boardLive.height);
+    this.livePainted = true;
+    this.livePanX = this.boardPan.x; this.livePanY = this.boardPan.y; this.liveZoom = this.boardZoom;
+    const d = this.boardDraft;
+    if (!d || d.type === "erase") return;
+    setEraseSurface(this.surfaceColor());
     ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
     ctx.save();
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
-    drawObject(ctx, this.boardDraft);
-    /* gap-zero tail lives on the fx layer with its own 60fps glide loop —
-       see drawTail(); the live layer keeps the verified per-event repaint. */
-    this.drawTail();
+    drawObject(ctx, d);
     ctx.restore();
+  }
+  /* transient overlays live on their own layer so they can be cleared cheaply
+     without ever touching the wet ink */
+  private drawOverlays() {
+    const fx = this.fctx;
+    if (!fx) return;
+    fx.setTransform(1, 0, 0, 1, 0, 0);
+    fx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
+    if ((isRecording() || this.latencyOn) && this.lastPt) {
+      const z = this.boardZoom;
+      fx.save();
+      fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      fx.translate(this.boardPan.x, this.boardPan.y); fx.scale(z, z);
+      fx.globalAlpha = 0.9; fx.setLineDash([]);
+      fx.strokeStyle = "#ea4335"; fx.lineWidth = 2 / z;
+      fx.beginPath(); fx.arc(this.lastPt.x, this.lastPt.y, 16 / z, 0, 7); fx.stroke();
+      fx.fillStyle = "#ea4335";
+      fx.beginPath(); fx.arc(this.lastPt.x, this.lastPt.y, 2.5 / z, 0, 7); fx.fill();
+      if (this.latencyOn && this.inkPt) {
+        fx.strokeStyle = "#188038"; fx.lineWidth = 1.5 / z;
+        fx.beginPath(); fx.arc(this.inkPt.x, this.inkPt.y, 6 / z, 0, 7); fx.stroke();
+      }
+      fx.restore();
+    }
+    if (this.lasso && this.lasso.length > 1) { /* lasso-eraser loop preview */
+      const z = this.boardZoom;
+      fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      fx.save();
+      fx.translate(this.boardPan.x, this.boardPan.y);
+      fx.scale(this.boardZoom, this.boardZoom);
+      fx.beginPath();
+      fx.moveTo(this.lasso[0].x, this.lasso[0].y);
+      for (let i = 1; i < this.lasso.length; i++) fx.lineTo(this.lasso[i].x, this.lasso[i].y);
+      fx.closePath();
+      fx.globalAlpha = 0.12; fx.fillStyle = "#dc2626"; fx.fill();
+      fx.globalAlpha = 1; fx.setLineDash([7 / z, 5 / z]);
+      fx.strokeStyle = "#dc2626"; fx.lineWidth = 1.5 / z;
+      fx.stroke();
+      fx.restore();
+    }
+  }
+  private drawLive() {
+    this.recDirty = true;
+    setEraseSurface(this.surfaceColor());
+    this.drawOverlays();
+    /* Repaint the wet stroke ONLY when the view transform moved under ink that
+       is already painted. While a stroke is running normally, paintTip appends
+       each new sample and this stays a no-op - constant cost per sample. */
+    const d = this.boardDraft;
+    if (!d || d.type === "erase") { if (this.livePainted) this.clearLive(); }
+    else if (!this.livePainted || this.livePanX !== this.boardPan.x || this.livePanY !== this.boardPan.y || this.liveZoom !== this.boardZoom) {
+      this.paintDraft();
+    }
     if (this.latencyOn && this.latPendingT0) {
-      const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
-      if (d < 400) { this.latDraw.push(d); if (this.latDraw.length > 60) this.latDraw.shift(); }
+      const dt = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
+      if (dt < 400) { this.latDraw.push(dt); if (this.latDraw.length > 60) this.latDraw.shift(); }
       this.updateLatencyHud();
     }
-    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the
-       live layer so the speed test (and finger/ink coords) is IN the video */
+    /* canvas-capture recordings cannot see the DOM HUD — paint it onto the fx
+       layer so the speed test (and finger/ink coords) is IN the video */
     if (this.recCanvas && this.latencyOn && this.hudL1) {
-      ctx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+      const fx = this.fctx;
+      fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
       const lines = [this.hudL1, this.hudL2, this.hudL3].filter(Boolean);
       const bw = 320, bh = 12 + lines.length * 17;
       const x0 = Math.max(8, this.boardW - bw - 12), y0 = 12;
-      ctx.globalAlpha = 0.93; ctx.fillStyle = "#ffffff"; ctx.fillRect(x0, y0, bw, bh);
-      ctx.strokeStyle = "#dadce0"; ctx.lineWidth = 1; ctx.strokeRect(x0, y0, bw, bh);
-      ctx.globalAlpha = 1; ctx.fillStyle = "#202124";
-      ctx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
-      lines.forEach((ln, i2) => ctx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
+      fx.globalAlpha = 0.93; fx.fillStyle = "#ffffff"; fx.fillRect(x0, y0, bw, bh);
+      fx.strokeStyle = "#dadce0"; fx.lineWidth = 1; fx.strokeRect(x0, y0, bw, bh);
+      fx.globalAlpha = 1; fx.fillStyle = "#202124";
+      fx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
+      lines.forEach((ln, i2) => fx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
     }
   }
-  /* GAP-ZERO tail on the fx layer: the newest hardware sample we hold was
-     generated (delivery latency) ms ago and the finger kept moving since, so
-     the visible tip is extrapolated by velocity x (age + measured delivery
-     latency) — the exact distance the finger is ahead. Ink therefore sits
-     under the physical finger with ~0 visible gap on any device. A dedicated
-     rAF glide loop keeps the tail moving at display rate between sparse OS
-     events; it only clears/repaints the cheap fx layer (never the wet stroke),
-     so there is zero overdraw on the live layer. Turn-gated (no fork at
-     bends), distance-capped, transient only: the committed stroke on
-     pointer-up is always the exact hardware samples. */
-  private drawTail() {
-    const fx = this.fctx;
-    fx.setTransform(1, 0, 0, 1, 0, 0);
-    fx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
-    const d = this.boardDraft;
-    if (!d || d.type !== "stroke") return;
-    const pts = d.points || [];
-    if (pts.length < 2) return;
-    const age = performance.now() - this.lastSampleT;
-    const lp = pts[pts.length - 1];
-    let dx = 0, dy = 0;
-    if (age < 220) {
-      const horizon = this.predOk ? Math.min(age + this.horizonMs, 260) : Math.min(age, 80);
-      const t = horizon / 1000;
-      dx = this.predV.x * t; dy = this.predV.y * t;
-      const len = Math.hypot(dx, dy);
-      if (len > 160) { dx *= 160 / len; dy *= 160 / len; }
-      if (len > 1) {
-        const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
-        fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
-        fx.save();
-        fx.translate(this.boardPan.x, this.boardPan.y); fx.scale(this.boardZoom, this.boardZoom);
-        fx.lineCap = "round"; fx.lineJoin = "round"; fx.setLineDash([]);
-        fx.strokeStyle = d.color || "#000"; fx.lineWidth = Math.max(d.size || 3, 1);
-        fx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 120 ? 1 : (220 - age) / 100);
-        fx.beginPath(); fx.moveTo(lp.x, lp.y); fx.lineTo(lp.x + dx, lp.y + dy); fx.stroke();
-        fx.restore();
-      }
-    }
-    /* glide: keep advancing at display rate until the finger rests */
-    if (age < 240) this.scheduleGlide();
-  }
-  private glideRaf = 0;
-  private scheduleGlide() {
-    if (this.glideRaf || this.destroyed) return;
-    this.glideRaf = requestAnimationFrame(() => { this.glideRaf = 0; this.drawTail(); });
-  }
+  /* (the extrapolated-tail renderer and its rAF glide loop lived here. Both
+     are deleted - see the no-prediction note at the top of this class.) */
   /* paint just the newest object straight onto the static canvas — no full redraw */
   private paintIncremental() {
     this.drawLive(); /* clears the live layer */
@@ -1460,17 +1479,13 @@ export class BoardEngine {
   }
 
   private boardStroke(e: PointerEvent, w: { x: number; y: number } | null, phase: "down" | "move" | "up") {
-    {
-      /* DELIVERY LATENCY IS MEASURED ALWAYS — not only while the speed test is
-         on. This number is the seed and the convergence target of the tip
-         extrapolation, so gating it behind the admin HUD left every normal
-         lesson running on a frozen 40 ms guess. latIn (the HUD history) stays
-         gated; the EMA itself does not. */
+    if (this.latencyOn) {
+      /* the speed test still reports the true OS delivery latency (now minus
+         the sample's own timestamp). It is measured only while the HUD is
+         open now, because nothing else consumes the number any more - the
+         extrapolation that used to feed on it is gone. */
       const d = performance.now() - e.timeStamp;
-      if (d >= 0 && d < 400) {
-        this.latEMA = this.latEMA * 0.8 + d * 0.2;
-        if (this.latencyOn) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); }
-      }
+      if (d >= 0 && d < 400) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); }
     }
     const tool = this.tool;
     if (phase === "down") { this.hidePops(); this.erasedThisDrag = false; }
@@ -1604,18 +1619,18 @@ export class BoardEngine {
       if (phase === "down" && w) { this.pendingAnchor = { surface: "board", x: w.x, y: w.y }; this.openModal(tool === "text" ? "mText" : "mSticky"); }
       return;
     }
-    if (phase === "up" && this.touchPending && (tool === "pen" || tool === "highlighter")) {
-      /* plain tap = dot: commit a single-point stroke right where touched */
-      const tp = this.touchPending; this.touchPending = null;
-      this.startStroke(tool, tp, tp.pr);
-    } else if (phase === "up") this.touchPending = null;
     if (phase === "down" && w) {
-      if ((tool === "pen" || tool === "highlighter") && (e as PointerEvent).pointerType === "touch") {
-        /* finger: deliberate 4px glide required before inking (no accidental marks) */
-        this.touchPending = { x: w.x, y: w.y, pr: (e as PointerEvent).pressure || 0 };
-        return;
-      }
       if (tool === "pen" || tool === "highlighter") {
+        /* INK GOES DOWN ON CONTACT - finger, stylus and mouse alike.
+           A 4px glide gate used to sit here for touch input, so the first 4px
+           of EVERY stroke on a finger/stylus board produced no ink at all. The
+           class smart board reports pointerType "touch", so that gate delayed
+           the start of every single stroke - the biggest single reason writing
+           did not feel like a built-in board. Accidental contacts are already
+           handled properly by PALM REJECTION below (a contact wider than 26px
+           is treated as a palm and never inks), so the gate was redundant as
+           well as harmful. A quick tap commits a one-point stroke, which
+           drawObject renders as a dot - tap-to-dot still works. */
         this.startStroke(tool, w, (e as PointerEvent).pressure || 0);
       } else {
         this.boardStore.pushHistory();
@@ -1624,55 +1639,18 @@ export class BoardEngine {
           color: this.color, size: this.size, opacity: this.opacity, fill: this.fill, dashed: this.dashed,
         };
       }
-    } else if (phase === "move" && w && !this.boardDraft && this.touchPending && (tool === "pen" || tool === "highlighter")) {
-      const tp = this.touchPending;
-      if (Math.hypot(w.x - tp.x, w.y - tp.y) * this.boardZoom < 4) return;
-      this.touchPending = null;
-      this.startStroke(tool, tp, tp.pr);
     }
     if (phase === "move" && w && this.boardDraft) {
       if (this.boardDraft.type === "stroke") {
         this.latPendingT0 = performance.now();
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
-        if (Math.hypot(w.x - last.x, w.y - last.y) >= 1.25) {
-          /* sharp-turn gate: past ~60° bends the extrapolation horizon drops
-             to bare age so the projected tip can never fork the stroke */
-          const pp2 = pts.length > 1 ? pts[pts.length - 2] : null;
-          if (pp2) {
-            const v1x = last.x - pp2.x, v1y = last.y - pp2.y, v2x = w.x - last.x, v2y = w.y - last.y;
-            const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
-            if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
-          }
-          /* CLOSED-LOOP LATENCY CALIBRATION: aim the visible tip at the FINGER,
-             not at this sample. The sample is already latEMA ms stale when it
-             reaches us, so "tip == sample" reads as a trailing tip on screen.
-             The finger's current position is estimated as w + predV*latEMA;
-             project the miss onto the motion direction and nudge the horizon
-             until it settles on this device's true delivery latency. The old
-             comment here claimed "the finger IS here now" — that assumption was
-             false and is what made the controller converge to zero. */
-          {
-            const spd = Math.hypot(this.predV.x, this.predV.y);
-            if (spd > 120 && pts.length > 2 && this.predOk) {
-              const ageA = performance.now() - this.lastSampleT;
-              /* the visible tip as it stood an instant ago */
-              const tvx = last.x + (this.predV.x * (ageA + this.horizonMs)) / 1000;
-              const tvy = last.y + (this.predV.y * (ageA + this.horizonMs)) / 1000;
-              /* REFERENCE = THE FINGER, NOT THIS SAMPLE. w was generated
-                 latEMA ms ago, so the finger has moved on by predV*latEMA.
-                 Aiming the tip at the raw sample drove horizonMs to 0 and
-                 re-opened the original gap (velocity x delivery, ~54 px at
-                 600 px/s / 90 ms) — the controller cancelled its own work.
-                 Aiming at the finger's current position settles horizonMs at
-                 the device's true delivery latency, which is where the visible
-                 gap reaches zero. Verified numerically before shipping. */
-              const refx = w.x + (this.predV.x * this.latEMA) / 1000;
-              const refy = w.y + (this.predV.y * this.latEMA) / 1000;
-              const eProj = ((refx - tvx) * this.predV.x + (refy - tvy) * this.predV.y) / spd;
-              this.horizonMs = Math.max(0, Math.min(260, this.horizonMs + (0.3 * eProj * 1000) / spd));
-            }
-          }
+        const before = pts.length >= 2 ? pts[pts.length - 2] : null;
+        /* NO SAMPLE IS THROWN AWAY. The old 1.25px threshold quantised slow,
+           careful writing; what remains is a hair-width epsilon that only
+           rejects exact duplicates (a coalesced stream repeats the last
+           sample), so the wet ink follows the pen completely. */
+        if (Math.hypot(w.x - last.x, w.y - last.y) > 0.25) {
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
           pts.push(this.pressureOn && pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
@@ -1683,17 +1661,7 @@ export class BoardEngine {
              huge phantom gap (up to 300px on fast flicks). Syncing here keeps
              FINGER == INK for every hardware sample, so the HUD gap stays 0. */
           this.lastPt = { x: w.x, y: w.y };
-          {
-            const now = performance.now();
-            const ps = this.prevSample;
-            if (ps) {
-              const dt = Math.max(4, now - ps.t);
-              const vx = ((w.x - ps.x) / dt) * 1000, vy = ((w.y - ps.y) / dt) * 1000;
-              if (Math.hypot(vx, vy) < 5000) { this.predV.x = this.predV.x * 0.55 + vx * 0.45; this.predV.y = this.predV.y * 0.55 + vy * 0.45; }
-            }
-            this.prevSample = { x: w.x, y: w.y, t: now }; this.lastSampleT = now;
-          }
-          this.paintTip(last, w);
+          this.paintTip(before, last, w);
         }
       } else { this.boardDraft.x2 = w.x; this.boardDraft.y2 = w.y; }
       this.scheduleLive(); /* live layer only — never a full redraw mid-stroke */
