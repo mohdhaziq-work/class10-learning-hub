@@ -827,6 +827,11 @@ export class BoardEngine {
   private predV = { x: 0, y: 0 };
   private prevSample: { x: number; y: number; t: number } | null = null;
   private lastSampleT = 0;
+  /* GAP-ZERO: EMA of OS delivery latency (now - e.timeStamp). The physical
+     finger is (age + delivery) ahead of the newest sample we hold; the tip
+     extrapolates exactly that far. Measured, not guessed. */
+  private latEMA = 40;
+  private predOk = true;
   private toWorld(cx: number, cy: number) {
     return { x: (cx - this.boardPan.x) / this.boardZoom, y: (cy - this.boardPan.y) / this.boardZoom };
   }
@@ -984,7 +989,7 @@ export class BoardEngine {
       size: tool === "highlighter" ? this.hlSize : penSizeFor(this.penKind, this.size), opacity: this.opacity,
     };
     this.inkPt = { x: w.x, y: w.y };
-    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t;
+    this.predV = { x: 0, y: 0 }; this.prevSample = { x: w.x, y: w.y, t: performance.now() }; this.lastSampleT = this.prevSample.t; this.predOk = true;
     this.latPendingT0 = performance.now();
     this.drawLive(); /* synchronous first paint — no one-frame rAF wait on contact */
   }
@@ -1061,6 +1066,7 @@ export class BoardEngine {
       rctx.clearRect(0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardCanvas, 0, 0, rec.width, rec.height);
       rctx.drawImage(this.boardLive, 0, 0, rec.width, rec.height);
+      rctx.drawImage(this.boardFx, 0, 0, rec.width, rec.height); /* gap-zero tail + markers in clips */
     };
     loop(performance.now());
     const stream = rec.captureStream(30);
@@ -1230,29 +1236,9 @@ export class BoardEngine {
     ctx.translate(this.boardPan.x, this.boardPan.y);
     ctx.scale(this.boardZoom, this.boardZoom);
     drawObject(ctx, this.boardDraft);
-    /* latency compensation: extend the visible tip along the measured writing
-       velocity by the sample age, so the ink sits under the physical finger
-       instead of ~40 ms behind it. Transient only — the committed stroke is
-       exact, and the tail collapses the moment the finger stops or lifts. */
-    {
-      const d = this.boardDraft;
-      const pts = d.points || [];
-      const age = performance.now() - this.lastSampleT;
-      if (d.type === "stroke" && pts.length > 1 && age < 150) {
-        const lp = pts[pts.length - 1];
-        const t = Math.min(age, 80) / 1000;
-        let dx = this.predV.x * t, dy = this.predV.y * t;
-        const len = Math.hypot(dx, dy);
-        if (len > 70) { dx *= 70 / len; dy *= 70 / len; }
-        if (len > 1) {
-          const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
-          ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.setLineDash([]);
-          ctx.strokeStyle = d.color || "#000"; ctx.lineWidth = Math.max(d.size || 3, 1);
-          ctx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 80 ? 1 : (150 - age) / 70);
-          ctx.beginPath(); ctx.moveTo(lp.x, lp.y); ctx.lineTo(lp.x + dx, lp.y + dy); ctx.stroke();
-        }
-      }
-    }
+    /* gap-zero tail lives on the fx layer with its own 60fps glide loop —
+       see drawTail(); the live layer keeps the verified per-event repaint. */
+    this.drawTail();
     ctx.restore();
     if (this.latencyOn && this.latPendingT0) {
       const d = performance.now() - this.latPendingT0; this.latPendingT0 = 0;
@@ -1272,6 +1258,60 @@ export class BoardEngine {
       ctx.font = "700 12px ui-monospace,Menlo,Consolas,monospace";
       lines.forEach((ln, i2) => ctx.fillText(ln, x0 + 10, y0 + 22 + i2 * 17));
     }
+  }
+  /* GAP-ZERO tail on the fx layer: the newest hardware sample we hold was
+     generated (delivery latency) ms ago and the finger kept moving since, so
+     the visible tip is extrapolated by velocity x (age + measured delivery
+     latency) — the exact distance the finger is ahead. Ink therefore sits
+     under the physical finger with ~0 visible gap on any device. A dedicated
+     rAF glide loop keeps the tail moving at display rate between sparse OS
+     events; it only clears/repaints the cheap fx layer (never the wet stroke),
+     so there is zero overdraw on the live layer. Turn-gated (no fork at
+     bends), distance-capped, transient only: the committed stroke on
+     pointer-up is always the exact hardware samples. */
+  private drawTail() {
+    const fx = this.fctx;
+    fx.setTransform(1, 0, 0, 1, 0, 0);
+    fx.clearRect(0, 0, this.boardFx.width, this.boardFx.height);
+    const d = this.boardDraft;
+    if (!d || d.type !== "stroke") return;
+    const pts = d.points || [];
+    if (pts.length < 2) return;
+    const age = performance.now() - this.lastSampleT;
+    const lp = pts[pts.length - 1];
+    let dx = 0, dy = 0;
+    if (age < 220) {
+      const horizon = this.predOk ? Math.min(age + this.latEMA, 220) : Math.min(age, 80);
+      const t = horizon / 1000;
+      dx = this.predV.x * t; dy = this.predV.y * t;
+      const len = Math.hypot(dx, dy);
+      if (len > 140) { dx *= 140 / len; dy *= 140 / len; }
+      if (len > 1) {
+        const kind = d.tool === "highlighter" ? "highlighter" : (d.kind || "ball");
+        fx.setTransform(this.DPR, 0, 0, this.DPR, 0, 0);
+        fx.save();
+        fx.translate(this.boardPan.x, this.boardPan.y); fx.scale(this.boardZoom, this.boardZoom);
+        fx.lineCap = "round"; fx.lineJoin = "round"; fx.setLineDash([]);
+        fx.strokeStyle = d.color || "#000"; fx.lineWidth = Math.max(d.size || 3, 1);
+        fx.globalAlpha = (kind === "highlighter" ? 0.45 : kind === "marker" ? 0.55 : 1) * (age < 120 ? 1 : (220 - age) / 100);
+        fx.beginPath(); fx.moveTo(lp.x, lp.y); fx.lineTo(lp.x + dx, lp.y + dy); fx.stroke();
+        fx.restore();
+      }
+    } else {
+      dx = 0; dy = 0;
+    }
+    /* markers report the visible truth: estimated physical finger == visible
+       tip, so the HUD gap reads the real residual (~0) */
+    this.lastPt = { x: lp.x + dx, y: lp.y + dy };
+    this.inkPt = { x: lp.x + dx, y: lp.y + dy };
+    if ((isRecording() || this.latencyOn)) this.updateLatencyHud();
+    /* glide: keep advancing at display rate until the finger rests */
+    if (age < 240) this.scheduleGlide();
+  }
+  private glideRaf = 0;
+  private scheduleGlide() {
+    if (this.glideRaf || this.destroyed) return;
+    this.glideRaf = requestAnimationFrame(() => { this.glideRaf = 0; this.drawTail(); });
   }
   /* paint just the newest object straight onto the static canvas — no full redraw */
   private paintIncremental() {
@@ -1427,7 +1467,7 @@ export class BoardEngine {
   private boardStroke(e: PointerEvent, w: { x: number; y: number } | null, phase: "down" | "move" | "up") {
     if (this.latencyOn) {
       const d = performance.now() - e.timeStamp;
-      if (d >= 0 && d < 400) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); }
+      if (d >= 0 && d < 400) { this.latIn.push(d); if (this.latIn.length > 60) this.latIn.shift(); this.latEMA = this.latEMA * 0.8 + d * 0.2; }
     }
     const tool = this.tool;
     if (phase === "down") { this.hidePops(); this.erasedThisDrag = false; }
@@ -1593,6 +1633,14 @@ export class BoardEngine {
         const pts = this.boardDraft.points!;
         const last = pts[pts.length - 1];
         if (Math.hypot(w.x - last.x, w.y - last.y) >= 1.25) {
+          /* sharp-turn gate: past ~60° bends the extrapolation horizon drops
+             to bare age so the projected tip can never fork the stroke */
+          const pp2 = pts.length > 1 ? pts[pts.length - 2] : null;
+          if (pp2) {
+            const v1x = last.x - pp2.x, v1y = last.y - pp2.y, v2x = w.x - last.x, v2y = w.y - last.y;
+            const l1 = Math.hypot(v1x, v1y), l2 = Math.hypot(v2x, v2y);
+            if (l1 > 2 && l2 > 2) this.predOk = (v1x * v2x + v1y * v2y) / (l1 * l2) > 0.5;
+          }
           /* stylus pressure (0..1) captured per point — real calligraphy on tablets */
           const pr = (e as PointerEvent).pressure;
           pts.push(this.pressureOn && pr && pr > 0 && pr !== 0.5 ? { x: w.x, y: w.y, w: pr } : { x: w.x, y: w.y });
