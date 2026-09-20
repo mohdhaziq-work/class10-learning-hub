@@ -37,6 +37,10 @@ export default function SSTHalfYearlySolved() {
         <Link href="/important-questions/sst-expected" className="font-semibold text-[#1a73e8] underline">
           most expected questions of every chapter
         </Link>
+        . Class tests and periodic papers of the school are solved here too — see the{" "}
+        <Link href="/important-questions/sst-periodic2" className="font-semibold text-[#1a73e8] underline">
+          II Periodic Exam 2026-27 solved paper
+        </Link>
         .
       </p>
 

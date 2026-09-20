@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     /* important questions hub — SST half yearly set */
     { url: `${SITE}/important-questions/sst-expected`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE}/important-questions/sst-blueprint`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE}/important-questions/sst-periodic2`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE}/important-questions/sst`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE}/important-questions/ai`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
   ];
