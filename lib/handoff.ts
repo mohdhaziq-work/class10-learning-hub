@@ -4,7 +4,7 @@
 
 export const HANDOFF = {
   updated: "2026-09-14",
-  lastCommit: "REVERT engine to known-good 356f2aa + in-app sign-in kept (009db0a)"
+  lastCommit: "REVERT engine to known-good 356f2aa + in-app sign-in kept (009db0a)",
   repo: "github.com/mohdhaziq-work/class10-learning-hub",
   branch: "main",
   live: "https://class10-learning-hub.onrender.com",
