@@ -80,6 +80,19 @@ export default function SubjectPage({ params }: { params: { subjectId: string } 
  <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
  </Link>
  )}
+ {sub.id === "sst" && (
+ <Link
+ href="/important-questions/sst"
+ className="mt-6 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+ >
+ <div>
+ <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">School paper · solved</p>
+ <h2 className="font-bold text-[17px] mt-1">Half Yearly SST 2025-26 — full solved paper</h2>
+ <p className="text-[13px] text-ink-soft mt-1">All 37 questions of the school paper with NCERT model answers. Open beside the whiteboard in split view and practise.</p>
+ </div>
+ <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+ </Link>
+ )}
  </div>
  );
 }
