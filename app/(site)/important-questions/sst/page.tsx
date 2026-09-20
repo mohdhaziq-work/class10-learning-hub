@@ -28,6 +28,17 @@ export default function SSTHalfYearlySolved() {
         </Link>{" "}
         to keep this sheet beside the whiteboard and write each answer yourself.
       </p>
+      <p className="mt-3 text-[13.5px] leading-relaxed text-ink-mute">
+        Preparing for the next exam? Use the{" "}
+        <Link href="/important-questions/sst-blueprint" className="font-semibold text-[#1a73e8] underline">
+          blue print model paper
+        </Link>{" "}
+        (38 questions, 80 marks, exactly as the school paper) and the{" "}
+        <Link href="/important-questions/sst-expected" className="font-semibold text-[#1a73e8] underline">
+          most expected questions of every chapter
+        </Link>
+        .
+      </p>
 
       {SST_SECTIONS.map((s) => (
         <section key={s.label} className="mt-10">

@@ -11,6 +11,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/smart-board`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE}/pyq`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE}/pyq/maths`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    /* important questions hub — SST half yearly set */
+    { url: `${SITE}/important-questions/sst-expected`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${SITE}/important-questions/sst-blueprint`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE}/important-questions/sst`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE}/important-questions/ai`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
   ];
 
   PYQ_MATHS_SEO.forEach((c) =>
