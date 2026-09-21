@@ -16,6 +16,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/important-questions/sst-blueprint`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE}/important-questions/sst-periodic2`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITE}/important-questions/sst`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    /* hindi half yearly set */
+    { url: `${SITE}/important-questions/hindi-blueprint`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${SITE}/important-questions/hindi-expected`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE}/important-questions/ai`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
   ];
 

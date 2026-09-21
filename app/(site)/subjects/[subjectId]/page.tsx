@@ -132,6 +132,32 @@ export default function SubjectPage({ params }: { params: { subjectId: string } 
         <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
       </Link>
       )}
+      {sub.id === "hindi" && (
+      <Link
+        href="/important-questions/hindi-blueprint"
+        className="mt-6 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+      >
+        <div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">Blue print model paper</p>
+          <h2 className="font-bold text-[17px] mt-1">Hindi Half Yearly — 80 marks, 15 blue print rows</h2>
+          <p className="text-[13px] text-ink-soft mt-1">Unseen passages, grammar (sentence types, voice, pad parichay, alankar), textbook questions and creative writing — every model answer with its word limit.</p>
+        </div>
+        <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+      </Link>
+      )}
+      {sub.id === "hindi" && (
+      <Link
+        href="/important-questions/hindi-expected"
+        className="mt-4 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+      >
+        <div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">All chapters · Must do</p>
+          <h2 className="font-bold text-[17px] mt-1">Most expected questions — Hindi Half Yearly</h2>
+          <p className="text-[13px] text-ink-soft mt-1">All 10 chapters of Kshitij and Kritika, all four grammar topics and all four writing tasks with model answers, and the highest-chance questions marked to revise first.</p>
+        </div>
+        <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+      </Link>
+      )}
     </div>
   );
 }
