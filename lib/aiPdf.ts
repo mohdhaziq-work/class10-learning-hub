@@ -4,6 +4,7 @@
 import PDFDocument from "pdfkit";
 import path from "node:path";
 import { AI_HY, AI_HY_TOP15, AI_HY_SECOND15, AI_HY_OBQ_SETS, AI_HY_TOTAL_LINES } from "@/lib/content/aiHy";
+import { shuffleItems } from "@/lib/aiShuffle";
 
 const FONTS = path.join(process.cwd(), "fonts");
 const LETTER = ["a", "b", "c", "d"];
@@ -108,7 +109,7 @@ function buildPaper(d: Doc) {
     d.font("bold").fontSize(11.5).fillColor("#111827").text(set.heading);
     note(d, `${set.unit}  ·  ${set.pick}`);
     gap(d, 0.2);
-    set.items.forEach((it, i) => {
+    shuffleItems(set.items).forEach((it, i) => {
       qText(d, `${i + 1}. ${it.q}`);
       it.o.forEach((o, oi) => option(d, `(${LETTER[oi]}) ${o}`, false));
       gap(d, 0.35);
@@ -143,7 +144,7 @@ function buildAnswers(d: Doc) {
     d.font("bold").fontSize(11.5).fillColor("#111827").text(set.heading);
     note(d, `${set.unit}  ·  ${set.pick}`);
     gap(d, 0.2);
-    set.items.forEach((it, i) => {
+    shuffleItems(set.items).forEach((it, i) => {
       qText(d, `${i + 1}. ${it.q}`);
       option(d, `(${LETTER[it.a]}) ${it.o[it.a]}`, true);
       note(d, `Reason: ${it.why}`);
@@ -177,8 +178,8 @@ function buildMcq(d: Doc) {
   );
   AI_HY_OBQ_SETS.forEach((set, si) => {
     h2(d, `${si + 1}. ${set.title}  (${set.unit})`);
-    set.items.forEach((it, idx) => {
-      qText(d, `${si * 15 + idx + 1}. ${it.q}`);
+    shuffleItems(set.items).forEach((it, idx) => {
+      qText(d, `${set.from + idx + 1}. ${it.q}`);
       it.o.forEach((o, oi) => option(d, `(${LETTER[oi]}) ${o}`, oi === it.a));
       note(d, `Reason: ${it.why}`);
       gap(d, 0.45);

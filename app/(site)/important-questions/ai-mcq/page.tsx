@@ -4,16 +4,15 @@ import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { AI_HY, AI_HY_OBQ_SETS, AI_HY_TOTAL_LINES } from "@/lib/content/aiHy";
+import { shuffleItems } from "@/lib/aiShuffle";
 
 export const metadata: Metadata = {
-  title: "Class 10 AI Half Yearly — 90 Objective Questions with Answers (417)",
-  description:
-    "90 unit-wise objective questions for the Class 10 AI (417) half yearly - Communication, Self Management, ICT, AI Project Cycle, Modelling and Model Evaluation - each with the correct option and a one-line reason.",
+  title: `Class 10 AI Half Yearly — ${AI_HY_TOTAL_LINES.obq} Objective Questions with Answers (417)`,
+  description: `The full objective bank for the Class 10 AI (417) half yearly - ${AI_HY_TOTAL_LINES.obq} unit-wise MCQs covering Communication, Self Management, ICT, AI Project Cycle, Modelling and Model Evaluation, each with the correct option and a one-line reason.`,
   alternates: { canonical: "/important-questions/ai-mcq" },
   openGraph: {
-    title: "Class 10 AI Half Yearly — 90 Objective Questions with Answers",
-    description:
-      "Section A of the AI half yearly is 24 objective marks. Practise 90 MCQs unit-wise with answers and reasons.",
+    title: `Class 10 AI Half Yearly — ${AI_HY_TOTAL_LINES.obq} Objective Questions with Answers`,
+    description: `Section A of the AI half yearly is 24 objective marks. Practise all ${AI_HY_TOTAL_LINES.obq} MCQs unit-wise with answers and reasons.`,
     url: "/important-questions/ai-mcq",
     type: "website",
   },
@@ -32,9 +31,9 @@ export default function AIMcqPage() {
           {
             "@context": "https://schema.org",
             "@type": "LearningResource",
-            name: "Class 10 AI (417) objective practice bank - 90 MCQs with answers",
+            name: `Class 10 AI (417) objective practice bank - ${AI_HY_TOTAL_LINES.obq} MCQs with answers`,
             description:
-              "90 objective questions for the AI half yearly, unit-wise, with the correct option and a one-line reason for each.",
+              `${AI_HY_TOTAL_LINES.obq} objective questions for the AI half yearly, unit-wise, with the correct option and a one-line reason for each.`,
             url: absoluteUrl("/important-questions/ai-mcq"),
             educationalLevel: "Class 10",
             learningResourceType: "question bank with answers",
@@ -67,9 +66,10 @@ export default function AIMcqPage() {
         </h1>
         <p className="text-ink-soft mt-4 text-[16px] leading-relaxed">
           Section A of the paper alone is {AI_HY.totals.sectionA} marks of every unit - the cheapest
-          marks in the paper. This bank has {AI_HY_TOTAL_LINES.obq} objective questions in six
-          unit-wise sets of 15, including the assertion-reason type, each with the correct option and
-          a one-line reason. Cover the reason, attempt the question, then check.
+          marks in the paper. This bank has {AI_HY_TOTAL_LINES.obq} objective questions: 30 for each
+          of the six units plus a 10-question rapid-fire set, including the assertion-reason type,
+          each with the correct option and a one-line reason. Cover the reason, attempt the question,
+          then check.
         </p>
         <div className="flex gap-3 mt-6 flex-wrap">
           <Link href={BOARD_URL} className="btn-g btn-g-dark text-[15px]">
@@ -96,10 +96,10 @@ export default function AIMcqPage() {
               </span>
             </div>
             <ol className="mt-4 space-y-3">
-              {set.items.map((it, idx) => (
+              {shuffleItems(set.items).map((it, idx) => (
                 <li key={idx} className="bg-white border border-slate-200 rounded-2xl p-5">
                   <p className="text-[15px] font-medium">
-                    {`${si * 15 + idx + 1}. ${it.q}`}
+                    {`${set.from + idx + 1}. ${it.q}`}
                   </p>
                   <div className="grid sm:grid-cols-2 gap-1.5 mt-3">
                     {it.o.map((opt, oi) => (

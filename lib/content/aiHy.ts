@@ -7,6 +7,10 @@ import { AI_HY_PAPER_B_SHORT, AI_HY_PAPER_B_MID, AI_HY_PAPER_B_LONG } from "./ai
 import { AI_HY_OBQ_A } from "./aiHyObqA";
 import { AI_HY_OBQ_B } from "./aiHyObqB";
 import { AI_HY_OBQ_C } from "./aiHyObqC";
+import { AI_HY_OBQ_D } from "./aiHyObqD";
+import { AI_HY_OBQ_E } from "./aiHyObqE";
+import { AI_HY_OBQ_F } from "./aiHyObqF";
+import { AI_HY_OBQ_G } from "./aiHyObqG";
 import { AI_HY_EXPECTED_A } from "./aiHyExpected";
 import { AI_HY_EXPECTED_B } from "./aiHyExpectedB";
 import { AI_OLD_SECTION_A, AI_OLD_SECTION_B, AI_OLD_PAPER_META } from "./aiHyOldPaper";
@@ -19,7 +23,7 @@ export const AI_HY = {
   strategy: AI_HY_STRATEGY,
   paperA: [...AI_HY_PAPER_A1, ...AI_HY_PAPER_A2],
   paperB: { short: AI_HY_PAPER_B_SHORT, mid: AI_HY_PAPER_B_MID, long: AI_HY_PAPER_B_LONG },
-  obq: [...AI_HY_OBQ_A, ...AI_HY_OBQ_B, ...AI_HY_OBQ_C],
+  obq: [...AI_HY_OBQ_A, ...AI_HY_OBQ_B, ...AI_HY_OBQ_C, ...AI_HY_OBQ_D, ...AI_HY_OBQ_E, ...AI_HY_OBQ_F, ...AI_HY_OBQ_G],
   expected: [...AI_HY_EXPECTED_A, ...AI_HY_EXPECTED_B],
   oldPaper: { meta: AI_OLD_PAPER_META, sectionA: AI_OLD_SECTION_A, sectionB: AI_OLD_SECTION_B },
 };
@@ -27,19 +31,32 @@ export const AI_HY = {
 /* ---- counts used on the pages and in the PDFs ---- */
 export const AI_HY_PAPER_OBQ = AI_HY_PAPER_A1.flatMap((s) => s.items).length + AI_HY_PAPER_A2.flatMap((s) => s.items).length; // 30
 export const AI_HY_PAPER_SUBJECTIVE = AI_HY_PAPER_B_SHORT.length + AI_HY_PAPER_B_MID.length + AI_HY_PAPER_B_LONG.length; // 16
-export const AI_HY_OBQ_TOTAL = AI_HY_OBQ_A.length + AI_HY_OBQ_B.length + AI_HY_OBQ_C.length; // 90
+export const AI_HY_OBQ_TOTAL =
+  AI_HY_OBQ_A.length + AI_HY_OBQ_B.length + AI_HY_OBQ_C.length +
+  AI_HY_OBQ_D.length + AI_HY_OBQ_E.length + AI_HY_OBQ_F.length + AI_HY_OBQ_G.length; // 190
 export const AI_HY_EXPECTED_TOTAL = AI_HY_EXPECTED_A.length + AI_HY_EXPECTED_B.length; // 51
 export const AI_HY_OLD_TOTAL = AI_OLD_SECTION_A.length + AI_OLD_SECTION_B.length; // 21
 export const AI_HY_HOT_TOTAL = [...AI_HY_EXPECTED_A, ...AI_HY_EXPECTED_B].filter((q) => q.hot).length;
 
-export const AI_HY_OBQ_SETS: { id: string; title: string; unit: string; items: typeof AI_HY_OBQ_A }[] = [
-  { id: "part-a-1", title: "Communication Skills", unit: "Part A - Unit 1", items: AI_HY_OBQ_A.slice(0, 15) },
-  { id: "part-a-2", title: "Self Management Skills", unit: "Part A - Unit 2", items: AI_HY_OBQ_A.slice(15) },
-  { id: "part-a-3", title: "ICT Skills", unit: "Part A - Unit 3", items: AI_HY_OBQ_B.slice(0, 15) },
-  { id: "part-b-1", title: "AI Project Cycle and Ethical Framework", unit: "Part B - Unit 1", items: AI_HY_OBQ_B.slice(15) },
-  { id: "part-b-2", title: "Advanced Concepts of Modelling", unit: "Part B - Unit 2", items: AI_HY_OBQ_C.slice(0, 15) },
-  { id: "part-b-3", title: "Evaluating Model", unit: "Part B - Unit 3", items: AI_HY_OBQ_C.slice(15) },
-];
+/* Six unit-wise sets of 30 (each unit) plus a 10-question rapid-fire set.
+   "from" is the running question number used on the page and in the PDF. */
+export const AI_HY_OBQ_SETS: { id: string; title: string; unit: string; from: number; items: typeof AI_HY_OBQ_A }[] = (() => {
+  const raw: { id: string; title: string; unit: string; items: typeof AI_HY_OBQ_A }[] = [
+    { id: "part-a-1", title: "Communication Skills", unit: "Part A - Unit 1", items: [...AI_HY_OBQ_A.slice(0, 15), ...AI_HY_OBQ_D.slice(0, 15)] },
+    { id: "part-a-2", title: "Self Management Skills", unit: "Part A - Unit 2", items: [...AI_HY_OBQ_A.slice(15), ...AI_HY_OBQ_D.slice(15)] },
+    { id: "part-a-3", title: "ICT Skills", unit: "Part A - Unit 3", items: [...AI_HY_OBQ_B.slice(0, 15), ...AI_HY_OBQ_E.slice(0, 15)] },
+    { id: "part-b-1", title: "AI Project Cycle and Ethical Framework", unit: "Part B - Unit 1", items: [...AI_HY_OBQ_B.slice(15), ...AI_HY_OBQ_E.slice(15)] },
+    { id: "part-b-2", title: "Advanced Concepts of Modelling", unit: "Part B - Unit 2", items: [...AI_HY_OBQ_C.slice(0, 15), ...AI_HY_OBQ_F.slice(0, 15)] },
+    { id: "part-b-3", title: "Evaluating Model", unit: "Part B - Unit 3", items: [...AI_HY_OBQ_C.slice(15), ...AI_HY_OBQ_F.slice(15)] },
+    { id: "rapid", title: "Rapid fire - full forms and number questions", unit: "All units", items: AI_HY_OBQ_G },
+  ];
+  let n = 0;
+  return raw.map((r) => {
+    const from = n;
+    n += r.items.length;
+    return { ...r, from };
+  });
+})();
 
 /* ---- the teacher's list: 15 of the 50 solved questions most likely to come.
    Chosen from the 50 solved questions by the blue print weightage, the school's own
@@ -84,7 +101,7 @@ export const AI_HY_SECOND15: { ref: number; q: string }[] = [
 export const AI_HY_PDFS: { doc: string; title: string; note: string }[] = [
   { doc: "paper", title: "Model question paper - 50 marks", note: "The whole paper in the school's layout. Print it and solve it in 2 hours." },
   { doc: "answers", title: "Model paper - answer key", note: "Every question of the model paper with the model answer and the correct MCQ option." },
-  { doc: "mcq", title: "Objective practice bank - 90 MCQs", note: "Unit-wise MCQs with the correct option and a one-line reason." },
+  { doc: "mcq", title: `Objective practice bank - ${AI_HY_OBQ_TOTAL} MCQs`, note: "Unit-wise MCQs with the correct option and a one-line reason." },
   { doc: "expected", title: "Most expected questions with answers", note: "51 subject questions, unit-wise, answers sized to the marks." },
   { doc: "old", title: "Old half yearly 2025-26 - solved", note: "The school's own last-year paper, every question answered." },
 ];

@@ -4,6 +4,7 @@ import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { absoluteUrl, breadcrumbJsonLd, organizationJsonLd } from "@/lib/seo";
 import { AI_HY, AI_HY_TOP15, AI_HY_PDFS } from "@/lib/content/aiHy";
+import { shuffleItems } from "@/lib/aiShuffle";
 
 export const metadata: Metadata = {
   title: "Class 10 AI Half Yearly — Blue Print Model Paper (50 marks, solved)",
@@ -199,7 +200,7 @@ export default function AIBlueprintPage() {
                 <p className="text-[13px] text-ink-mute mt-1">{set.unit}</p>
               </div>
               <ol className="divide-y divide-slate-100">
-                {set.items.map((it, idx) => (
+                {shuffleItems(set.items).map((it, idx) => (
                   <li key={idx} className="px-5 py-4">
                     <p className="text-[14.5px] font-medium whitespace-pre-line">
                       {`${idx + 1}. ${it.q}`}
