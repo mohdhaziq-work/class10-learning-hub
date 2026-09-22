@@ -80,6 +80,58 @@ export default function SubjectPage({ params }: { params: { subjectId: string } 
  <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
  </Link>
  )}
+ {sub.id === "ai" && (
+ <Link
+ href="/important-questions/ai-blueprint"
+ className="mt-4 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+ >
+ <div>
+ <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">School paper · blue print</p>
+ <h2 className="font-bold text-[17px] mt-1">AI Half Yearly — blue print model paper, fully solved</h2>
+ <p className="text-[13px] text-ink-soft mt-1">21 questions / 50 marks exactly as the school blue print: Section A objective 24 and Section B subjective 26, with answers.</p>
+ </div>
+ <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+ </Link>
+ )}
+ {sub.id === "ai" && (
+ <Link
+ href="/important-questions/ai-expected"
+ className="mt-4 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+ >
+ <div>
+ <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">Half yearly · most expected</p>
+ <h2 className="font-bold text-[17px] mt-1">Most expected questions and the 15-of-50 shortlist</h2>
+ <p className="text-[13px] text-ink-soft mt-1">51 unit-wise questions with answers sized to the marks, plus the top 15 from the 50 solved list.</p>
+ </div>
+ <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+ </Link>
+ )}
+ {sub.id === "ai" && (
+ <Link
+ href="/important-questions/ai-mcq"
+ className="mt-4 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+ >
+ <div>
+ <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">Section A practice</p>
+ <h2 className="font-bold text-[17px] mt-1">90 objective questions with answers and reasons</h2>
+ <p className="text-[13px] text-ink-soft mt-1">Six unit-wise sets of 15 MCQs, including assertion-reason items, each with the correct option.</p>
+ </div>
+ <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+ </Link>
+ )}
+ {sub.id === "ai" && (
+ <Link
+ href="/important-questions/ai-oldpaper"
+ className="mt-4 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+ >
+ <div>
+ <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">School paper · solved</p>
+ <h2 className="font-bold text-[17px] mt-1">AI Half Yearly 2025-26 — last year paper solved</h2>
+ <p className="text-[13px] text-ink-soft mt-1">The school&apos;s own paper with every question answered - Section A options and Section B model answers.</p>
+ </div>
+ <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+ </Link>
+ )}
  {sub.id === "sst" && (
  <Link
  href="/important-questions/sst"

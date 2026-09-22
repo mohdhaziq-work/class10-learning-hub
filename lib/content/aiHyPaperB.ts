@@ -1,0 +1,145 @@
+/* AI Half Yearly model paper - Section B (subjective), Q6 to Q21 with model answers.
+   Blue print limits: Q6-Q16 answer in 20-30 words, Q17-Q21 answer in 50-80 words. */
+import type { AiBankQ } from "./aiHyTypes";
+
+export const AI_HY_PAPER_B_SHORT: AiBankQ[] = [
+  {
+    n: 6,
+    q: "What is a communication cycle? Name its main elements.",
+    ans: "The full path of a message from sender to receiver and back is the communication cycle. Elements: sender, encoding, message, channel, receiver, decoding and feedback. Feedback completes it.",
+    unit: "Part A - Unit 1: Communication Skills",
+    marks: 2,
+    tag: "Communication cycle",
+  },
+  {
+    n: 7,
+    q: "Write any two barriers to effective communication with one example each.",
+    ans: "Physical barrier - loud noise in the classroom hides the teacher's words. Language barrier - using difficult technical words that the listener does not understand, so the meaning is lost.",
+    unit: "Part A - Unit 1: Communication Skills",
+    marks: 2,
+    tag: "Barriers",
+  },
+  {
+    n: 8,
+    q: "Write any two stress management techniques and say how each one helps.",
+    ans: "Deep breathing and meditation calm the mind and lower anxiety. Physical exercise releases feel-good hormones, improves mood and sleep. A healthy diet and 7-8 hours of sleep keep stress low.",
+    unit: "Part A - Unit 2: Self Management Skills",
+    marks: 2,
+    tag: "Stress management",
+  },
+  {
+    n: 9,
+    q: "What is self-awareness? Why is it important for a student?",
+    ans: "Self-awareness is knowing one's own emotions, strengths, weaknesses and interests. A self-aware student accepts weak areas, fixes realistic goals and makes better decisions - e.g. giving extra time to Maths.",
+    unit: "Part A - Unit 2: Self Management Skills",
+    marks: 2,
+    tag: "Self-awareness",
+  },
+  {
+    n: 10,
+    q: "Write any two measures that an individual should follow to take care of digital devices.",
+    ans: "Keep the device in a cool, dry place away from water, dust and heat, and clean the screen with a soft cloth. Keep the software updated and use a good antivirus.",
+    unit: "Part A - Unit 3: ICT Skills",
+    marks: 2,
+    tag: "Care of digital devices",
+  },
+];
+
+export const AI_HY_PAPER_B_MID: AiBankQ[] = [
+  {
+    n: 11,
+    q: "Differentiate between verbal and non-verbal communication (one point each).",
+    ans: "Verbal communication uses words, spoken (a phone call) or written (an e-mail). Non-verbal communication sends the message without words - facial expressions, gestures, posture, eye contact and tone of voice.",
+    unit: "Part A - Unit 1: Communication Skills",
+    marks: 2,
+    tag: "Methods of communication",
+  },
+  {
+    n: 12,
+    q: "What is a file and what is a folder? Give one example of each.",
+    ans: "A file is stored data with a name and an extension, e.g. marks.xlsx. A folder is a container that holds files and sub-folders, e.g. 'Class 10 AI'.",
+    unit: "Part A - Unit 3: ICT Skills",
+    marks: 2,
+    tag: "Files and folders",
+  },
+  {
+    n: 13,
+    q: "What is spam? Write one way to avoid it.",
+    ans: "Spam is unwanted junk e-mail, usually advertisements or fraud links sent to many users. Avoid it by never replying, marking it as spam and adding a mail filter.",
+    unit: "Part A - Unit 3: ICT Skills",
+    marks: 2,
+    tag: "Internet and e-mail",
+  },
+  {
+    n: 14,
+    q: "What is problem scoping? Why is it the first stage of the AI Project Cycle?",
+    ans: "Problem scoping means defining the exact problem with the 4Ws canvas - Who is affected, What is the problem, and Where and Why it must be solved.",
+    unit: "Part B - Unit 1: AI Project Cycle",
+    marks: 2,
+    tag: "Problem scoping",
+  },
+  {
+    n: 15,
+    q: "Differentiate between Artificial Intelligence and Machine Learning with one example.",
+    ans: "AI is the broad field of making machines intelligent; Machine Learning is part of AI, where machines learn patterns from data instead of fixed rules - e.g. a spam filter.",
+    unit: "Part B - Unit 1: AI Project Cycle",
+    marks: 2,
+    tag: "AI, ML and DL",
+  },
+  {
+    n: 16,
+    q: "Why is model evaluation necessary in an AI project?",
+    ans: "Evaluation tests the trained model on data it has never seen, using accuracy, precision and recall. It shows whether the model is usable or needs improvement, and detects overfitting.",
+    unit: "Part B - Unit 3: Evaluating Model",
+    marks: 2,
+    tag: "Model evaluation",
+  },
+];
+
+export const AI_HY_PAPER_B_LONG: AiBankQ[] = [
+  {
+    n: 17,
+    q: "Explain the stages of the AI Project Cycle, one line each.",
+    ans: "The cycle has five stages. Problem scoping defines the problem with the 4Ws canvas. Data acquisition collects the needed data from surveys, websites or sensors. Data exploration studies and visualises the data to find patterns and outliers. Modelling builds the model - choosing a suitable algorithm and training it on the data. Evaluation checks the trained model on testing data with accuracy, precision and recall, and the loop repeats if the result is not good enough.",
+    unit: "Part B - Unit 1: AI Project Cycle",
+    marks: 4,
+    tag: "AI project cycle",
+    hot: true,
+  },
+  {
+    n: 18,
+    q: "Explain any three ethical concerns in AI and one way to handle each.",
+    ans: "Bias: a model trained on unfair data gives unfair results, so training data must be checked for balance. Privacy: AI systems collect personal data, so only the necessary data should be collected and kept safe. Transparency and accountability: people must know when AI decides, and a human being must remain responsible. Access and fairness: AI should work for all, and a human must always supervise important decisions.",
+    unit: "Part B - Unit 1: Ethical Framework",
+    marks: 4,
+    tag: "Ethics in AI",
+    hot: true,
+  },
+  {
+    n: 19,
+    q: "Differentiate between supervised and unsupervised learning. Give one example and one algorithm of each.",
+    ans: "Supervised learning trains a model on labelled data, where the correct answer is already known - for example predicting a house price from past sales, using linear regression or a decision tree. Unsupervised learning works on unlabelled data and finds hidden groups on its own - for example grouping customers by shopping habits, using K-means clustering. The first is used when past answers exist, the second when the pattern is unknown.",
+    unit: "Part B - Unit 2: Advanced Concepts of Modelling",
+    marks: 4,
+    tag: "Supervised and unsupervised learning",
+    hot: true,
+  },
+  {
+    n: 20,
+    q: "What is a confusion matrix? Explain TP, TN, FP and FN with an example.",
+    ans: "A confusion matrix is a table comparing the actual values with the values predicted by a classification model. For rain prediction: TP - it rained and rain was predicted (correct). TN - no rain, predicted no rain (correct). FP - no rain but rain predicted (false alarm). FN - rain but predicted no rain (a missed case). Accuracy, precision and recall are calculated from these four.",
+    unit: "Part B - Unit 3: Evaluating Model",
+    marks: 4,
+    tag: "Confusion matrix",
+    hot: true,
+  },
+  {
+    n: 21,
+    q: "Write the formulas of accuracy, precision and recall, and explain why accuracy alone can mislead.",
+    ans: "Accuracy = (TP + TN) / (TP + TN + FP + FN), the share of correct predictions. Precision = TP / (TP + FP), how many predicted positives were right. Recall = TP / (TP + FN), how many actual positives were caught. Accuracy misleads on imbalanced data: if 5 of 100 patients are ill, a model saying 'no illness' to all scores 95 % accuracy but catches none. So check precision and recall too.",
+    unit: "Part B - Unit 3: Evaluating Model",
+    marks: 4,
+    tag: "Accuracy, precision, recall",
+    hot: true,
+  },
+];

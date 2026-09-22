@@ -1,0 +1,36 @@
+/* AI Half Yearly - objective practice bank, Part A (Unit 1 Communication, Unit 2 Self Management).
+   30 MCQs with answers and a one-line reason each. */
+import type { AiObqItem } from "./aiHyTypes";
+
+export const AI_HY_OBQ_A: AiObqItem[] = [
+  { q: "Communication is a ______ process.", o: ["one-way", "two-way", "three-way", "random"], a: 1, why: "It needs feedback from the receiver to be complete." },
+  { q: "Which of the following is NOT a method of communication?", o: ["Verbal", "Non-verbal", "Visual", "Reading minds"], a: 3, why: "Only verbal, non-verbal and visual methods exist." },
+  { q: "Tone, pitch and loudness of the voice are called:", o: ["paralanguage", "jargon", "punctuation", "grammar"], a: 0, why: "Paralanguage is HOW the words are spoken." },
+  { q: "Feedback may be:", o: ["verbal only", "written only", "verbal, written or non-verbal", "not possible"], a: 2, why: "A nod, a reply mail or a spoken 'yes' are all feedback." },
+  { q: "Thinking silently to yourself is an example of:", o: ["interpersonal communication", "intrapersonal communication", "public communication", "visual communication"], a: 1, why: "Intrapersonal communication is within oneself." },
+  { q: "A traffic signal is an example of:", o: ["visual communication", "verbal communication", "written communication", "paralanguage"], a: 0, why: "It passes the message through a symbol, without words." },
+  { q: "Converting an idea into words or symbols is called:", o: ["encoding", "decoding", "feedback", "noise"], a: 0, why: "The sender encodes; the receiver decodes." },
+  { q: "Decoding of a message is done by the:", o: ["sender", "receiver", "channel", "noise"], a: 1, why: "The receiver interprets what was sent." },
+  { q: "Fear and anger create which kind of barrier?", o: ["physical", "emotional", "cultural", "organisational"], a: 1, why: "Strong emotions stop clear listening and speaking." },
+  { q: "Using difficult technical words with a common person creates a:", o: ["physical barrier", "language barrier", "cultural barrier", "organisational barrier"], a: 1, why: "Jargon is a language (semantic) barrier." },
+  { q: "In the 7 Cs, 'concise' means the message should be:", o: ["polite", "short and to the point", "colourful", "complete"], a: 1, why: "Extra words are removed, the meaning stays." },
+  { q: "Which of these shows positive body language?", o: ["Crossed arms", "Upright posture with eye contact", "Looking away while talking", "Fidgeting with the pen"], a: 1, why: "It shows confidence, interest and honesty." },
+  { q: "Assertion (A): A message is understood only when the receiver decodes it correctly. Reason (R): Decoding means interpreting the received message.", o: ["Both correct, R explains A", "Both correct, R does not explain A", "A correct, R incorrect", "A incorrect, R correct"], a: 0, why: "Correct decoding is exactly what makes the message understood." },
+  { q: "A speech delivered in the school assembly is:", o: ["interpersonal communication", "public communication", "intrapersonal communication", "written communication"], a: 1, why: "One speaker addresses a large audience." },
+  { q: "The best example of active listening is:", o: ["checking the phone while the teacher speaks", "nodding, noting points and asking questions", "interrupting often", "day-dreaming in class"], a: 1, why: "Full attention plus response is active listening." },
+  { q: "A small amount of stress usually:", o: ["is always harmful", "motivates us to finish work", "causes illness at once", "stops learning completely"], a: 1, why: "A little pressure pushes us to act; too much harms." },
+  { q: "Which of these is a sign of too much stress?", o: ["sound sleep", "inability to concentrate and irritability", "daily exercise", "calm mood"], a: 1, why: "Poor focus, anger and sleeplessness are stress signs." },
+  { q: "Meditation helps a student by:", o: ["increasing anxiety", "calming the mind and improving concentration", "tiring the body", "wasting study time"], a: 1, why: "It relaxes the body and sharpens attention." },
+  { q: "A to-do list is a tool of:", o: ["time management", "file management", "stress creation", "entertainment"], a: 0, why: "It lists work in order of priority." },
+  { q: "Procrastination means:", o: ["finishing work early", "postponing work again and again", "planning work", "prioritising work"], a: 1, why: "It is the habit of 'I will do it later'." },
+  { q: "In SMART goals, M stands for:", o: ["manageable", "measurable", "moral", "minimal"], a: 1, why: "A goal must be measurable to know progress." },
+  { q: "Controlling one's own emotions and behaviour is called:", o: ["self-regulation", "self-pity", "self-criticism", "stress"], a: 0, why: "Self-regulation keeps reactions balanced." },
+  { q: "Which of these shows working independently?", o: ["waiting for instructions every time", "finding the task and completing it on one's own", "copying a friend's work", "skipping the task"], a: 1, why: "Independence means doing your own work responsibly." },
+  { q: "Emotional intelligence means:", o: ["knowing and managing one's own and others' emotions", "having a high IQ only", "being physically strong", "having a good memory"], a: 0, why: "It is about emotions, not only intelligence quotient." },
+  { q: "Which habit raises stress just before an exam?", o: ["revising daily", "last-minute cramming with no sleep", "following a weekly timetable", "eating a healthy breakfast"], a: 1, why: "No sleep and no plan increase pressure and panic." },
+  { q: "The goal 'score 85 % in the AI half yearly by November' is:", o: ["a SMART goal", "a vague wish", "unachievable", "not time-bound"], a: 0, why: "It is specific, measurable, achievable, relevant and time-bound." },
+  { q: "Positive thinking means:", o: ["ignoring problems", "replacing negative thoughts with a plan of action", "day-dreaming all day", "hiding feelings"], a: 1, why: "It looks for what can be done, not for excuses." },
+  { q: "Hobbies help in stress management because they:", o: ["waste money", "refresh the mind and give joy", "add more homework", "take away study time"], a: 1, why: "A happy, fresh mind studies and sleeps better." },
+  { q: "Assertion (A): 7-8 hours of sleep is necessary for students. Reason (R): Lack of sleep lowers concentration and increases stress.", o: ["Both correct, R explains A", "Both correct, R does not explain A", "A correct, R incorrect", "A incorrect, R correct"], a: 0, why: "Sleep is needed exactly because it restores focus and calm." },
+  { q: "Self-motivation is a ______ drive.", o: ["inner", "outer", "forced", "borrowed"], a: 0, why: "It comes from inside, without any pressure from others." },
+];
