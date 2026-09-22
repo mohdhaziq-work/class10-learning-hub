@@ -5,6 +5,7 @@ import PDFDocument from "pdfkit";
 import path from "node:path";
 import { AI_HY, AI_HY_TOP15, AI_HY_SECOND15, AI_HY_OBQ_SETS, AI_HY_TOTAL_LINES } from "@/lib/content/aiHy";
 import { shuffleItems } from "@/lib/aiShuffle";
+import { AI_PYQ_MATCH, AI_PYQ_NO_MATCH, AI_PYQ_INSIGHTS } from "@/lib/content/aiHyPyqMatch";
 
 const FONTS = path.join(process.cwd(), "fonts");
 const LETTER = ["a", "b", "c", "d"];
@@ -255,7 +256,34 @@ function buildOld(d: Doc) {
   });
 }
 
-export const AI_PDF_DOCS = ["paper", "answers", "mcq", "expected", "old"] as const;
+/* ---------- 6. school paper vs the 50 solved ---------- */
+function buildMatch(d: Doc) {
+  head(
+    d,
+    "School paper 2025-26 · matched with the 50 solved",
+    "Which school-paper questions already exist in the 50 solved",
+    "Only genuine matches are listed. The left column is the school's own paper (2025-26), the number is the question of the 50 solved list that answers the same thing."
+  );
+  label(d, `Matched items (${AI_PYQ_MATCH.length})`);
+  AI_PYQ_MATCH.forEach((m) => {
+    d.font("bold").fontSize(10.5).fillColor("#111827").text(`${m.where}: ${m.label}`, { lineGap: 2 });
+    note(d, `50 solved question${m.ref.length > 1 ? "s" : ""}: ${m.ref.map((r) => "#" + r).join(", ")}${m.marks ? `  ·  ${m.marks} mark(s) in the school paper` : ""}`);
+    note(d, `Why: ${m.why}`);
+    gap(d, 0.45);
+  });
+  h2(d, `Not in the 50 solved (${AI_PYQ_NO_MATCH.length}) - study these from the 190 MCQ bank and the expected set`);
+  AI_PYQ_NO_MATCH.forEach((n) => {
+    d.font("reg").fontSize(10).fillColor("#111827").text(`- ${n.label}`, { lineGap: 1.5 });
+    if (n.nearest) note(d, `   Nearest: ${n.nearest}`);
+  });
+  h2(d, "What this comparison tells you");
+  AI_PYQ_INSIGHTS.forEach((t) => {
+    d.font("reg").fontSize(10).fillColor("#3c4043").text(`- ${t}`, { lineGap: 2 });
+    gap(d, 0.3);
+  });
+}
+
+export const AI_PDF_DOCS = ["paper", "answers", "mcq", "expected", "old", "match"] as const;
 export type AiPdfDoc = (typeof AI_PDF_DOCS)[number];
 
 export function buildAiPdf(doc: string): Promise<Buffer> {
@@ -270,6 +298,7 @@ export function buildAiPdf(doc: string): Promise<Buffer> {
   else if (doc === "answers") buildAnswers(d);
   else if (doc === "mcq") buildMcq(d);
   else if (doc === "expected") buildExpected(d);
+  else if (doc === "match") buildMatch(d);
   else buildOld(d);
   footer(d);
   d.end();
@@ -282,4 +311,5 @@ export const AI_PDF_TITLES: Record<string, string> = {
   mcq: "AI Objective Practice Bank",
   expected: "AI Most Expected Questions",
   old: "AI Half Yearly 2025-26 Solved",
+  match: "AI School Paper vs 50 Solved",
 };

@@ -23,6 +23,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${SITE}/important-questions/ai-expected`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
     { url: `${SITE}/important-questions/ai-mcq`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE}/important-questions/ai-oldpaper`, lastModified: now, changeFrequency: "monthly", priority: 0.8 },
+    { url: `${SITE}/important-questions/ai-pyq-match`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
     { url: `${SITE}/important-questions/ai`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
   ];
 

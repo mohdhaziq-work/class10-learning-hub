@@ -57,6 +57,8 @@ export default function AIOldPaperPage() {
           Artificial Intelligence
         </Link>
         <Icon name="chevronRight" size={14} />
+        <Link href="/important-questions/ai-pyq-match" className="hover:text-black transition">School paper vs 50 solved</Link>
+        <Icon name="chevronRight" size={14} />
         <span className="text-ink font-semibold">Old Half Yearly Solved</span>
       </nav>
 
@@ -71,6 +73,9 @@ export default function AIOldPaperPage() {
           the correct MCQ option and a model answer. {meta.note}
         </p>
         <div className="flex gap-3 mt-6 flex-wrap">
+          <Link href="/important-questions/ai-pyq-match" className="btn-g btn-g-blue text-[15px]">
+            <Icon name="listChecks" size={18} /> Which questions match the 50 solved
+          </Link>
           <Link href={BOARD_URL} className="btn-g btn-g-dark text-[15px]">
             <Icon name="squarePen" size={18} /> Open solved paper on the Smart Board
           </Link>
@@ -143,7 +148,7 @@ export default function AIOldPaperPage() {
       <section className="mt-14 grid sm:grid-cols-3 gap-3">
         {[
           { href: "/important-questions/ai-blueprint", t: "Model paper (2026-27)", s: "The new blue print, solved - 21 questions, 50 marks" },
-          { href: "/important-questions/ai-mcq", t: "Objective practice bank", s: "90 MCQs unit-wise with answers" },
+          { href: "/important-questions/ai-pyq-match", t: "School paper vs 50 solved", s: "The matches, one by one, plus what is not in the 50" },
           { href: "/important-questions/ai", t: "50 solved questions", s: "The long answer bank your teacher referred to" },
         ].map((l) => (
           <Link

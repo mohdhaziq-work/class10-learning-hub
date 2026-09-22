@@ -93,6 +93,9 @@ export default function AIExpectedPage() {
           <Link href="/important-questions/ai-blueprint" className="btn-g btn-g-white text-[15px]">
             <Icon name="fileText" size={18} /> Blue print model paper
           </Link>
+          <Link href="/important-questions/ai-pyq-match" className="btn-g btn-g-white text-[15px]">
+            <Icon name="listChecks" size={18} /> School paper vs the 50
+          </Link>
         </div>
       </div>
 

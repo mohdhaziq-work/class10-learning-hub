@@ -104,6 +104,7 @@ export const AI_HY_PDFS: { doc: string; title: string; note: string }[] = [
   { doc: "mcq", title: `Objective practice bank - ${AI_HY_OBQ_TOTAL} MCQs`, note: "Unit-wise MCQs with the correct option and a one-line reason." },
   { doc: "expected", title: "Most expected questions with answers", note: "51 subject questions, unit-wise, answers sized to the marks." },
   { doc: "old", title: "Old half yearly 2025-26 - solved", note: "The school's own last-year paper, every question answered." },
+  { doc: "match", title: "School paper vs the 50 solved", note: "Which school-paper questions are already in the 50 solved - and which are not." },
 ];
 
 export const AI_HY_TOTAL_LINES = {
