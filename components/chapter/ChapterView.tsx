@@ -10,6 +10,7 @@ import MindMapInteractive from "@/components/chapter/MindMapInteractive";
 import ActivityArt from "@/components/chapter/ActivityArt";
 import { EXTRA_QUIZ } from "@/lib/content/quizExtra";
 import { SST_MCQ } from "@/lib/content/sstMcq";
+import { SCI_MCQ } from "@/lib/content/sciMcq";
 import { FORMULA_GUIDE } from "@/lib/content/formulaGuide";
 import { ACTIVITIES } from "@/lib/content/activities";
 
@@ -158,6 +159,11 @@ function Quiz({ quiz }: { quiz: QuizQ[] }) {
  {q.topic && (
  <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[.12em] text-ink-mute bg-slate-100 rounded-full px-2.5 py-1 mb-2">
  <Icon name="target" size={12} /> {q.topic}
+ </span>
+ )}
+ {q.exam && (
+ <span className="inline-flex items-center gap-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[.12em] rounded-full px-2.5 py-1 mb-2 mr-2" style={{ background: "#e6f4ea", color: "#146c2e" }}>
+ <Icon name="award" size={12} /> Expected in exam
  </span>
  )}
  <p className="font-bold text-[15.5px] leading-snug">Q{n + 1}. {q.q}</p>
@@ -465,8 +471,8 @@ export default function ChapterView({ found, prevHref, nextHref }: { found: Chap
 
  {active === "quiz" && (
  <div>
- <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length + (EXTRA_QUIZ[key] || []).length + (SST_MCQ[key] || []).length} questions)</PHead>
- <Quiz quiz={[...(D.quiz || []), ...(EXTRA_QUIZ[key] || []), ...(SST_MCQ[key] || [])]} />
+ <PHead icon="puzzle">Self-Test Quiz ({(D.quiz || []).length + (EXTRA_QUIZ[key] || []).length + (SST_MCQ[key] || []).length + (SCI_MCQ[key] || []).length} questions)</PHead>
+ <Quiz quiz={[...(D.quiz || []), ...(EXTRA_QUIZ[key] || []), ...(SST_MCQ[key] || []), ...(SCI_MCQ[key] || [])]} />
  </div>
  )}
 
