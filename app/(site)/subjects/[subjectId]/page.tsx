@@ -223,6 +223,19 @@ export default function SubjectPage({ params }: { params: { subjectId: string } 
         <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
       </Link>
       )}
+      {sub.id === "english" && (
+      <Link
+        href="/important-questions/english-blueprint"
+        className="mt-6 flex items-center justify-between gap-4 bg-white border border-slate-200 rounded-2xl p-5 hover:shadow-lift hover:-translate-y-0.5 transition"
+      >
+        <div>
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[.14em] text-ink-mute">Blue print · chapter packs</p>
+          <h2 className="font-bold text-[17px] mt-1">English Half Yearly — blue print + summaries, 80 marks</h2>
+          <p className="text-[13px] text-ink-soft mt-1">Every chapter in your blue print with a tap-to-open pack: detailed summary, characters, themes, extract lines with meanings and marks-sized Q&A — plus grammar and writing crash notes.</p>
+        </div>
+        <span className="flex items-center gap-1 text-[13px] font-bold text-brand-600 shrink-0">Open <Icon name="arrowUpRight" size={15} /></span>
+      </Link>
+      )}
     </div>
   );
 }
